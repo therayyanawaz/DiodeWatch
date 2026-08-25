@@ -1,0 +1,42 @@
+# Core data & analysis
+pandas>=2.2
+numpy>=1.26
+scipy>=1.11
+
+# Packet / flow ingest (scapy is the mandatory path; pyshark needs the
+# tshark binary and is OPTIONAL — no module imports it today)
+scapy>=2.5
+# pyshark>=0.6  # optional: uncomment only if Zeek-style pyshark parsing is wired in
+
+# ML
+# the pinned models in models/ are version-bound pickles (their LabelEncoders
+# were written by 1.9.0); an unpinned install loads them with a warning that
+# sklearn itself says may change the predictions
+lightgbm>=4.3
+
+# Laya System-1 triage (ONNX decision model, fully offline at runtime)
+onnxruntime>=1.17
+tokenizers>=0.15
+huggingface_hub>=0.23  # bundle fetch only; never used at inference time
+
+# NOT imported by any module: the feature engine is pandas (src/features/engine.py).
+# Kept installed because setup's core-import check asserts it; drop both together.
+polars>=1.0
+
+# API & dashboard
+fastapi>=0.110
+uvicorn>=0.29
+streamlit>=1.35
+
+# Storage
+# sqlite3 — stdlib, no install needed
+pyarrow>=15.0
+
+# Explainability (PARKED — shap is not imported by any module yet;
+# per-flow SHAP attribution is a planned upgrade. Uncomment when wired in.)
+# shap>=0.45
+
+# Testing & quality
+pytest>=8.0
+pytest-cov>=5.0
+ruff>=0.4
