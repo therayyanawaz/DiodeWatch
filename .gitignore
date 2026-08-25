@@ -1,0 +1,28 @@
+# Data, never commit corpora, caches, training logs, or runtime state
+# (everything re-derives via scripts/download_baseline_slice.py +
+#  scripts/download_ml_corpora.py; runtime artifacts via scripts/check_*.py)
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Models & artifacts
+/models/
+/results/
+
+# Offline wheelhouse (~250 MB), built on a networked machine, never committed
+# (README §Offline bundle: pip download -r requirements.txt -d setup/wheels)
+setup/wheels/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
