@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "diodewatch"
+version = "0.1.0"
+description = "Passive AI threat detection for one-way (data-diode) network links"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "Md Rayyan Nawaz", email = "133018976+therayyanawaz@users.noreply.github.com" }]
+maintainers = [
+    { name = "Md Rayyan Nawaz", email = "133018976+therayyanawaz@users.noreply.github.com" },
+]
+keywords = ["network intrusion detection", "data diode", "unidirectional network",
+            "passive monitoring", "threat detection", "stix"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Information Technology",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Security",
+]
+# Runtime dependencies stay single-sourced in requirements.txt (also consumed
+# verbatim by CI and the air-gapped wheelhouse build).
+dynamic = ["dependencies"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.4"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+# The codebase's import contract is the `src.`-prefixed namespace
+# (`from src.alerts.schema import Alert`), so `src` itself is the distributed
+# package, NOT a src-layout root (that would strip the prefix and expose
+# generic top-level names like `alerts`).
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src", "src.*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
