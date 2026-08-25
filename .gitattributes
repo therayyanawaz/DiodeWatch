@@ -1,0 +1,6 @@
+# EOL contract enforced by git itself (pairs with .editorconfig, which only
+# guides editors). Byte-comparable fixtures MUST be LF in the working tree,
+# not just the index, otherwise Windows checkouts (core.autocrlf) break
+# the byte-equality tests against generated content.
+waf/cases.jsonl text eol=lf
+waf/smoke.jsonl text eol=lf
