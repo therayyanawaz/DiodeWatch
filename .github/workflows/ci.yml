@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest ruff==0.16.6
+
+      - name: Lint (ruff)
+        run: python -m ruff check src/ scripts/ tests/ apps/ waf/
+
+      - name: Parse the mission-control UI
+        # pytest covers the API and asset paths, not the JS: a syntax error in
+        # the wall's own code ships a blank dashboard and CI never sees it.
+        run: |
+          for f in apps/mission_control/static/js/*.js; do node --check "$f"; done
+
+      - name: Claim guardrail (phrasing, metrics, scope, test counts, commands)
+        run: python -m scripts.checks.check_claims
+
+      - name: Generate synthetic demo pack (offline, deterministic)
+        run: python scripts/generators/make_demo_pack.py
+
+      - name: Restore pinned evaluation artifacts (models + metric JSONs)
+        run: |
+          mkdir -p models results/ml
+          cp docs/evaluation/models/*.joblib models/
+          cp docs/evaluation/runs/*_metrics.json results/ml/
+
+      - name: Test suite (pytest)
+        run: python -m pytest tests/ -q
+
+      - name: Clock checks on a non-UTC host
+        # Both of the wall's clocks key off the host zone, and this runner is
+        # UTC so neither can fail here by accident. The timeline keys its
+        # buckets by epoch second from naive-UTC timestamps, and the feed
+        # formats capture times written two different ways by two producers;
+        # read as host-local, each shifts by the machine's offset (5h30m on
+        # IST) — which is exactly what a judge's laptop will do.
+        env:
+          TZ: Asia/Kolkata
+        run: |
+          python -m pytest tests/ -q -k timeline
+          node scripts/checks/check_timefmt.mjs
+
+      - name: Demo rehearsal (the launcher's own pre-flight)
+        run: python scripts/checks/rehearse_demo.py
