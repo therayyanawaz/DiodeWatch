@@ -1,0 +1,216 @@
+{
+  "gates": {
+    "rule_ddos_f1_min": 0.95,
+    "benign_fpr_max": 0.02,
+    "beacon_ctu_recall_min": 0.9
+  },
+  "checks": [
+    {
+      "gate": "rule ddos F1 >= 0.95",
+      "corpus": "cic-ddos2019",
+      "value": 1.0,
+      "passes": true,
+      "note": "pre-committed; fix rules before finals if this fails"
+    },
+    {
+      "gate": "benign FPR <= 0.02",
+      "corpus": "cic-ddos2019",
+      "value": 0.0,
+      "passes": true,
+      "note": "alerts/hour-equivalent proxy"
+    }
+  ],
+  "results": {
+    "cic-ddos2019": {
+      "rules": {
+        "per_class": {
+          "benign": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 392
+          },
+          "ddos": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 1582289
+          }
+        },
+        "macro_f1": 1.0,
+        "micro_f1": 1.0,
+        "fpr": {
+          "benign_flows": 392,
+          "false_positives": 0,
+          "fpr": 0.0,
+          "passes_gate": true
+        }
+      },
+      "rule_alerts": [
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        },
+        {
+          "threat_class": "ddos",
+          "key": "192.168.50.1",
+          "confidence": 0.3333333333333333
+        }
+      ],
+      "n_flows": 1582681,
+      "identity_columns": true,
+      "unmapped_labels": {},
+      "psi": {
+        "fwd_pkts": 14.44106,
+        "fwd_bytes": 13.398197,
+        "duration_us": 7.638591
+      },
+      "ml": {
+        "channel": "ml.flowctx (flow + window context)",
+        "per_class": {
+          "benign": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 392
+          },
+          "ddos": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 1582289
+          }
+        },
+        "macro_f1": 1.0,
+        "micro_f1": 1.0,
+        "fpr": {
+          "benign_flows": 392,
+          "false_positives": 0,
+          "fpr": 0.0,
+          "passes_gate": true
+        }
+      },
+      "features_not_computed": [
+        "iat_*",
+        "pkt_len_*",
+        "active_idle_*",
+        "dns_domain_length",
+        "dns_domain_entropy",
+        "dns_nxdomain_rate",
+        "tls_ja3",
+        "tls_ja3s"
+      ]
+    }
+  }
+}
