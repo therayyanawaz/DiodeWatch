@@ -1,0 +1,59 @@
+{
+  "gates": {
+    "rule_ddos_f1_min": 0.95,
+    "benign_fpr_max": 0.02,
+    "beacon_ctu_recall_min": 0.9
+  },
+  "checks": [],
+  "results": {
+    "cic-ids2018-nf-v2-bruteforce": {
+      "rules": {
+        "error": "identity columns absent in export, entity-scoped rules not evaluable (reported, never faked); ML per-flow scoring unaffected"
+      },
+      "rule_alerts": [],
+      "n_flows": 1048575,
+      "identity_columns": false,
+      "unmapped_labels": {},
+      "psi": {
+        "fwd_pkts": 1.119463,
+        "fwd_bytes": 1.462621,
+        "duration_us": 6.963965
+      },
+      "ml": {
+        "channel": "ml.flowctx (flow + window context)",
+        "per_class": {
+          "benign": {
+            "precision": 0.00133,
+            "recall": 1.0,
+            "f1": 0.002656,
+            "support": 667626
+          },
+          "scan": {
+            "precision": null,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 380949
+          }
+        },
+        "macro_f1": 0.001328,
+        "micro_f1": 0.0,
+        "fpr": {
+          "benign_flows": 667626,
+          "false_positives": 0,
+          "fpr": 0.0,
+          "passes_gate": true
+        }
+      },
+      "features_not_computed": [
+        "iat_*",
+        "pkt_len_*",
+        "active_idle_*",
+        "dns_domain_length",
+        "dns_domain_entropy",
+        "dns_nxdomain_rate",
+        "tls_ja3",
+        "tls_ja3s"
+      ]
+    }
+  }
+}
