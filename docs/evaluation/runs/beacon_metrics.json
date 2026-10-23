@@ -1,0 +1,97 @@
+{
+  "precision": 0.3069,
+  "recall": 0.2131,
+  "f1": 0.2515,
+  "tp": 205,
+  "fp": 463,
+  "fn": 757,
+  "threshold": 0.3591,
+  "pr_auc": 0.195,
+  "roc_auc": 0.8121,
+  "roc_auc_macro": 0.9184,
+  "roc_auc_macro_rule": "macro mean over scenarios with >= 30 positive candidate pairs",
+  "roc_auc_macro_scenarios": [
+    "42",
+    "43",
+    "51"
+  ],
+  "model": "LightGBM pair periodicity (leave-one-scenario-out)",
+  "scenarios": [
+    "42",
+    "43",
+    "51",
+    "52",
+    "53"
+  ],
+  "per_scenario": {
+    "42": {
+      "precision": 0.3776,
+      "recall": 0.1259,
+      "f1": 0.1888,
+      "tp": 91,
+      "fp": 150,
+      "fn": 632,
+      "threshold": 0.0768,
+      "positives": 723,
+      "pr_auc": 0.2285,
+      "roc_auc": 0.9287,
+      "n_pairs": 45142
+    },
+    "43": {
+      "precision": 0.7246,
+      "recall": 0.4975,
+      "f1": 0.59,
+      "tp": 100,
+      "fp": 38,
+      "fn": 101,
+      "threshold": 0.9673,
+      "positives": 201,
+      "pr_auc": 0.5551,
+      "roc_auc": 0.9445,
+      "n_pairs": 18690
+    },
+    "51": {
+      "precision": 0.0529,
+      "recall": 0.3,
+      "f1": 0.09,
+      "tp": 9,
+      "fp": 161,
+      "fn": 21,
+      "threshold": 0.3591,
+      "positives": 30,
+      "pr_auc": 0.0232,
+      "roc_auc": 0.8819,
+      "n_pairs": 13138
+    },
+    "52": {
+      "precision": 0.1053,
+      "recall": 1.0,
+      "f1": 0.1905,
+      "tp": 2,
+      "fp": 17,
+      "fn": 0,
+      "threshold": 0.4339,
+      "positives": 2,
+      "pr_auc": 0.6667,
+      "roc_auc": 0.9975,
+      "n_pairs": 797
+    },
+    "53": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 66,
+      "fn": 6,
+      "threshold": 0.2067,
+      "positives": 6,
+      "pr_auc": 0.0048,
+      "roc_auc": 0.6662,
+      "n_pairs": 2621
+    }
+  },
+  "n_pairs": 80388,
+  "positives": 962,
+  "candidate_definition": "n_flows >= 5 and span_s >= 60",
+  "caveat": "task is beacon-candidate discrimination: CTU-13 bot C2 in bidirectional NetFlow is mostly bursty (spam/DNS), so non-candidate bot contacts are out of scope here and are covered by the flow+context model and rules (docs/ml.md)"
+}
