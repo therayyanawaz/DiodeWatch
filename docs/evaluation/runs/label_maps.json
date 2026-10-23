@@ -1,0 +1,42 @@
+{
+  "cic-ids2017-wednesday": {
+    "BENIGN": "benign",
+    "DoS Hulk": "ddos",
+    "DoS GoldenEye": "ddos",
+    "DoS slowloris": "slowdos",
+    "DoS Slowhttptest": "slowdos",
+    "Heartbleed": "benign"
+  },
+  "cic-ddos2019": {
+    "DDoS": "ddos",
+    "BENIGN": "benign",
+    "UDPLag": "slowdos",
+    "Syn": "ddos",
+    "DrDoS_DNS": "ddos"
+  },
+  "cic-ids2018-nf-v2": {
+    "Benign": "benign",
+    "DDOS attack-HOIC": "ddos",
+    "DDOS attack-LOIC-UDP": "ddos",
+    "DDOS attack-LOIC-HTTP": "ddos",
+    "DoS attacks-Hulk": "ddos",
+    "DoS attacks-SlowHTTPTest": "slowdos",
+    "DoS attacks slowloris": "slowdos",
+    "DoS attacks-GoldenEye": "ddos",
+    "FTP-BruteForce": "scan",
+    "SSH-Bruteforce": "scan",
+    "Brute Force -Web": "scan",
+    "Brute Force -XSS": "scan",
+    "SQL Injection": "scan",
+    "Bot": "unmapped",
+    "Infilteration": "unmapped",
+    "Heartbleed": "unmapped"
+  },
+  "unsw-nb15-benign": {
+    "normal": "benign"
+  },
+  "ctu13-heldout": {
+    "Botnet": "benign",
+    "Normal": "benign"
+  }
+}
