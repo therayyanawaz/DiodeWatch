@@ -8,6 +8,17 @@ _Nothing yet._
 
 _Nothing yet._
 
+## [0.9.0] (2026-10-26)
+
+### Added
+- Cross-corpus evaluation snapshot: retrained and true zero-shot runs across
+  CIC-IDS2017, CIC-DDoS2019 and CSE-CIC-IDS2018, with the shipped LightGBM
+  artifacts and the metric JSON for every channel.
+- `docs/ml.md`: the channels, the retrain protocol, and the disclosures that
+  belong beside the numbers, the leave-one-day-out gap, the published PSI
+  drift, and the cells that are correctly not evaluable on a corpus that
+  carries no identity columns.
+
 ## [0.8.0] (2026-10-18)
 
 ### Added
