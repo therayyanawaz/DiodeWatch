@@ -6,6 +6,26 @@ All notable changes to DiodeWatch are documented here.
 
 _Nothing yet._
 
+## [0.10.0] (2026-11-01)
+
+### Added
+- The wall's new client begins: a Vite + TypeScript build with a typed API
+  client, the wall/status/theme hooks, the topbar and clock, the hero session
+  controls, the detectors grid, the class tiles and the alert feed.
+- The judge brief.
+
+### Changed
+- `scikit-learn` pinned to the exact version the shipped model artifacts report
+  about themselves, instead of a range that could install any newer one;
+  `tests/test_ml_provenance.py` derives the pin from the artifacts and fails
+  when the declaration and the artifacts disagree.
+
+### Fixed
+- A shebang script committed from a host without an exec bit landed
+  unexecutable and failed lint on Linux. `waf/waf_replay.py` now records mode
+  `100755`, and `tests/test_file_modes.py` reads `git ls-files -s` so the
+  defect is visible from a host that has no exec bit of its own.
+
 ## [0.9.0] (2026-10-26)
 
 ### Added
