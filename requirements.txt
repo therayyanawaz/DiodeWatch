@@ -12,6 +12,7 @@ scapy>=2.5
 # the pinned models in models/ are version-bound pickles (their LabelEncoders
 # were written by 1.9.0); an unpinned install loads them with a warning that
 # sklearn itself says may change the predictions
+scikit-learn==1.9.0
 lightgbm>=4.3
 
 # Laya System-1 triage (ONNX decision model, fully offline at runtime)
