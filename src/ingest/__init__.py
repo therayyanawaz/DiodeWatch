@@ -10,4 +10,4 @@ Drive both from the CLI:
     python -m src.ingest.unify --input <file-or-dir> --format csv|pcap --out flows.ndjson
 """
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
