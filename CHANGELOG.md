@@ -8,6 +8,19 @@ _Nothing yet._
 
 _Nothing yet._
 
+## [0.11.0] (2026-11-08)
+
+### Added
+- The rest of the wall in React: evidence drawer, diode proof, detection
+  quality, capacity, radar and timeline panels, the status board and the help
+  tooltips, every panel the hand-written page printed, over the routes
+  `server.py` already answers.
+- The built bundle and the shell that serves it, so `/` and `/status` are one
+  `FileResponse` each and no Node is needed at run time.
+- `docs/pipeline.md`: the whole path from an empty folder to an analyst's
+  alert, command by command.
+- A re-measured throughput ladder and dashboard screenshots.
+
 ## [0.10.0] (2026-11-01)
 
 ### Added
