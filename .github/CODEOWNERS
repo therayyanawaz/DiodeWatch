@@ -1,0 +1,52 @@
+# Ownership, the last matching pattern wins.
+# Areas follow the six-person split recorded in AUTHORS.md.
+
+*                                   @therayyanawaz
+
+# Framework, detection core
+/src/ingest/                        @itsdikshitaa
+/src/features/                      @itsdikshitaa
+/src/detectors/                     @itsdikshitaa
+/src/detectors/ml/                  @sandy1523
+/src/diode/                         @itsdikshitaa
+/scripts/checks/                    @itsdikshitaa
+
+# Framework, evidence, triage and documentation
+/src/alerts/                        @therayyanawaz
+/src/triage/                        @therayyanawaz
+/docs/                              @therayyanawaz
+/README.md                          @therayyanawaz
+/AUTHORS.md                         @therayyanawaz
+/CITATION.cff                       @therayyanawaz
+
+# AI / machine learning
+/scripts/experiments/               @sandy1523
+/scripts/fetch/                     @sandy1523
+/scripts/benchmarks/                @sandy1523
+/scripts/generators/                @sandy1523
+/docs/evaluation/                   @sandy1523
+/requirements.txt                   @sandy1523 @kuldeep265
+
+# Frontend
+/frontend/                          @Aayush0024
+/apps/dashboard/                    @Aayush0024
+
+# Backend
+/apps/mission_control/              @deependra3647
+/run_web.sh                         @deependra3647
+/run_web.bat                        @deependra3647
+
+# DevOps
+/setup/                             @kuldeep265
+/waf/                               @kuldeep265
+/.github/                           @kuldeep265
+/.gitignore                         @kuldeep265
+/.gitattributes                     @kuldeep265
+/.editorconfig                      @kuldeep265
+/run_demo.sh                        @kuldeep265
+/run_demo.bat                       @kuldeep265
+/run_rehearsal.sh                   @kuldeep265
+/run_rehearsal.bat                  @kuldeep265
+/pyproject.toml                     @kuldeep265
+/CHANGELOG.md                       @kuldeep265
+/LICENSE                            @kuldeep265
