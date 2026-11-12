@@ -6,6 +6,22 @@ All notable changes to DiodeWatch are documented here.
 
 _Nothing yet._
 
+## [0.12.0] (2026-11-14)
+
+### Added
+- The product README: scoped badges, the architecture in one screen, and the
+  research the pipeline is built on, cited per component.
+- The judge demo script for the wall, what to click, in what order, and what
+  each panel is evidence of.
+- Team documentation: ownership per area, issue forms for bug reports and
+  feature requests, and a pull request template whose checklist mirrors the
+  guardrail.
+
+### Changed
+- `.gitignore` covers the Node install tree and editor scratch; the committed
+  build output is still tracked on purpose, so the offline launch asks nothing
+  of the host.
+
 ## [0.11.0] (2026-11-08)
 
 ### Added
