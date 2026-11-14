@@ -1,0 +1,62 @@
+name: Bug report
+description: Something detected wrong, crashed, or told you something it could not know.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. One rule above all: **do not paste a corpus, PCAP
+        or alert bundle you do not own the rights to.** Describe it instead, or
+        generate an equivalent with the repo's own script.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did it happen?
+      options:
+        - Detection (a channel missed, fired, or misfired)
+        - The wall (mission-control UI)
+        - The analyst dashboard (Streamlit)
+        - Ingestion (a file would not parse)
+        - Exports (STIX bundle, incident report)
+        - Packaging, setup or launchers
+        - Docs or a claim that does not match the code
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "A release tag, or the first 7 characters of a commit (`git rev-parse --short HEAD`)."
+      placeholder: "v1.0.0"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect, and what happened instead?
+      description: If a number looked wrong, say which number and where you read it.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: The commands, in order, starting from a fresh clone.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: host
+    attributes:
+      label: Host
+      description: "OS and Python version. For the diode proof, say whether the monitor ran with the privileges to enforce egress."
+      placeholder: "Ubuntu 24.04, CPython 3.11, root"
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before submitting
+      options:
+        - label: This is not a security vulnerability (those go to the Security tab, never a public issue).
+          required: true
+        - label: I searched the existing issues.
+          required: true
