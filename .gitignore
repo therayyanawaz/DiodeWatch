@@ -21,8 +21,14 @@ venv/
 # (README §Offline bundle: pip download -r requirements.txt -d setup/wheels)
 setup/wheels/
 
+# Node install tree (~200 MB), regenerates with `npm ci` in frontend/.
+# The build OUTPUT is committed on purpose (apps/mission_control/static/):
+# the offline launch must serve the React wall without Node on the host.
+frontend/node_modules/
+
 # OS / IDE
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+memory.md
