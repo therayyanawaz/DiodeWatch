@@ -34,6 +34,26 @@ jobs:
         run: |
           for f in apps/mission_control/static/js/*.js; do node --check "$f"; done
 
+      - name: Set up Node 22
+        # Pinned to the version that produced the committed bundle, so the
+        # rebuild below hashes to the same filename it already has.
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Rebuild the React wall and prove the committed bundle is current
+        # apps/mission_control/static/ carries the build output so the offline
+        # launch asks nothing of the host. That is also the only way a bundle
+        # can drift from its source unnoticed, so CI builds frontend/ and
+        # requires the shipped output to be byte-identical to what is in the
+        # tree. The hand-written css/ and js/ beside it are not emitted by the
+        # build, so they can only differ by an edit that never got committed.
+        run: |
+          (cd frontend && npm ci && npm run build)
+          git diff --exit-code -- apps/mission_control/static
+
       - name: Claim guardrail (phrasing, metrics, scope, test counts, commands)
         run: python -m scripts.checks.check_claims
 
