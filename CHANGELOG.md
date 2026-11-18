@@ -6,6 +6,31 @@ All notable changes to DiodeWatch are documented here.
 
 _Nothing yet._
 
+## [1.0.0] (2026-11-20)
+
+First stable release: the detection stack, the evidence chain and the wall are
+frozen, and every claim a judge can read is re-derived from this tree on every
+CI run.
+
+### Added
+- CI rebuilds the React wall on the pinned Node version and fails unless the
+  bundle shipped in `apps/mission_control/static/` is byte-identical to what
+  the build writes, the only mechanical defence against a committed build
+  output drifting from its source.
+- Dependency and release automation (`.github/dependabot.yml`,
+  `.github/release.yml`), and citation metadata (`CITATION.cff`).
+- `AUTHORS.md`, `.github/CODEOWNERS` and `docs/roadmap.md`: the team, the area
+  each person owns, and the thirteen-week schedule the releases were cut on.
+
+### Changed
+- `docs/competition/readiness.md` re-verified against this tree, with the
+  status figures and the ledger dates brought forward to the current run.
+
+### Removed
+- The README's CI badge. On a repository that is not public it answers 404 to
+  any signed-out reader, so it was deleted rather than reworded; CI state stays
+  documented where it is measured, in the readiness ledger.
+
 ## [0.12.0] (2026-11-14)
 
 ### Added
