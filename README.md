@@ -7,7 +7,6 @@
 ![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/License-Proprietary-red)
 ![Throughput measured](https://img.shields.io/badge/Throughput-10%2C000%20flows%2Fs%20measured-4caf50)
-![CI](https://github.com/therayyanawaz/DiodeWatch/actions/workflows/ci.yml/badge.svg)
 
 *Passive by design · One-way by enforcement · Evidence by default*
 
