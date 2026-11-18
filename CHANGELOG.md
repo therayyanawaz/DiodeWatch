@@ -6,8 +6,6 @@ All notable changes to DiodeWatch are documented here.
 
 _Nothing yet._
 
-_Nothing yet._
-
 ## [1.0.0] (2026-11-20)
 
 First stable release: the detection stack, the evidence chain and the wall are
@@ -109,175 +107,90 @@ CI run.
 ### Changed
 - `CONTRIBUTING.md` and `SECURITY.md`, with CI's lint scope stated verbatim.
 
-
-## [Unreleased]
-
-### Added
-- **Per-packet timing and size statistics on the flow record.** Both ingest
-  sources already held the per-packet clock and per-packet length and threw them
-  away at aggregation. The canonical record now carries 26 of those measurements
-  (inter-arrival mean/std/max/min over the flow and over each direction, packet
-  size min/max/mean/std over the same three scopes): the pcap reader folds them
-  in with Welford accumulators in the same single pass, and the table reader
-  carries the publisher's own values across untouched. Active registry 47 → 73
-  columns; `MODEL_FEATURES` stays at 38, so every pinned model, fingerprint and
-  published metric is unchanged.
-- All 26 columns verified row-for-row against the pinned 200,000-flow CIC slice
-  (`scripts/experiments/spotcheck_features.py`): exact, 0 mismatches each.
-- **The wall's client is now React (`frontend/`), and it ships at `/` and
-  `/status`.** A Vite + TypeScript build over the routes `server.py` already
-  answers (no new endpoint, no invented path) taking the replay session, the
-  `/ws/live` broadcast and the `/api/diode` verdict from the same server the
-  hand-written page did. Every panel it printed is ported: the hero session
-  controls, the threat-level headline, the three throughput tiles, the alert
-  feed with its filters and custody pill, the evidence drawer with its STIX and
-  report exports, the Diode Proof panel, the detectors grid, the class tiles
-  with their radar canvas, the benchmark capacity card, the alert timeline
-  canvas, the Detection Quality table, the custom source picker, all seventeen
-  help tooltips, and (as a second page of the same build) the ten-row service
-  board. `frontend/` is a two-entry rollup built with `base: "/"`, so `/` is the
-  home page and the wall in one: the build emits its two shells and their chunks
-  into `apps/mission_control/static/`, the directory the server already mounts
-  at `/`, and `/` and `/status` are one `FileResponse` each over them with no
-  path under `/wall/` reaching a browser. The build output is committed and
-  `node_modules` is not, so the offline launch still asks nothing of the host: no
-  Node, no registry, no CDN. Committing a build output is the one place this repo
-  can ship an artifact that no longer matches its source, so CI rebuilds
-  `frontend/` on Node 22 and fails unless the shipped bundle is byte-identical
-  to what that build writes.
-  Parity was checked in a browser, panel by panel, over one shared replay, and
-  that comparison found a real defect: the React Diode panel painted literal
-  zeros for connections and violations under a `NO-STATUS` or stale verdict,
-  where the page it replaced withheld them as `, ` because an observer that saw
-  nothing cannot evidence an absence. The gate is now hoisted above the verdict
-  branch, so an unknown proof cannot print a contradiction beside it.
-
-### Changed
-- **The published per-flow latency was wrong by two orders of magnitude, and it
-  was wrong in our own disfavour.** README, the judge brief, the readiness
-  claim table and `docs/benchmarks.md` all quoted "2.4-4.2 ms" per flow, defined
-  as window eval ÷ flows. That division gives 0.026-0.073 ms; the quoted figure
-  was window-eval **milliseconds ÷ 1,000** with the label changed. Corrected on
-  every surface, and the dashboard tile now renders microseconds so a sub-0.01 ms
-  cost cannot display as `0.00 ms`.
-- Throughput ladder re-measured with the 47-field record and the 73-column frame
-  (`scripts/benchmarks/bench_throughput.py`, 2026-11-03): 10,000 flows/s holds
-  with 4.2x headroom where the previous run recorded 2.8x, end-to-end replay p95
-  175 ms (was 243), batch ML scoring 32,301 flows/s (was 30,653). The rating is
-  unchanged; the wider frame cost nothing measurable.
-- PCAP-derived flows now carry a real `timestamp` (first packet, ISO-8601 UTC).
-  They carried `None`, which disqualified capture traffic from every time-ordered
-  path downstream, chronological splits, sliding windows, an alert on a clock.
-- CIC-IDS2017 semantics measured rather than assumed, and recorded where they
-  surprised: `Std` is the **sample** deviation (÷n-1, 96.05% of rows agree with
-  that formula, 14.64% with the population one), one-packet directions publish
-  `0.0` rather than blank, and the idle-burst floor is 5,000,002 µs.
-- `active_idle_*` stays declared-future on evidence: the aggregation on top of
-  that floor reproduces only 98.13% of the published columns (3,731 of 200,000
-  rows disagree, 9 beyond rounding), so emitting it would put two meanings in one
-  column name. Negative findings published, not patched over.
-- Source quirks added to the dataset register: 213 of 200,000 slice rows carry a
-  negative inter-arrival time (200 are CIC's `-1` "not computable" sentinel), and
-  the `120000000` µs ceiling in the IAT columns is exactly the 120 s flow timeout.
-- **Fixed: reloading the wall redrew a different session than the one on
-  screen.** The feed's card painter prepends, so the live path shows
-  newest-first; the snapshot rebuild reversed the store's oldest-first array
-  before handing it to that same prepending function, which landed the **oldest**
-  alert on top and then let the 80-card DOM cap trim from the bottom -
-  discarding the newest alerts. Found by running the same snapshot through a
-  second client beside the first, and pinned by
-  `test_the_wall_rebuild_lands_the_order_the_live_path_drew`, which fails if
-  either paint path stops normalising the store's oldest-first array to
-  newest-first.
-- `fmt`, `fmtTime` and `fmtLocal` have one implementation: the wall's client
-  re-exports them from `static/js/dom.js` instead of carrying a second copy.
-  `scripts/checks/check_timefmt.mjs` proves the naive-UTC rule on a +5:30 CI
-  host, and it was proving one file while a divergence-prone duplicate was on
-  screen; a new pin fails CI if any component file re-declares one of the three.
-  `fmt` reads an absent measurement as 0 rather than `NaN`, which is what an
-  idle wall genuinely has.
-- **Fixed: resuming a paused replay moved the label, not the worker.** The
-  replay loop ran while `state == "running"`, so the moment `pause()` set
-  `"paused"` the worker exited and `_pause_evt` was left guarding nothing;
-  `resume()` restored the label and every browser kept showing the frozen
-  window count as if it were live. Found by driving the wall in a browser and
-  proven with curl alone, so it never belonged to the new client. The loop
-  condition now treats `"paused"` as a state that keeps a consumer alive, the
-  event is the gate, and
-  `test_resuming_a_paused_replay_moves_the_replay_not_just_the_label` pins it
-  (it fails against the old condition).
-- **Fixed: two of the wall's four page spellings skipped revalidation.**
-  Building at `base: "/"` moved the shipped shells into `static/`, the directory
-  the mount answers at any path, so `/index.html` and `/status.html` began
-  serving the same bytes as `/` and `/status` without the `no-cache` header the
-  middleware sets: a warm disk cache could keep a judge on the previous index
-  after a rebuild, while the route they typed revalidated correctly. The header
-  now covers both spellings of both pages, and deliberately skips the chunks -
-  Vite names them after their own bytes, so a rebuilt bundle is a different URL
-  and no conditional request is needed.
-  `test_the_wall_shell_always_revalidates` pins the whole set, including the
-  chunk that must not carry it.
-
-### Removed
-- **The hand-written vanilla wall: `static/index.html`, `static/status.html`,
-  `static/js/app.js`, `static/js/status.js`, 2,016 lines across four files,
-  replaced by the client that reached parity with it rather than kept beside
-  it.** Two walls over one session is two surfaces for a claim to drift across,
-  and every panel either one printed is now pinned on the one client:
-  `test_the_wall_prints_every_caveat_its_help_buttons_carry` holds the seventeen
-  tooltip sentences as a spec,
-  `test_the_wall_renders_every_panel_its_stylesheet_lays_out` the panel class
-  contracts, the two canvases and the ten status rows, and
-  `test_the_wall_sprite_holds_every_glyph_its_pages_reference` the icon set both
-  page entries carry. Kept on purpose: `static/css/app.css`, which the client is
-  built against, and `static/js/dom.js` with its `.d.ts`, whose formatters the
-  client imports and `scripts/checks/check_timefmt.mjs` proves on a non-UTC host.
-
-## [0.9.0] (2026-09-09)
+## [0.7.0] (2026-10-11)
 
 ### Added
-- Cross-corpus transfer evaluation on **real data**: CIC-DDoS2019 Syn day
-  (1.58M flows, full identity) + 4 CSE-CIC-IDS2018 attack days (3.5M flows).
-  True zero-shot: rule DDoS F1 = 1.0 with benign FPR = 0.0 on the
-  never-trained CIC-DDoS2019 corpus, both pre-committed gates pass.
-- Supervised channel retrained on 13 corpus days across 3 labs (7 classes);
-  flow-context windows retrained on the 10 identity-bearing days.
-- Consolidated transfer summary (`results/transfer/summary.md`) with both
-  phases, gates, and honest limitations.
-- Mission-control web UI (`web/`): FastAPI backend + offline vanilla-JS SPA,
-  parity with the Streamlit dashboard.
-- Dedup/suppression counters surfaced on both live feeds.
-- Executable claim guardrail (`scripts/checks/check_claims.py`, CI-enforced).
+- WAF harness: a ModSecurity ruleset, an nginx container, graded case corpora
+  and a replay tool that reports which case each rule caught.
+- A tamper-evident evidence chain over the alert store, with an offline
+  attestation bundle, and live chain persistence behind the wall.
+- Alert-store, chain, attestation and pack-source tests; a diode egress proof
+  check.
 
 ### Changed
-- Superseded unqualified readiness claims with scoped status badges.
-- Repositioned the repository product-first ("DiodeWatch"); competition
-  artifacts moved to `docs/competition/`.
+- Release notes through 0.6.0 below.
 
-### Disclosed (not hidden)
-- ML flow-context recall 0.0 on untrained corpora, with PSI drift published
-  as the explanation; IDS2018 rule cells not evaluable (export lacks
-  identity columns); leave-one-day-out threshold-transfer gap; webattack
-  channel auto-disabled by its own quality gate.
+## [0.6.0] (2026-10-04)
 
-## [0.8.0] (2026-09-07)
+### Added
+- The analyst dashboard (Streamlit) with live replay and demo capture, and the
+  mission-control backend: server, status page, wall stylesheet and the client
+  helpers the pages share.
+- Route and replay tests for both surfaces.
+- CI: lint, the full test suite and the claim guardrail on every push.
 
-- Benchmarks & demo pack: 10,000 flows/s sustained ladder, out-of-sample
-  accuracy gates re-asserted, 4-scenario demo pack, scripted rehearsal.
-- Packaging: offline wheelhouse, one-command launchers (Windows + bash).
+## [0.5.0] (2026-09-27)
 
-## [0.7.0] (2026-09-06)
+### Added
+- System-1 triage: the engine, its question bank, a background worker and the
+  runtime that produces one verdict per alert. Every verdict carries the
+  provenance of the model that produced it, and an advisory guard so a verdict
+  can never read as a decision the operator did not make.
+- The triage side-table store.
+- Deterministic demo pack and demo pcap generators, so a rehearsal runs with no
+  network at all.
+- A model-provenance check that fails when a channel's artifact and its
+  declared configuration disagree.
 
-- Alert store & exports: SQLite evidence store, STIX 2.1 bundles, HTML
-  incident reports. Streamlit analyst dashboard with Diode Proof panel.
+## [0.4.0] (2026-09-20)
 
-## [0.5.0] (2026-09-05)
+### Added
+- Throughput and accuracy harnesses plus a cross-corpus transfer benchmark,
+  each with a self-test so the harness itself can be wrong loudly.
+- Corpus downloaders that record a verified ledger, hash, origin and
+  verification date, for every artifact they fetch, so a published figure can
+  always be traced to bytes.
+- The abuse.ch SSLBL JA3 watchlist, committed because the channel needs it on a
+  fresh clone and `data/` is ignored.
+- Baseline-slice integrity tests, supervised-channel tests and the transfer
+  test; the dataset ledger and the diode verification notes.
 
-- ML detectors: LightGBM flow+window ensemble, C2 beaconing (CTU-13 LOSO),
-  DGA (family-holdout), TLS/JA3 channel, all quality gates pass.
-- Diode guard: kernel egress-deny + live zero-byte proof panel.
+## [0.3.0] (2026-09-13)
 
-## [0.4.0] (2026-09-04)
+### Added
+- `src/detectors/ml/labels.py` as the single owner of label truth, with the
+  artifact pins beside it.
+- A TLS/JA3 channel over the watchlist.
+- STIX 2.1 export, HTML incident reports and an analyst CLI, plus a live
+  watcher that replays a capture into the store.
+- One-command setup for Windows and Linux, and the demo, rehearsal and wall
+  launchers.
+- The rule, threshold and claim checks under `scripts/checks/`, and the
+  reference docs for features, rules and alerts.
 
-- Feature engine (frozen 47-feature registry, pandas-vectorised, parity-validated) and
-  rule detectors (DDoS / slow-DoS / scan / exfil) with ATT&CK mapping.
+## [0.2.0] (2026-09-06)
+
+### Added
+- The alert schema with ATT&CK technique and tactic tags, and a SQLite evidence
+  store whose ingest is idempotent: an alert's identity is derived from what it
+  describes, so replaying a capture cannot duplicate a row.
+- The diode guard: a kernel egress enforcer and a socket monitor, plus a CLI
+  that reports the mode the host actually granted, enforced, monitor-only, or
+  nothing observable.
+- ML channels for C2 beaconing (periodicity) and DGA, over windowed flows, with
+  a bridge that reads the same feature frame the rule channels read.
+- First coverage for the unifier, the feature engine, the rule channels and the
+  guard.
+
+## [0.1.0] (2026-08-30)
+
+### Added
+- The flow record, built once: a pcap reader and a flow-table reader emit the
+  same canonical record and one unifier settles the fields they share.
+- A vectorised feature engine over a frozen registry, with window specs shared
+  by every channel that reads it.
+- Rule channels for DDoS, slow-DoS, scanning and exfiltration, each carrying
+  its ATT&CK mapping and a calibration note naming the corpus it was derived
+  from.
+- Repository scaffolding: licence, editor and EOL contract, and packaging.
+
