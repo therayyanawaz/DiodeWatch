@@ -1,0 +1,44 @@
+# Release notes are generated from the commit subjects this repository actually
+# uses (Conventional Commits), so a release page never has to be hand-written.
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+  categories:
+    - title: Detection
+      labels:
+        - detection
+        - ml
+      patterns:
+        - "*detectors*"
+        - "*ml*"
+        - "*ingest*"
+        - "*features*"
+        - "*diode*"
+    - title: Alerts and evidence
+      patterns:
+        - "*alerts*"
+        - "*triage*"
+        - "*stix*"
+        - "*report*"
+    - title: Frontend and backend
+      patterns:
+        - "*frontend*"
+        - "*dashboard*"
+        - "*mission-control*"
+        - "*web*"
+        - "*ui*"
+    - title: DevOps and CI
+      patterns:
+        - "*ci*"
+        - "*build*"
+        - "*setup*"
+        - "*waf*"
+        - "*chore*"
+    - title: Documentation
+      patterns:
+        - "*docs*"
+        - "*readme*"
+    - title: Other changes
+      patterns:
+        - "*"
