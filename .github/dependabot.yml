@@ -1,0 +1,43 @@
+version: 2
+updates:
+  # Python — the runtime pins are the contract the shipped model artifacts were
+  # written against, so a bump here is a decision, not a chore: scikit-learn is
+  # pinned to the version the pickles report about themselves and
+  # tests/test_ml_provenance.py re-derives that pin from the artifacts.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      python-runtime:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # The wall's build. The shipped bundle in apps/mission_control/static/ is
+  # committed, so a dependency bump must be followed by a rebuild in the same
+  # pull request or CI's bundle gate fails.
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      wall-build:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      # major bumps of the build toolchain are deliberate, not automatic
+      - dependency-name: vite
+        update-types: ["version-update:semver-major"]
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+
+  # Pinned action versions: CI is the thing that proves every other claim.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
