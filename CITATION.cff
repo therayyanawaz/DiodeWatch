@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use DiodeWatch in academic work, cite it using this metadata."
+title: "DiodeWatch: passive AI threat detection for one-way (data-diode) network links"
+abstract: >
+  A passive detection pipeline for unidirectional IP traffic. Flow records are
+  built once and measured once, then read by rule, window and machine-learning
+  channels whose alerts are deduplicated by identity, chained tamper-evidently,
+  and exported as STIX 2.1 or as analyst reports. The stack never needs a return
+  path, never decrypts, and reports an observation only where the host actually
+  made one.
+type: software
+version: "1.0.0"
+date-released: "2026-11-20"
+license: LicenseRef-Proprietary
+repository-code: "https://github.com/therayyanawaz/DiodeWatch"
+keywords:
+  - network intrusion detection
+  - data diode
+  - unidirectional network
+  - one-way traffic
+  - passive monitoring
+  - machine learning
+  - STIX 2.1
+  - threat detection
+authors:
+  - family-names: Konwar
+    given-names: Dikshita
+  - family-names: Nawaz
+    given-names: Md Rayyan
+  - family-names: Dagar
+    given-names: Prateek
+  - name: Aayush
+  - name: Deependra
+  - family-names: Sharma
+    given-names: Kuldeep
