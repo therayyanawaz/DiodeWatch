@@ -1,5 +1,11 @@
 version: 2
 updates:
+  # One grouped pull request per ecosystem, once a month. The first run opened
+  # nine at once and every one of them needed a human decision: the runtime
+  # pins are the contract the shipped artifacts were written against, and a
+  # frontend bump must be rebuilt and committed in the same change. A cadence
+  # that outruns review is noise, not maintenance.
+  #
   # Python, the runtime pins are the contract the shipped model artifacts were
   # written against, so a bump here is a decision, not a chore: scikit-learn is
   # pinned to the version the pickles report about themselves and
@@ -7,9 +13,8 @@ updates:
   - package-ecosystem: pip
     directory: /
     schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 3
+      interval: monthly
+    open-pull-requests-limit: 1
     groups:
       python-runtime:
         patterns: ["*"]
@@ -21,9 +26,8 @@ updates:
   - package-ecosystem: npm
     directory: /frontend
     schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 3
+      interval: monthly
+    open-pull-requests-limit: 1
     groups:
       wall-build:
         patterns: ["*"]
@@ -40,4 +44,4 @@ updates:
     directory: /
     schedule:
       interval: monthly
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 1
