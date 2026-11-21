@@ -4,7 +4,22 @@ All notable changes to DiodeWatch are documented here.
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+- `.pre-commit-config.yaml`: ruff over CI's exact scope and the claim guardrail,
+  as pre-push hooks. Both call the tools from this repository's own pins rather
+  than pinning their own, so a hook cannot agree with a laptop and disagree with
+  the workflow on Linux.
+
+### Changed
+- The README's CI badge is back. Its removal at 1.0.0 named the condition for
+  restoring it (a public repository, and a signed-out fetch that answers) and
+  publication met it.
+- CI runs on a read-only token (`contents: read`) and cancels superseded
+  pull-request runs. Pushes to `main` are exempt: that run is what the badge and
+  the required status check read.
+- Dependency updates arrive as one grouped pull request per ecosystem, monthly.
+  The first scheduled run opened nine at once, and each of those needs a decision
+  rather than a merge.
 
 ## [1.0.0] (2026-11-20)
 
