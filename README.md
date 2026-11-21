@@ -6,7 +6,7 @@
 
 ![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/License-Proprietary-red)
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Version](https://img.shields.io/github/v/tag/therayyanawaz/DiodeWatch?label=version&color=blue)
 ![CI](https://github.com/therayyanawaz/DiodeWatch/actions/workflows/ci.yml/badge.svg)
 ![Throughput measured](https://img.shields.io/badge/Throughput-10%2C000%20flows%2Fs%20measured-4caf50)
 
@@ -199,7 +199,9 @@ external calls. Full runbook: `docs/diode.md`, `docs/dashboard.md`.
 | ![Status board](docs/img/status_board.png) | *`/status`, every service, component, and detector channel with its live state, derived from the same APIs the dashboard reads* |
 | [`docs/demo_script.md`](docs/demo_script.md) | Narrated 3-5 minute live demonstration script |
 | [`docs/datasets.md`](docs/datasets.md) | Dataset register with SHA256 provenance |
+| [`AUTHORS.md`](AUTHORS.md) | The six people, the area each one owns, and the file tree that ownership maps to |
 | [`docs/evaluation/`](docs/evaluation/README.md) | Cross-corpus transfer evaluation, committed snapshot (both phases, gates, limitations, per-run JSON) |
+| [`docs/roadmap.md`](docs/roadmap.md) | The thirteen-week schedule each release was cut on, week by week, with what shipped in it |
 
 ---
 
@@ -210,8 +212,10 @@ statement *AI-Based Detection of Cyber Threats in Unidirectional IP Traffic*,
 sponsored by **NTRO** (National Technical Research Organisation), and its
 evaluation discipline (pre-committed gates, cross-corpus transfer testing,
 drift reporting, claim guardrail) is a direct product of that bar. The
-competition-maintainer brief and readiness ledger live under
-[`docs/competition/`](docs/competition/).
+competition-maintainer brief ([`docs/competition/judge-brief.md`](docs/competition/judge-brief.md))
+and the readiness ledger ([`docs/competition/readiness.md`](docs/competition/readiness.md))
+are both in the repository: the brief is the one-page answer to "what is this
+and why does it hold up", the ledger is the item-by-item record behind it.
 
 ## Research references
 
