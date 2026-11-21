@@ -7,6 +7,7 @@
 ![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/License-Proprietary-red)
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![CI](https://github.com/therayyanawaz/DiodeWatch/actions/workflows/ci.yml/badge.svg)
 ![Throughput measured](https://img.shields.io/badge/Throughput-10%2C000%20flows%2Fs%20measured-4caf50)
 
 *Passive by design · One-way by enforcement · Evidence by default*
@@ -21,10 +22,10 @@
 
 ## Why DiodeWatch
 
-A classified or high-assurance network crosses a hardware **data diode** -
+A classified or high-assurance network crosses a hardware **data diode** , 
 monitoring data can flow out, but **nothing can ever flow back**. Conventional
 NIDS tooling struggles in exactly the ways that matter here: no return path
-means no active response, no inline blocking, no live source enrichment -
+means no active response, no inline blocking, no live source enrichment , 
 so the entire detection stack must work **passively**, at line rate, on
 one-way evidence alone.
 
