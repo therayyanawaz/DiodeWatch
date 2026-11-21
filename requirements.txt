@@ -18,7 +18,7 @@ lightgbm>=4.3
 # Laya System-1 triage (ONNX decision model, fully offline at runtime)
 onnxruntime>=1.17
 tokenizers>=0.15
-huggingface_hub>=0.23  # bundle fetch only; never used at inference time
+huggingface_hub>=2.4.0  # bundle fetch only; never used at inference time
 
 # NOT imported by any module: the feature engine is pandas (src/features/engine.py).
 # Kept installed because setup's core-import check asserts it; drop both together.
