@@ -25,7 +25,7 @@ huggingface_hub>=0.23  # bundle fetch only; never used at inference time
 polars>=1.0
 
 # API & dashboard
-fastapi>=0.110
+fastapi>=0.162.5
 uvicorn>=0.29
 streamlit>=1.35
 
