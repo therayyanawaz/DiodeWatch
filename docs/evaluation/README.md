@@ -28,3 +28,21 @@ families. The archived text is left exactly as generated.
 
 The full `results/` tree is git-ignored runtime output; regenerate anything
 not snapshotted here with the commands in `transfer.md` §Reproduce.
+
+## The ten run records
+
+Five corpora were evaluated, twice each: the zero-shot pass with the 2017 models, and the
+retrained pass. Both are kept so the gap between them stays visible.
+
+| Run | Read it as |
+|---|---|
+| [`bot_retrained.md`](runs/bot_retrained.md) | bot (retrained) |
+| [`bot_zeroshot_2017models.md`](runs/bot_zeroshot_2017models.md) | bot (zero-shot, 2017 models) |
+| [`bruteforce_retrained.md`](runs/bruteforce_retrained.md) | bruteforce (retrained) |
+| [`bruteforce_zeroshot_2017models.md`](runs/bruteforce_zeroshot_2017models.md) | bruteforce (zero-shot, 2017 models) |
+| [`ddos2019_retrained.md`](runs/ddos2019_retrained.md) | ddos2019 (retrained) |
+| [`ddos2019_zeroshot_2017models.md`](runs/ddos2019_zeroshot_2017models.md) | ddos2019 (zero-shot, 2017 models) |
+| [`hoic_retrained.md`](runs/hoic_retrained.md) | hoic (retrained) |
+| [`hoic_zeroshot_2017models.md`](runs/hoic_zeroshot_2017models.md) | hoic (zero-shot, 2017 models) |
+| [`infil_retrained.md`](runs/infil_retrained.md) | infil (retrained) |
+| [`infil_zeroshot_2017models.md`](runs/infil_zeroshot_2017models.md) | infil (zero-shot, 2017 models) |
