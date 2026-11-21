@@ -1,0 +1,30 @@
+# Hooks run the tools CI runs, from the pins CI uses. A hook that fetched its
+# own ruff version could agree with a contributor's machine and disagree with
+# the workflow on Linux, which is exactly how an EXE001 once reached main: it
+# cannot fire on Windows, because Windows has no exec bit to miss.
+#
+# Install once per clone:
+#   pip install pre-commit
+#   pre-commit install --hook-type pre-push
+#
+# The guardrail is attached to pre-push rather than pre-commit on purpose: it
+# re-derives the suite size by collecting pytest, so it needs the venv and about
+# ten seconds. The figures it reconciles only move when tests or documented
+# numbers move, so paying that on every commit buys nothing.
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff, CI's scope, verbatim
+        entry: python -m ruff check src/ scripts/ tests/ apps/ waf/
+        language: system
+        pass_filenames: false
+        types: [python]
+
+      - id: claim-guardrail
+        name: claim guardrail, phrasing, metrics, suite size, command paths
+        entry: python -m scripts.checks.check_claims
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

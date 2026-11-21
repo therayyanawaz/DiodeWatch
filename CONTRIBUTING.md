@@ -14,6 +14,14 @@ bash setup/setup.sh          # or setup\setup.bat on Windows
 .venv/bin/python -m pytest tests/ -q
 ```
 
+## Hooks
+
+`pre-commit install --hook-type pre-push` wires the two hooks that mirror CI
+exactly: ruff over the same five directories, and the claim guardrail before a
+push. Both run the tools from this repository's own pins rather than fetching
+their own, so a hook cannot agree with your machine and disagree with the
+workflow on Linux.
+
 ## Ground rules
 
 1. **Every claim must trace to code or `results/`.** If you add a number to
