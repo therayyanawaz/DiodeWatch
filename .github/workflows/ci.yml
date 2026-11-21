@@ -1,5 +1,17 @@
 name: CI
 
+# The workflow reads the tree and nothing else: no step writes to the API, so
+# the token is scoped to the one permission every step actually needs.
+permissions:
+  contents: read
+
+# A pushed fix should not queue behind the run it supersedes. Pull requests
+# cancel in flight; a push to main is allowed to finish, because that run is the
+# record the badge and the branch protection read.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 on:
   push:
     branches: [main]
