@@ -1,7 +1,7 @@
 # Core data & analysis
 pandas>=2.2
 numpy>=1.26
-scipy>=1.11
+scipy>=1.15.3
 
 # Packet / flow ingest (scapy is the mandatory path; pyshark needs the
 # tshark binary and is OPTIONAL — no module imports it today)
