@@ -9,7 +9,7 @@ Traffic*, sponsored by NTRO). Ownership of each area is enforced by
 |---|---|---|
 | **Dikshita Konwar** | Framework, detection core | `src/ingest/`, `src/features/`, `src/detectors/` (rule and window channels), `src/diode/`, `scripts/checks/` |
 | **Md Rayyan Nawaz** | Framework, evidence and documentation | `src/alerts/`, `src/triage/`, STIX 2.1 export, incident reports, `docs/`, `README.md` |
-| **Sandy** | AI / machine learning | `src/detectors/ml/`, model artifacts and pins, `scripts/experiments/`, `scripts/fetch/`, `scripts/benchmarks/`, `docs/evaluation/` |
+| **Prateek Dagar** | AI / machine learning | `src/detectors/ml/`, model artifacts and pins, `scripts/experiments/`, `scripts/fetch/`, `scripts/benchmarks/`, `docs/evaluation/` |
 | **Aayush** | Frontend | `apps/dashboard/`, `frontend/` (the React wall), `docs/dashboard.md` |
 | **Deependra** | Backend | `apps/mission_control/` (server, routes, shipped bundles), the launchers that serve the wall |
 | **kuldeep sharma** | DevOps | `setup/`, `.github/`, `waf/`, packaging, release hygiene |
