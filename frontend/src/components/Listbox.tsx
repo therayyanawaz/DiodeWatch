@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { Source } from "../types";
 
@@ -102,11 +102,17 @@ function Options({ lb, options, value, menuClass, ariaLabel, iconled }: {
   ariaLabel: string;
   iconled: boolean;
 }) {
+  // Arrow keys move `lb.active`; without activedescendant the focus ring moves
+  // and a screen reader says nothing, so the list appears frozen to anyone not
+  // looking at it. useId keeps the pairing unique per listbox instance.
+  const listId = useId();
   return (
-    <div className={menuClass} role="listbox" aria-label={ariaLabel} hidden={!lb.open}>
+    <div className={menuClass} role="listbox" aria-label={ariaLabel} hidden={!lb.open}
+         aria-activedescendant={lb.active === null ? undefined : `${listId}-opt-${lb.active}`}>
       {options.map((o, i) => (
         <div
           key={o.value}
+          id={`${listId}-opt-${i}`}
           ref={(el) => { lb.rows.current[i] = el as HTMLElement; }}
           className={`source-option${i === lb.active ? " is-active" : ""}`}
           role="option"
