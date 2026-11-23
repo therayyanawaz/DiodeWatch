@@ -580,30 +580,52 @@ def test_beacon_on_real_ctu():
 
 
 # ============================================= pinned-model column contract
+# The training order is pinned in the tree, not only inside the shipped pickle.
+# A `.joblib` under a git-ignored `models/` is absent for anyone who has not
+# restored it, so on its own it could never gate the two channels whose
+# artifacts are not distributed (flowctx, tls). The pin covers all four.
+FEATURE_PIN = REPO / "docs" / "models" / "feature_order.json"
 _PINNED_VECTORS = [
-    pytest.param("dga_lgbm.joblib", lambda: dg.DGA_FEATURES, id="dga"),
-    pytest.param("beacon_lgbm.joblib", lambda: bc.BEACON_FEATURES, id="beacon"),
-    pytest.param("flowctx_lgbm.joblib", lambda: sw.MODEL_FEATURES_CTX,
+    pytest.param("dga", lambda: dg.DGA_FEATURES, "dga_lgbm.joblib", id="dga"),
+    pytest.param("beacon", lambda: bc.BEACON_FEATURES, "beacon_lgbm.joblib",
+                 id="beacon"),
+    pytest.param("flowctx", lambda: sw.MODEL_FEATURES_CTX, "flowctx_lgbm.joblib",
                  id="flowctx"),
-    pytest.param("tls_novelty.joblib", lambda: tls.TLS_FEATURES, id="tls"),
+    pytest.param("tls", lambda: tls.TLS_FEATURES, "tls_novelty.joblib", id="tls"),
 ]
 
 
-@pytest.mark.parametrize("artifact,live", _PINNED_VECTORS)
-def test_pinned_model_reads_the_columns_it_was_trained_on(artifact, live):
+def _feature_pin() -> dict:
+    return json.loads(FEATURE_PIN.read_text(encoding="utf-8"))["channels"]
+
+
+@pytest.mark.parametrize("channel,live,artifact", _PINNED_VECTORS)
+def test_a_channel_still_scores_the_columns_it_was_trained_on(channel, live,
+                                                             artifact):
     """Each channel scores with `frame.reindex(columns=FEATURES).to_numpy()`: a
-    positional matrix, so the artifact and the module must agree on column ORDER,
+    positional matrix, so an artifact and the module must agree on column ORDER,
     not just on the set of names. Reorder, rename, insert or drop one entry and
     every column shifts: the shipped booster then scores the wrong features, and
     nothing else notices. No crash, no NaN, no failing test, and every published
-    accuracy figure becomes fiction. The pin records its training order in
-    `medians`, so that is the contract this compares against.
+    accuracy figure becomes fiction. `docs/models/feature_order.json` records the
+    training order for all four channels, so the two artifacts that are not
+    distributed are covered as well as the two that are.
     """
+    assert list(live()) == _feature_pin()[channel]
+
+
+@pytest.mark.parametrize("channel,live,artifact", _PINNED_VECTORS)
+def test_a_restored_artifact_agrees_with_the_pin(channel, live, artifact):
+    """When the boosters have been restored, the artifact's own record of its
+    training order must match the module and the pin. Absence is not failure:
+    `models/` is git-ignored and the loader degrades deliberately, so this
+    asserts over whichever artifacts are actually present."""
     joblib = pytest.importorskip("joblib")
     path = REPO / "models" / artifact
     if not path.exists():
-        pytest.skip(f"{artifact} not restored, models/ is git-ignored")
+        return
     assert list(joblib.load(path)["medians"]) == list(live())
+    assert list(joblib.load(path)["medians"]) == _feature_pin()[channel]
 
 
 def test_dga_demo_alert_is_lexical_not_tld_based():
