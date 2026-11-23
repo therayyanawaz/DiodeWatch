@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -34,6 +35,8 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+
+from . import security
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
@@ -83,6 +86,11 @@ async def _lifespan(_app: FastAPI):
 
 app = FastAPI(title="DiodeWatch Mission Control", docs_url=None, redoc_url=None,
               lifespan=_lifespan)
+
+
+# Hardened before the first route is registered: a response that skips the
+# header pass would be the one an attacker frames.
+security.install(app)
 
 
 # Both spellings of each page, because the static mount answers `/index.html`
@@ -635,7 +643,18 @@ def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description="DiodeWatch mission-control server")
     ap.add_argument("--port", type=int, default=8530)
     ap.add_argument("--host", default="127.0.0.1")
+    ap.add_argument("--token", default=None,
+                    help=f"bearer token for /api (default: ${security.TOKEN_ENV})")
+    ap.add_argument("--allow-unauthenticated", action="store_true",
+                    help="permit a non-loopback bind with no token")
     args = ap.parse_args(argv)
+    if args.token:
+        os.environ[security.TOKEN_ENV] = args.token
+    token = security.startup_guard(args.host, args.allow_unauthenticated)
+    if token:
+        print(f"wall: /api requires {security.TOKEN_HEADER} ({len(token)} chars)")
+    elif args.host not in security.LOOPBACK:
+        print("wall: WARNING unauthenticated on a reachable interface")
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
 
 
