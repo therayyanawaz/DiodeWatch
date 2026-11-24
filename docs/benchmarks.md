@@ -105,3 +105,31 @@ from borderline 1.0x headroom to **4.2x** in that run, and the deployment rating
 from ~2,700 to 10,000 flows/s. The ladder above is a later run of the same script
 on the same host and reads 7.8x at that rung; the 4.2x is kept as what the change
 itself bought, not as the current figure.
+
+## Against a stock IDS (Suricata, Zeek)
+
+Comparing DiodeWatch to Suricata or Zeek is a fair question, and the honest answer
+needs a number measured on the reviewer's own capture, not one copied from a
+blog. `scripts/benchmarks/bench_reference.py` measures what is comparable:
+
+```bash
+python scripts/benchmarks/bench_reference.py --pcap data/pcaps/demo_threats.pcap --tool auto --ours
+```
+
+It reports, for the reference tool and for this project on the same capture: the
+alert volume, CPU seconds, wall-clock seconds, and alerts per CPU second. Two
+decisions are deliberate:
+
+* **Volumes and cost only, never precision or recall.** A rule set fires on a
+  signature and a window ensemble fires on a window; lining those up needs a
+  mapping between class names that nobody has validated. A figure derived from a
+  guessed mapping is a fabricated figure, so the script does not produce one.
+* **A missing tool is reported, not simulated.** With neither binary on PATH the
+  script exits 2 and prints how to install each one; it never emits a placeholder
+  row that reads like a measurement.
+
+The two tools work on different inputs: Suricata and Zeek read packets with their
+own decoders, while this project reads a capture into flows first. Running all
+three over one pcap therefore measures three pipelines, which is exactly what a
+deployment decision needs, and it is why the comparison stays at the level of
+volume and cost.
