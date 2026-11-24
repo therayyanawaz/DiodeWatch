@@ -9,6 +9,30 @@ All notable changes to DiodeWatch are documented here.
   as pre-push hooks. Both call the tools from this repository's own pins rather
   than pinning their own, so a hook cannot agree with a laptop and disagree with
   the workflow on Linux.
+- The wall answers with a strict security policy on every response, and a
+  configured `DIODE_WALL_TOKEN` turns `/api` into a 401 without it. Binding to a
+  non-loopback interface now refuses to start unless a token is set, because an
+  open wall lets any reachable caller start, pause and reset a capture.
+- `src/alerts/attest.py` exports a canonical digest of the evidence chain and,
+  with OpenSSL, the RFC 3161 request that binds it to a wall clock. Nothing
+  contacts a time-stamp authority automatically: the request is a file you send.
+- `docs/threat-model.md`: the three trust boundaries in STRIDE, what is
+  implemented at each, what is out of scope by name, and the test that re-checks
+  every claim on it.
+- `docs/models/`: a card per shipped artifact, the digest of the exact bytes, and
+  `feature_order.json`, which pins the training column order for all four scoring
+  channels including the two whose artifacts are not distributed.
+- `scripts/checks/make_sbom.py` emits a CycloneDX 1.5 inventory of the installed
+  environment, uploaded as a build artifact; `scripts/checks/make_lock.py`
+  produces `requirements.lock` and checks it offline.
+- `scripts/benchmarks/bench_reference.py` measures Suricata or Zeek on one
+  capture beside our own pass, and reports that a tool is absent instead of
+  emitting a row for something it never ran.
+- `.github/workflows/integration.yml` fetches the corpora the repository never
+  commits, then requires that the cells which skip without them actually run.
+- The wall's accessibility contract is tested: accessible names on every control,
+  a named listbox that announces its highlighted option, the tooltip wired as the
+  button's description, and no focus indicator removed without a replacement.
 
 ### Changed
 - The README's CI badge is back. Its removal at 1.0.0 named the condition for
@@ -20,6 +44,12 @@ All notable changes to DiodeWatch are documented here.
 - Dependency updates arrive as one grouped pull request per ecosystem, monthly.
   The first scheduled run opened nine at once, and each of those needs a decision
   rather than a merge.
+- The suite now fails on a coverage floor (`[tool.coverage.report]` in
+  `pyproject.toml`, set below the measured figure so a refactor may move lines and
+  a new detector may not ship untested).
+- `tests/detectors/test_ml.py` compares every channel against the committed column
+  order pin rather than only against a restored artifact, so the two channels
+  whose boosters are not distributed are covered as well as the two that are.
 
 ## [1.0.0] (2026-11-20)
 
