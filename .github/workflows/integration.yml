@@ -1,0 +1,86 @@
+name: integration (real corpora)
+
+# The default workflow is hermetic: it installs nothing from the network but pip
+# packages, so it can run on every push in two minutes. That leaves three cells
+# that need a corpus the repository deliberately never commits (CIC-IDS2017 slice
+# and flow export, CTU-13 bidirectional NetFlows). They skip in `ci.yml` and say
+# why. This workflow is the other half: it fetches the pinned corpora, verifies
+# their checksums, and then requires that those cells actually run.
+#
+# Not a required check, on purpose: a weekly job that depends on three upstream
+# mirrors must not be able to block a merge. When it goes red, the corpus moved
+# and the pin needs re-deriving, which is a maintenance task with its own owner.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * 1"   # Mondays 04:00 UTC, after the weekly dependency PR
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  real-corpora:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest ruff==0.16.6
+
+      - name: Cache the downloaded corpora
+        # Keyed on the fetch scripts, so editing a pinned URL or checksum
+        # invalidates the cache instead of serving the previous corpus.
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/slices
+            data/raw
+          key: corpora-${{ hashFiles('scripts/fetch/**', 'data/raw/manifest.json') }}
+
+      - name: Fetch the baseline slice (CIC-IDS2017 Wednesday)
+        run: python scripts/fetch/download_baseline_slice.py --rows 200000
+
+      - name: Fetch the CTU-13 corpora (bidirectional labeled NetFlows)
+        run: python scripts/fetch/download_ml_corpora.py
+
+      - name: Restore pinned evaluation artifacts (models + metric JSONs)
+        run: |
+          mkdir -p models
+          cp docs/evaluation/models/*.joblib models/
+
+      - name: Full suite with the corpora present
+        run: python -m pytest tests/ -q -rs | tee pytest-report.txt
+
+      - name: The corpus cells must have run, not skipped
+        # The point of this job. A skip reason that still says "not downloaded"
+        # means the fetch above did not do what the job exists to do, and the
+        # green tick would be describing the hermetic run instead.
+        run: |
+          if grep -E "not downloaded|not restored" pytest-report.txt; then
+            echo "::error::a corpus cell still skipped; the fetch did not supply it"
+            exit 1
+          fi
+          grep -E "^[0-9]+ passed" pytest-report.txt
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-pytest-report
+          path: pytest-report.txt
+          if-no-files-found: warn

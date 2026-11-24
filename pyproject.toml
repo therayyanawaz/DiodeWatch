@@ -55,3 +55,20 @@ include = ["src", "src.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+# The suite is the only thing that proves a detector still detects, so it has to
+# fail when new code arrives untested. The floor is deliberately below the
+# measured figure (81 percent at 1.0.0): a refactor may move a few lines without
+# a test, an entire new detector may not.
+[tool.coverage.run]
+source = ["src"]
+branch = false
+
+[tool.coverage.report]
+fail_under = 78
+skip_covered = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
