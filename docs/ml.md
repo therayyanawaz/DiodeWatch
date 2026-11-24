@@ -11,8 +11,11 @@ python -m src.detectors.ml_engine \
 ```
 
 The engine loads trained artifacts from `models/` (missing artifacts degrade
-gracefully: rule-mode DGA, watchlist-only TLS, no flow+context alerts). The
-end-to-end train + gate + engine check runs via `scripts/checks/check_ml.py`:
+gracefully: rule-mode DGA, watchlist-only TLS, no flow+context alerts). Two of
+those artifacts are distributed under `docs/evaluation/models/` and carry a model
+card each, with the digest of the exact bytes and the training column order that
+every scorer depends on: see [`docs/models/`](models/README.md). The end-to-end
+train + gate + engine check runs via `scripts/checks/check_ml.py`:
 
 ```bash
 python scripts/checks/check_ml.py train-windows train-beacon train-dga train-tls gates engine
