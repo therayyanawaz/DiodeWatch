@@ -190,8 +190,10 @@ external calls. Full runbook: `docs/diode.md`, `docs/dashboard.md`.
 | [`docs/diode.md`](docs/diode.md) | Diode architecture, enforcement modes, honest-degradation contract |
 | [`docs/benchmarks.md`](docs/benchmarks.md) | Throughput ladder, accuracy gates, methodology |
 | [`docs/ml.md`](docs/ml.md) | What trains on what, out-of-sample protocols, gates, design decisions |
+| [`docs/models/`](docs/models/README.md) | Model cards for the two shipped artifacts: what each reads, what it decides, its provenance, its limits, and the digest of the exact bytes in the tree |
 | [`docs/rules.md`](docs/rules.md) | Rule detectors and their thresholds |
 | [`docs/alerts.md`](docs/alerts.md) | Alert schema, evidence model, STIX/report export |
+| [`docs/threat-model.md`](docs/threat-model.md) | Trust boundaries in STRIDE, what is implemented at each, what is deliberately out of scope, and the test that re-checks every claim |
 | [`docs/laya.md`](docs/laya.md) | Laya System-1 triage channel, offline ONNX decision model (advisory) |
 | [`docs/features.md`](docs/features.md) | Frozen 73-feature registry + parity validation |
 | [`docs/dashboard.md`](docs/dashboard.md) | Both analyst surfaces: the `:8530` mission-control wall (routes, which owner computes each on-screen number, caps, status board, and the `frontend/` React client its `/` and `/status` pages are built from) and the Streamlit dashboard with its Diode Proof panel |
