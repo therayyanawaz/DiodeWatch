@@ -66,11 +66,35 @@ jobs:
           (cd frontend && npm ci && npm run build)
           git diff --exit-code -- apps/mission_control/static
 
+      - name: Emit the SBOM (CycloneDX 1.5, offline)
+        # Generated, not curated: the file lists what this environment actually
+        # installed, and the artifact is what a reviewer scans for known-bad
+        # versions. Deterministic output, so a diff means a dependency moved.
+        run: python scripts/checks/make_sbom.py --out sbom.cdx.json
+
+      - name: Upload the SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
+          if-no-files-found: error
+
+      - name: Check the dependency lock (offline)
+        # requirements.txt keeps its floors so CI resolves fresh and catches a
+        # broken dependency on the day it breaks; requirements.lock pins the
+        # verified run for a host that has to come up identically twice. The
+        # check is structural and offline, so it cannot flake on the index.
+        run: python scripts/checks/make_lock.py --check
+
       - name: Claim guardrail (phrasing, metrics, scope, test counts, commands)
         run: python -m scripts.checks.check_claims
 
       - name: Generate synthetic demo pack (offline, deterministic)
-        run: python scripts/generators/make_demo_pack.py
+        # Both artifacts are generated, not committed: the flow table the demo
+        # replays, and the capture the reference-IDS measurement runs over.
+        run: |
+          python scripts/generators/make_demo_pack.py
+          python scripts/generators/make_demo_pcap.py
 
       - name: Restore pinned evaluation artifacts (models + metric JSONs)
         run: |
@@ -79,7 +103,10 @@ jobs:
           cp docs/evaluation/runs/*_metrics.json results/ml/
 
       - name: Test suite (pytest)
-        run: python -m pytest tests/ -q
+        # --cov is the gate, not a report: [tool.coverage.report] fail_under is a
+        # floor, so a new route or detector with no test fails the build instead
+        # of shipping quietly.
+        run: python -m pytest tests/ -q --cov=src --cov-report=term-missing:skip-covered
 
       - name: Clock checks on a non-UTC host
         # Both of the wall's clocks key off the host zone, and this runner is

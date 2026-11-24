@@ -32,3 +32,9 @@ Thumbs.db
 .idea/
 .vscode/
 memory.md
+
+# generated during a local run, never part of the tree
+.coverage
+htmlcov/
+sbom.cdx.json
+pytest-report.txt
