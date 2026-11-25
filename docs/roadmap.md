@@ -1,5 +1,9 @@
 # Roadmap
 
+> This page is the delivery schedule the releases were cut on, week by week, and
+> it looks backwards on purpose. For what is planned next, and what is
+> deliberately not planned, read [`status.md`](status.md).
+
 The programme ran for **13 weeks**, 2026-08-25 → 2026-11-20. Each week ends in a
 tagged release; the table below is the schedule the work was actually delivered
 on, and every row is backed by commits in this repository.

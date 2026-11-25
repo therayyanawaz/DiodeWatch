@@ -12,6 +12,8 @@
 
 *Passive by design · One-way by enforcement · Evidence by default*
 
+**[Status: what ships today, what is next, and what we do not do](docs/status.md)**
+
 [Why DiodeWatch](#why-diodewatch) · [How it works](docs/pipeline.md) · [Architecture](#architecture) · [Proven results](#proven-results) · [Quick start](#quick-start) · [Docs](#documentation) · [Research references](#research-references)
 
 <img src="docs/img/dashboard_overview.png" alt="DiodeWatch mission-control dashboard, live alert feed, threat classes, throughput, and detection quality" width="100%">
