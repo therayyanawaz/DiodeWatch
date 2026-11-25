@@ -284,9 +284,9 @@ def to_timestamp(v) -> tuple[str | None, float | None]:
         s = str(v).strip()
         for fmt in _TS_FORMATS:
             try:
-                # Naive by design: CIC timestamps carry no zone; we assume the
-                # source clock and tag UTC so ordering/epochs stay consistent.
-                dt = datetime.strptime(s, fmt)
+                # The formats carry no zone; we assume the source clock and tag
+                # UTC immediately so ordering/epochs stay consistent.
+                dt = datetime.strptime(s, fmt).replace(tzinfo=timezone.utc)
                 break
             except ValueError:
                 continue
