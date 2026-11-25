@@ -84,6 +84,23 @@ def test_our_own_pass_reports_flows_alerts_and_wall_clock(tmp_path):
     json.dumps(row)  # serialisable, this is what --out writes
 
 
+def test_a_failed_tool_run_reports_unknown_rather_than_zero(tmp_path, monkeypatch):
+    """"0 alerts" from a tool that crashed reads as a clean, cheap pass.
+
+    The failure is simulated at the process boundary rather than with a shell
+    script, so the assertion is the same on Windows and on the runner."""
+    import types
+
+    bench = _module()
+    monkeypatch.setattr(bench.shutil, "which", lambda name: f"/fake/{name}")
+    monkeypatch.setattr(bench.subprocess, "run", lambda *a, **k: types.SimpleNamespace(
+        returncode=3, stdout="", stderr="boom"))
+    row = bench.run_tool("suricata", PRESENT)
+    assert row["exit_code"] == 3
+    assert row["alerts"] is None, "a crashed run must not report zero alerts"
+    assert row["alerts_per_cpu_second"] is None
+
+
 def test_the_help_states_it_does_not_score_accuracy():
     text = SCRIPT.read_text(encoding="utf-8")
     assert "does **not** compute precision" in text

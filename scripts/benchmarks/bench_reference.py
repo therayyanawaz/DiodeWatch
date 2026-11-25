@@ -118,8 +118,11 @@ def run_tool(tool: str, pcap: Path) -> dict[str, Any]:
         cpu_after = _cpu_seconds()
         cpu = (None if cpu_before is None or cpu_after is None
                else cpu_after - cpu_before)
-        alerts = (_count_suricata_alerts if tool == "suricata"
-                  else _count_zeek_notices)(out_dir)
+        # A tool that exited non-zero may have written a partial log. Counting it
+        # as "0 alerts" would read as a clean, cheap pass; None reads as unknown.
+        alerts = (None if proc.returncode != 0 else
+                  (_count_suricata_alerts if tool == "suricata"
+                   else _count_zeek_notices)(out_dir))
         version = subprocess.run(
             [binary, "-V" if tool == "suricata" else "--version"],
             capture_output=True, text=True, check=False,
@@ -133,7 +136,8 @@ def run_tool(tool: str, pcap: Path) -> dict[str, Any]:
             "cpu_seconds": None if cpu is None else round(cpu, 3),
             "wall_seconds": round(wall, 3),
             "alerts_per_cpu_second": (round(alerts / cpu, 3)
-                                      if cpu and cpu > 0 else None),
+                                      if alerts is not None and cpu and cpu > 0
+                                      else None),
             "cpu_note": (None if cpu is not None
                          else "CPU time is not reported on this platform"),
             "exit_code": proc.returncode,
@@ -225,7 +229,8 @@ def main(argv: list[str] | None = None) -> int:
     for row in results:
         cpu = ("     n/a" if row["cpu_seconds"] is None
                else f"{row['cpu_seconds']:8.2f}s")
-        print(f"{row['tool']:12s} alerts={row['alerts']:6d} "
+        alerts = "n/a (run failed)" if row["alerts"] is None else f"{row['alerts']:6d}"
+        print(f"{row['tool']:12s} alerts={alerts} "
               f"cpu={cpu} wall={row['wall_seconds']:8.2f}s")
     print("\nVolumes and cost only: precision and recall need a label mapping "
           "between the tools' classes and ours, and a guessed mapping would be "
