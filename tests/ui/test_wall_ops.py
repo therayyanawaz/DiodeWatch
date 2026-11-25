@@ -32,12 +32,6 @@ def _point_logs_at(tmp_path, monkeypatch):
     return ls.ensure_setup(force=True)
 
 
-def _last_access_line(log_dir):
-    lines = (log_dir / "access.log").read_text(encoding="utf-8").splitlines()
-    assert lines, "access log is empty"
-    return json.loads(lines[-1])
-
-
 def test_health_is_computed_and_names_a_degraded_store(tmp_path, monkeypatch):
     _client(tmp_path, monkeypatch)
     from fastapi.testclient import TestClient

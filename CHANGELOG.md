@@ -5,6 +5,27 @@ All notable changes to DiodeWatch are documented here.
 ## [Unreleased]
 
 ### Added
+- The wall logs structured JSON lines under `data/logs/`: application events in
+  `mission_control.log` (session lifecycle, websocket handshakes, maintenance,
+  replay failures) and one record per request in `access.log`. Rotation is
+  size-based (5 MB, 5 files, `DIODE_LOG_MAX_BYTES` / `DIODE_LOG_BACKUPS`), and
+  the query string is never logged, because the wall token rides `?token=`.
+- `/api/health` is now computed, not constant: it touches the evidence store
+  with a real query (row count, chain length, optionally `PRAGMA quick_check`
+  under `?deep=true`), proves the data directory writable, and reports the
+  version, uptime and the last scheduled maintenance run. A degraded store
+  answers `ok: false` with the reason, which the status board renders.
+- `/metrics` exposes process-local counters in the Prometheus text format:
+  session state, alerts inserted and rejected, chain links, live socket clients,
+  alerts by class, maintenance runs. Outside `/api`, like the read-only pages.
+- `src/alerts/maintenance.py` (also a CLI) backs the evidence db up online
+  through SQLite's backup API, copies the append-only ledger with it, and then
+  verifies the copy: a backup that does not itself verify is reported failed,
+  not shelved. It prunes whole stamped families past a retention count
+  (`DIODE_BACKUP_KEEP`), vacuums the WAL's freed pages, and the server runs it
+  on a schedule (`DIODE_MAINTENANCE_INTERVAL_S`, default 6 h) between replays.
+  Row deletion is deliberately absent: the chain hashes every row in append
+  order, so retention happens by rotating and pruning whole dbs, never rows.
 - `.pre-commit-config.yaml`: ruff over CI's exact scope and the claim guardrail,
   as pre-push hooks. Both call the tools from this repository's own pins rather
   than pinning their own, so a hook cannot agree with a laptop and disagree with
