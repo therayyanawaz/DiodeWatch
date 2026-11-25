@@ -70,6 +70,47 @@ def test_the_bearer_spelling_works_too(tmp_path, monkeypatch):
     assert wrong.status_code == 401
 
 
+def test_the_live_socket_is_refused_without_the_token(tmp_path, monkeypatch):
+    """The socket carries the whole alert stream, and HTTP middleware never sees a
+    WebSocket handshake: before this check, a token-protected wall still streamed
+    every alert to any local page."""
+    from fastapi.testclient import TestClient
+    from starlette.websockets import WebSocketDisconnect
+
+    import apps.mission_control.server as srv
+    monkeypatch.setenv("DIODE_WALL_TOKEN", "s3cret-token")
+    monkeypatch.setenv("DIODE_LIVE_DB", str(tmp_path / "ws.db"))
+    client = TestClient(srv.app)
+
+    with (pytest.raises(WebSocketDisconnect) as exc,
+          client.websocket_connect("/ws/live")):
+        pass
+    assert exc.value.code == 1008
+
+
+def test_the_live_socket_accepts_the_token_in_the_query_string(tmp_path, monkeypatch):
+    """A browser cannot set a header on a handshake, so the query string is the
+    only way a page can present it."""
+    from fastapi.testclient import TestClient
+
+    import apps.mission_control.server as srv
+    monkeypatch.setenv("DIODE_WALL_TOKEN", "s3cret-token")
+    monkeypatch.setenv("DIODE_LIVE_DB", str(tmp_path / "ws2.db"))
+    client = TestClient(srv.app)
+
+    with client.websocket_connect("/ws/live?token=s3cret-token") as ws:
+        hello = ws.receive_json()
+        assert hello["type"] == "snapshot"
+
+
+def test_the_policy_does_not_allow_arbitrary_websocket_origins():
+    """`connect-src 'self'` already covers ws to this origin; listing the bare
+    `ws:` scheme would let the page open a socket to any host."""
+    from apps.mission_control import security
+    connect = next(p for p in security.CSP.split(";") if "connect-src" in p)
+    assert connect.strip() == "connect-src 'self'"
+
+
 def test_static_shell_stays_readable_without_a_token(tmp_path, monkeypatch):
     """A token protects the API, not the page: the shell has to load for the
     browser to have somewhere to put a token at all."""

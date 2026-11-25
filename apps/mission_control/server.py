@@ -595,6 +595,11 @@ async def api_chain_verify() -> dict:
 # --------------------------------------------------------------------------- #
 @app.websocket("/ws/live")
 async def ws_live(ws: WebSocket) -> None:
+    # Middleware never runs for a handshake, so the token is checked here. Close
+    # before accept: a refused client must not observe a live socket.
+    if security.ws_token_denied(ws):
+        await ws.close(code=1008)
+        return
     await ws.accept()
     CLIENTS.add(ws)
     try:
