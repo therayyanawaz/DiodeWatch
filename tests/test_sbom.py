@@ -43,6 +43,18 @@ def test_sbom_is_cyclonedx_with_purls_and_no_duplicates(tmp_path):
     assert names == sorted(names)
 
 
+def test_the_sbom_names_the_project_and_a_real_build_time(tmp_path):
+    """A 1970 stamp and a component version of "unknown" are metadata that is not
+    merely imprecise, it is wrong: the file would claim it predates the project."""
+    out = tmp_path / "sbom.cdx.json"
+    subprocess.run([sys.executable, str(SCRIPT), "--out", str(out)],
+                   capture_output=True, text=True, timeout=180, check=True)
+    doc = json.loads(out.read_text(encoding="utf-8"))
+    assert doc["metadata"]["component"]["version"] != "unknown"
+    assert doc["metadata"]["timestamp"] != "1970-01-01T00:00:00Z"
+    assert doc["metadata"]["timestamp"].endswith("Z")
+
+
 def test_the_sbom_covers_the_runtime_dependencies(tmp_path):
     out = tmp_path / "sbom.cdx.json"
     subprocess.run([sys.executable, str(SCRIPT), "--out", str(out)],
