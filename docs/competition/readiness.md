@@ -2,7 +2,9 @@
 
 *Smart India Hackathon 2026 · PS: AI-Based Detection of Cyber Threats in Unidirectional IP Traffic · Sponsor: NTRO*
 
-Master-status document, **verified against the actual repository on 2026-10-28** (test suite executed, guardrail executed, every status below checked in-tree, not reported from an external review). Supersedes earlier planning docs for current-state accuracy; those remain as historical planning artifacts.
+Master-status document, **verified against the actual repository on 2026-11-25** (test suite executed, guardrail executed, every status below checked in-tree, not reported from an external review). Supersedes earlier planning docs for current-state accuracy; those remain as historical planning artifacts.
+
+State at that check: 1.0.0 tagged and released, the repository public, the post-release hardening and its read-back landed. This file is the internal audit, one row per claim. The forward-looking view for anyone outside the team is [`../status.md`](../status.md), which points back here for the evidence.
 
 ---
 
@@ -39,11 +41,11 @@ Every public surface (README headers, slides, dashboard tiles, judge brief, doss
 | Feature registry | "frozen 73-feature active registry; dns_*/tls_ja3*/active_idle_* families declared future, never emitted" | implying all 73+future families are live |
 | Baseline comparison | "public baseline replays synthetic JSONL at ~60 events/s with simulated egress control; we ingest real PCAP/flow corpora at ~10k flows/s with kernel-enforced egress denial" | naming other repos disrespectfully; claiming to "beat" unbenchmarked rivals |
 
-## 2. Item-by-item status ledger (verified in-tree 2026-10-28)
+## 2. Item-by-item status ledger (re-verified in-tree 2026-11-25; row dates are when each claim was proved)
 
 | # | Item | Type | Status | Evidence / provenance | Next action | Env needed |
 |---|---|---|---|---|---|---|
-| **P0-1** | Cross-corpus transfer evaluation | Build + data | **DONE on REAL corpora (2026-10-18)** | Downloaded + ingested CIC-DDoS2019 Syn (1.58M flows, full identity) and 4 CSE-CIC-IDS2018 days (3.5M flows; no identity cols). TRUE zero-shot (2017-only models): **rule DDoS F1 = 1.0, 0 of 392 benign-labelled windows alerted on never-trained CIC-DDoS2019, pre-committed gates PASS** (that Syn day is almost all attack traffic, so its benign denominator is small; the 440k-benign-window view of the same rule layer is the 91-alert figure below); IDS2018 rule cells correctly not-evaluable (no identity); ML fails closed everywhere: ≤ 5 FP / 238k benign worst case, 5 FP total across 2.03M benign new-corpus flows; PSI drift 1.0-14.4 published as the recall-0.0 explanation. Retrained supervised (13 days, 7 classes, macro F1 0.34) + flowctx windows (10 identity-bearing days, pooled F1 1.0 in-sample, LOSO gap disclosed). Consolidated: `results/transfer/summary.md`; zero-shot archive: `results/archive/transfer_zeroshot_2017models/` | Optional: UNSW-NB15 benign + CTU-13 45-50 (server throttled ~100 KB/s) | Network + disk |
+| **P0-1** | Cross-corpus transfer evaluation | Build + data | **DONE on REAL corpora (2026-10-18)** | Downloaded + ingested CIC-DDoS2019 Syn (1.58M flows, full identity) and 4 CSE-CIC-IDS2018 days (3.5M flows; no identity cols). TRUE zero-shot (2017-only models): **rule DDoS F1 = 1.0, 0 of 392 benign-labelled windows alerted on never-trained CIC-DDoS2019, pre-committed gates PASS** (that Syn day is almost all attack traffic, so its benign denominator is small; the 440k-benign-window view of the same rule layer is the 91-alert figure below); IDS2018 rule cells correctly not-evaluable (no identity); ML fails closed everywhere: ≤ 5 FP / 238k benign worst case, 5 FP total across 2.03M benign new-corpus flows; PSI drift 1.0-14.4 published as the recall-0.0 explanation. Retrained supervised (13 days, 7 classes, macro F1 0.34) + flowctx windows (10 identity-bearing days, pooled F1 1.0 in-sample, LOSO gap disclosed). Consolidated: [`docs/evaluation/transfer.md`](../evaluation/transfer.md); zero-shot archive: the `*_zeroshot_2017models.json` run records under `docs/evaluation/runs/`. Neither lives under `results/`, which is git-ignored and therefore never the place to point a judge | Optional: UNSW-NB15 benign + CTU-13 45-50 (server throttled ~100 KB/s) | Network + disk |
 | **P0-3** | Latency commitment alignment | Docs | **FIXED** | Commitment matches the published `watch.py` batch proxy (0.03-0.07 ms per-flow amortized; the 2.4-4.2 ms it used to quote was window eval ÷ 1,000 (see `docs/benchmarks.md`) | Optional half-day: true per-flow `ts_enter` instrumentation) only if it changes a demo number | Fine |
 | **P0-4** | Rootless diode proof | Build | **OPEN (top env blocker)** | Design spec in the sprint guide §3 (container `--network=none` self-test; Windows elevated-once `.bat` with auto-rollback; process-level socket interdictor + relative-counter proof); nftables needs root+Linux | Implement container path + PowerShell path; wire `enforcement_mode` through `monitor.py` → both UIs; 30 s self-test per mode before any green badge | **Docker or Windows-admin, blocked on this dev box** |
 | **P0-5** | SHAP over-claim | Docs | **FIXED + guardrail-enforced** | `shap` imported nowhere; README/docs re-worded to "top-feature attribution"; `shap` parked in requirements.txt; `check_claims.py` bans regression | Run the guardrail after any docs edit | Fine |
@@ -87,15 +89,15 @@ Every public surface (README headers, slides, dashboard tiles, judge brief, doss
 
 ## 4. GO / NO-GO checklist (all GREEN to freeze)
 
-- [x] Transfer evaluation run on ≥3 external corpora with published summary (5 real corpora, consolidated in `results/transfer/summary.md`; IDS2018 rule cells scoped as not-evaluable, no identity columns).
+- [x] Transfer evaluation run on ≥3 external corpora with published summary (5 real corpora, consolidated in [`docs/evaluation/transfer.md`](../evaluation/transfer.md) with a per-run record each; IDS2018 rule cells scoped as not-evaluable, no identity columns).
 - [x] Rule DDoS detector F1 ≥ 0.95 on every evaluable corpus (1.0 on CIC-DDoS2019, true zero-shot).
-- [ ] Rootless-diode path implemented *and self-tested*, OR the honest monitor-only banner confirmed visible on the demo box.
+- [ ] Rootless-diode path implemented *and self-tested*, OR the honest monitor-only banner confirmed visible on the demo box. *(Closes with ledger P0-4; that row is the source of truth for what is still missing.)*
 - [x] Dedup/suppression counter visible on both live feeds.
-- [ ] Both UIs render identical envelopes for the same pack.
+- [ ] Both UIs render identical envelopes for the same pack. *(Closes with a test that pushes one pack through both surfaces and compares the rendered envelope; today only the shared severity vocabulary is locked, by `test_threat_level_words_cover_the_severity_ladder`.)*
 - [x] Every FPR claim names the layer it measured, across README, docs, UI.
-- [x] No banned phrasing survives `scripts/checks/check_claims.py` (32 files scanned, clean).
-- [ ] Judge brief exports to exactly one printed page; no number contradicts `results/` or the dossier.
-- [ ] Three consecutive clean timed dry-runs; offline wheelhouse rebuilds and installs on a clean VM.
+- [x] No banned phrasing survives `scripts/checks/check_claims.py` (clean on the last run over every judge-facing file; the count is printed by the tool, not kept here, because a hand-maintained total is the thing this guardrail exists to prevent).
+- [ ] Judge brief exports to exactly one printed page; no number contradicts `docs/evaluation/` or the dossier.
+- [ ] Three consecutive clean timed dry-runs; the offline wheelhouse that `setup/setup.sh` builds rebuilds and installs on a clean VM.
 - [x] One honest limitation paragraph retained in every external-facing summary.
 
 ## 5. Judge-facing artifact inventory
@@ -104,7 +106,7 @@ Every public surface (README headers, slides, dashboard tiles, judge brief, doss
 |---|---|---|
 | `docs/competition/judge-brief.md` | One-page opening narrative + demo runbook (claim-locked) | In repo |
 | `docs/diode.md` | Diode architecture, enforcement modes, honest-degradation contract | In repo |
-| `docs/benchmarks.md` + `results/transfer/` | Throughput ladder, accuracy gates, transfer summary | In repo (transfer: selftest done, real corpora pending) |
+| `docs/benchmarks.md` + [`docs/evaluation/transfer.md`](../evaluation/transfer.md) | Throughput ladder, accuracy gates, consolidated transfer summary with its per-run JSON records | In repo (real corpora, 5 of them; the `results/` tree is generated locally and deliberately not committed) |
 | `docs/demo_script.md` | Narrated 4-minute demo script | In repo |
 | `scripts/checks/check_claims.py` | Executable claim guardrail (Appendix A, test-enforced) | In repo |
 
@@ -112,13 +114,14 @@ Every public surface (README headers, slides, dashboard tiles, judge brief, doss
 
 ```bash
 python -m scripts.checks.check_claims          # exit 0 = clean; wire into pre-commit
-python -m scripts.checks.check_claims --json results/claims_scan.json
+python -m scripts.checks.check_claims --json claims_scan.json
 ```
 
 Six contracts run over every judge-facing surface: banned phrasings plus
 absolute FPR claims with no denominator in their sentence (`BANNED`), the
-documented metric table cells reconciled against the pinned
-`results/ml/*_metrics.json` values (`METRIC_CLAIMS`), and, for any surface
+documented metric table cells reconciled against the pinned metric artifacts
+(`docs/evaluation/runs/*_metrics.json`, the committed copies CI reads, or a
+local `results/ml/` copy when one exists, which the loader prefers), and, for any surface
 quoting a benign-flow denominator, an explicit layer qualifier with that
 corpus's benign-window alert count beside it (`FP_DENOMINATORS`). Three more
 cover the claims that are *about this repo* rather than about detection: every
