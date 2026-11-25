@@ -142,12 +142,16 @@ def main() -> int:
         dest = RAW / rel
         if dest.exists() and dest.stat().st_size > 0:
             print(f"[skip] {rel} (exists)", flush=True)
+            # Preserve an existing pin; a missing one (older script
+            # revision) is backfilled from the file, mtime as fetch time.
             manifest.setdefault(rel, {
                 "url": url,
                 "sha256": sha256_of(dest),
                 "bytes": dest.stat().st_size,
-                "fetched_at": datetime.now(timezone.utc).isoformat(),
+                "fetched_at": datetime.fromtimestamp(
+                    dest.stat().st_mtime, timezone.utc).isoformat(),
             })
+            continue
         else:
             pending.append((rel, url, dest))
 

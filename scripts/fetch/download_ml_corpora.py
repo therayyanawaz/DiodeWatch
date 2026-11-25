@@ -125,18 +125,28 @@ def main() -> int:
         dest = RAW / rel
         if dest.exists() and dest.stat().st_size > 0:
             print(f"[skip] {rel} (exists)")
-            sha = sha256_of(dest)
-        else:
-            try:
-                download(url, dest)
-                sha = sha256_of(dest)
-            except Exception as exc:  # noqa: BLE001 - report and continue
-                print(f"[error] {rel}: {exc}", file=sys.stderr)
-                failures += 1
-                continue
+            # A skipped file keeps the provenance it was first pinned with:
+            # re-running the fetcher must not rewrite sha256/fetched_at for
+            # bytes it did not download this time. If the entry is missing
+            # (fetched by an older script revision), backfill it from the
+            # file itself, using its mtime as the fetch time.
+            manifest.setdefault(rel, {
+                "url": url,
+                "sha256": sha256_of(dest),
+                "bytes": dest.stat().st_size,
+                "fetched_at": datetime.fromtimestamp(
+                    dest.stat().st_mtime, timezone.utc).isoformat(),
+            })
+            continue
+        try:
+            download(url, dest)
+        except Exception as exc:  # noqa: BLE001 - report and continue
+            print(f"[error] {rel}: {exc}", file=sys.stderr)
+            failures += 1
+            continue
         manifest[rel] = {
             "url": url,
-            "sha256": sha,
+            "sha256": sha256_of(dest),
             "bytes": dest.stat().st_size,
             "fetched_at": datetime.now(timezone.utc).isoformat(),
         }

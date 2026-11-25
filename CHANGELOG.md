@@ -91,8 +91,13 @@ All notable changes to DiodeWatch are documented here.
 - The SBOM stamped itself with a 1970 timestamp and an `unknown` application
   version; it now records the build time, keeps `SOURCE_DATE_EPOCH` for
   reproducible builds, and reads the version from `pyproject.toml`.
-- The detectors' column-order test returned early whenever `models/` was empty,
-  so on an ordinary checkout it passed while asserting nothing.
+- Both corpus fetchers re-stamped a skipped file's manifest entry with the current
+  time (and `download_ml_corpora.py` also rewrote its SHA256), so a re-run made a
+  file look freshly downloaded and moved the provenance clock. A skipped file keeps
+  its original pin; a file the manifest never recorded is backfilled from its mtime.
+  `docs/datasets.md` now records that all 54 on-disk corpus files are pinned, and its
+  row counts were corrected: CIC-IDS2017 is 8 files over 5 capture days, and
+  CSE-CIC-IDS2018 is 16,233,002 rows with 7 capped day-files, not 17.28M with 8.
 
 ## [1.0.0] (2026-11-20)
 
