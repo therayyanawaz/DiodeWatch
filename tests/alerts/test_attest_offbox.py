@@ -77,8 +77,55 @@ def test_export_names_the_file_after_the_digest(tmp_path):
 
     written = json.loads(path.read_text(encoding="utf-8"))
     assert written["digest_sha256"] == doc["digest_sha256"]
-    # the file's own bytes re-hash to the value it carries
-    assert attest.canonical_bytes(written) == attest.canonical_bytes(doc["path"] and written)
+    # and the file is checkable by someone who has only the file
+    ok, message = attest.verify_digest(path)
+    assert ok, message
+    assert "verifies" in message
+
+
+def test_a_field_edited_after_export_breaks_its_verification(tmp_path):
+    """The whole point of the digest: a verifier holding only this file must
+    notice an edit. A tautological check (`hash the file, compare with the file`)
+    would pass here, so the tampered field is on the far side of the hash."""
+    doc = attest.export(_store(tmp_path / "a.db", 3), tmp_path / "out")
+    path = Path(doc["path"])
+    body = json.loads(path.read_text(encoding="utf-8"))
+    body["links"] = body["links"] + 1
+    path.write_text(json.dumps(body, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8")
+
+    ok, message = attest.verify_digest(path)
+    assert ok is False
+    assert "does not match its own digest" in message
+
+
+def test_a_digest_of_a_broken_chain_never_verifies_clean(tmp_path):
+    """A valid hash over a broken chain is still a broken chain, and reporting it
+    as PASS is how a tampered capture would travel with a green stamp."""
+    db = _store(tmp_path / "a.db", 3)
+    conn = sqlite3.connect(db)
+    conn.execute("DELETE FROM alerts WHERE rowid = (SELECT MAX(rowid) FROM alerts)")
+    conn.commit()
+    conn.close()
+
+    doc = attest.export(db, tmp_path / "out")
+    ok, message = attest.verify_digest(doc["path"])
+    assert ok is False
+    assert "BROKEN" in message
+
+
+def test_verify_is_reachable_from_the_cli(tmp_path, capsys):
+    doc = attest.export(_store(tmp_path / "a.db"), tmp_path / "out")
+    assert attest.main(["--verify", doc["path"]]) == 0
+    assert "PASS" in capsys.readouterr().out
+
+
+def test_exporting_without_a_store_is_rejected_by_the_parser(tmp_path):
+    """--verify needs neither --db nor --out; exporting needs both, and the error
+    must say so rather than crashing on a None path."""
+    with pytest.raises(SystemExit) as exc:
+        attest.main(["--out", str(tmp_path / "out")])
+    assert exc.value.code == 2
 
 
 def test_cli_exports_and_signals_a_broken_chain(tmp_path, capsys):
