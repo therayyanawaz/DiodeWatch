@@ -195,6 +195,35 @@ class LiveEvidenceStore:
                 getattr(self, "_persist_ms", 0.0), 2),
         }
 
+    def probe(self, deep: bool = False) -> dict[str, Any]:
+        """Live readback for /api/health: a real query, not a constant.
+
+        Touches the persistent store with an actual SELECT (row count plus the
+        chain length), so a db that is locked, truncated or missing tables
+        answers `ok: false` with the reason instead of a green light. `deep`
+        adds `PRAGMA quick_check`, which reads every page: callers poll this
+        shallow and ask for deep on demand.
+        """
+        if self.degraded:
+            return {"ok": False, "detail": self.error or "persistence unavailable"}
+
+        def _touch() -> dict[str, Any]:
+            store = self._store
+            assert store is not None
+            conn = store._conn
+            out = {"ok": True, "alerts": int(conn.execute(
+                "SELECT COUNT(*) FROM alerts").fetchone()[0]),
+                "chain_links": int(store.chain_length())}
+            if deep:
+                out["quick_check"] = conn.execute(
+                    "PRAGMA quick_check").fetchone()[0]
+            return out
+
+        try:
+            return _touch()
+        except Exception as e:  # noqa: BLE001, a probe must answer, not raise
+            return {"ok": False, "detail": f"store probe failed: {e}"}
+
     def verify(self) -> dict[str, Any]:
         """Full recompute (occasional, a CLI job, not a per-poll job).
 

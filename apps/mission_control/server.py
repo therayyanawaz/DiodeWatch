@@ -28,6 +28,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -45,7 +46,21 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 _STARTED_AT = time.time()
+_APP_VERSION: str | None = None
 _LOG = logging.getLogger("diode.wall")
+
+
+def _app_version() -> str:
+    """The released version, read once from pyproject.toml."""
+    global _APP_VERSION
+    if _APP_VERSION is None:
+        try:
+            text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+            m = re.search(r'^version\s*=\s*"([^"]+)"', text, re.MULTILINE)
+            _APP_VERSION = m.group(1) if m else "unknown"
+        except OSError:
+            _APP_VERSION = "unknown"
+    return _APP_VERSION
 
 from src.alerts.export_stix import write_stix
 from src.alerts.live_store import LiveEvidenceStore
@@ -80,6 +95,21 @@ async def _warm_pack_once() -> None:
         await asyncio.to_thread(ensure_pack)
     except Exception as e:  # noqa: BLE001, best-effort warm-up
         print(f"[web] demo pack warm-up skipped: {e}", flush=True)
+
+
+# --------------------------------------------------------------------------- #
+# scheduled maintenance lands with src/alerts/maintenance.py (next commit);
+# --------------------------------------------------------------------------- #
+# Interval 0 (DIODE_MAINTENANCE_INTERVAL_S=0) disables the loop entirely; the
+# CLI still does a one-shot run. Runs only land between replays: a VACUUM or a
+# backup taken mid-window is safe (SQLite serialises it) but can hold the
+# store's lock long enough to stall a live tick, so the scheduler waits for
+# idle/finished/error and retries on the next tick of the interval.
+MAINT_INTERVAL_S = max(0, int(os.environ.get("DIODE_MAINTENANCE_INTERVAL_S")
+                              or 21_600))
+MAINT_KEEP = max(1, int(os.environ.get("DIODE_BACKUP_KEEP") or 8))
+MAINT_LAST: dict = {"ran_at": None, "ok": None, "result": None}
+MAINT_COUNTS = {"ok": 0, "fail": 0}
 
 
 @asynccontextmanager
@@ -630,8 +660,119 @@ async def ws_live(ws: WebSocket) -> None:
 
 
 @app.get("/api/health")
-async def api_health() -> JSONResponse:
-    return JSONResponse({"ok": True})
+async def api_health(deep: bool = False) -> JSONResponse:
+    """A health answer with evidence behind it, not a constant.
+
+    `ok` is computed: the store is touched with a real query (row count and
+    chain length), the data directory is probed for writability, and a failed
+    check says so in `checks`. The status board only reads `ok`; the rest is
+    for an operator who wants to know WHY a wall is red. `?deep=true` adds
+    `PRAGMA quick_check` (every page read), which is a real cost, so the 5 s
+    board poll stays shallow and deep checks are asked for on demand.
+    """
+    checks: dict = {"store": await asyncio.to_thread(SESSION.store.probe, deep)}
+
+    def _writable() -> dict:
+        try:
+            probe_dir = SESSION.store.path.parent
+            probe_dir.mkdir(parents=True, exist_ok=True)
+            marker = probe_dir / ".health-write-probe"
+            marker.write_text("probe", encoding="utf-8")
+            marker.unlink()
+            return {"ok": True, "dir": str(probe_dir)}
+        except OSError as e:
+            return {"ok": False, "detail": f"data dir not writable: {e}"}
+
+    checks["data_dir"] = await asyncio.to_thread(_writable)
+    ok = all(c["ok"] for c in checks.values())
+    return JSONResponse({
+        "ok": ok,
+        "version": _app_version(),
+        "uptime_s": round(time.time() - _STARTED_AT, 1),
+        "state": SESSION.state,
+        "ws_clients": len(CLIENTS),
+        "checks": checks,
+        "maintenance": {"last_ran_at": MAINT_LAST["ran_at"],
+                        "last_ok": MAINT_LAST["ok"],
+                        "runs_ok": MAINT_COUNTS["ok"],
+                        "runs_failed": MAINT_COUNTS["fail"],
+                        "interval_s": MAINT_INTERVAL_S},
+    })
+
+
+_METRIC_STATES = ("idle", "loading", "running", "paused", "finished", "error")
+
+
+def _metrics_line(name: str, value: float, *, help_: str | None = None,
+                  type_: str | None = None, labels: str | None = None) -> str:
+    line = "" if help_ is None else f"# HELP {name} {help_}\n"
+    if type_ is not None:
+        line += f"# TYPE {name} {type_}\n"
+    label_part = f"{{{labels}}}" if labels else ""
+    shown = int(value) if float(value).is_integer() else value
+    return f"{line}{name}{label_part} {shown}\n"
+
+
+def _metrics_text() -> str:
+    """Prometheus text format, process-local counters, no dependencies.
+
+    Everything reads through try/except: a metrics endpoint must render with
+    the numbers it has rather than 500 because one store went away.
+    """
+    out: list[str] = []
+
+    def add(name: str, value, **kw) -> None:
+        try:
+            out.append(_metrics_line(name, float(value), **kw))
+        except Exception as e:  # noqa: BLE001, metrics must not 500
+            _LOG.warning("metric %s failed", name, extra={"error": str(e)})
+
+    add("diodewatch_uptime_seconds", time.time() - _STARTED_AT,
+        help_="Seconds the mission-control process has been serving.",
+        type_="gauge")
+    state = SESSION.state
+    for s in _METRIC_STATES:
+        add("diodewatch_session_state", 1.0 if state == s else 0.0,
+            help_="1 for the current replay session state.",
+            type_="gauge", labels=f'state="{s}"')
+    store = SESSION.store
+    add("diodewatch_session_alerts", len(store.alerts),
+        help_="Alerts in the live session ring buffer.", type_="gauge")
+    add("diodewatch_alerts_inserted_total", store._inserted,
+        help_="Alerts handed to the persistent evidence chain this process.",
+        type_="counter")
+    add("diodewatch_alerts_rejected_total", store.rejected,
+        help_="Alerts the schema refused, shown nowhere and never lost.",
+        type_="counter")
+    try:
+        links = 0 if store.degraded else store._store.chain_length()
+    except Exception:  # noqa: BLE001
+        links = 0
+    add("diodewatch_chain_links", links,
+        help_="Evidence chain links in the live store.", type_="gauge")
+    add("diodewatch_ws_clients", len(CLIENTS),
+        help_="Browsers attached to the live socket.", type_="gauge")
+    add("diodewatch_replay_sessions_total", SESSION._epoch,
+        help_="Replay sessions started since process start.", type_="counter")
+    for cls, n in sorted((store.class_stats or {}).items()):
+        add("diodewatch_alerts_by_class", n, type_="gauge",
+            help_="Session alerts by threat class.",
+            labels=f'threat_class="{cls}"')
+    add("diodewatch_maintenance_runs_total", MAINT_COUNTS["ok"],
+        help_="Scheduled maintenance runs that succeeded.", type_="counter")
+    add("diodewatch_maintenance_failures_total", MAINT_COUNTS["fail"],
+        help_="Scheduled maintenance runs that failed.", type_="counter")
+    return "".join(out)
+
+
+@app.get("/metrics", include_in_schema=False)
+async def metrics() -> Response:
+    """Process-local counters in the Prometheus text format.
+
+    Deliberately outside /api, like the read-only pages: a scraper should not
+    need the token, and the numbers it gets are counts, not evidence.
+    """
+    return Response(_metrics_text(), media_type="text/plain; charset=utf-8")
 
 
 @app.get("/api/demo_script")
@@ -681,7 +822,9 @@ def main(argv: list[str] | None = None) -> None:
     _LOG.info("server starting", extra={
         "host": args.host, "port": args.port, "token_required": bool(token),
         "app_log": loginfo.get("app_log"),
-        "access_log": loginfo.get("access_log")})
+        "access_log": loginfo.get("access_log"),
+        "maintenance_interval_s": MAINT_INTERVAL_S,
+        "version": _app_version()})
     if token:
         print(f"wall: /api requires {security.TOKEN_HEADER} ({len(token)} chars)")
     elif args.host not in security.LOOPBACK:
