@@ -26,6 +26,13 @@ Their column order is still pinned and still tested: a distributed artifact and 
 git-ignored one fail the same way if the module is reordered, so the pin lives in
 the tree rather than only inside a pickle that most checkouts do not have.
 
+The full-corpus pass in `docs/evaluation/transfer.md` loads a locally built
+flow-context artifact (2,322,045 bytes, sha256 `fcc1e635a4fe...`, 2,264,599
+training rows, 2026-10-05). It is the CIC-IDS2017 model, so the CIC-IDS2017 ML
+cell there is in-sample and every other corpus is unseen by it. A rebuild
+replaces those bytes and moves every ML number in the evaluation; the run
+records the digest it actually loaded, which is how the two are kept apart.
+
 ## The column order pin
 
 [`feature_order.json`](feature_order.json) records the training order of every

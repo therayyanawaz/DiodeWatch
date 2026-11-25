@@ -5,6 +5,17 @@ All notable changes to DiodeWatch are documented here.
 ## [Unreleased]
 
 ### Added
+- `scripts/benchmarks/bench_corpora.py` scores every pinned flow corpus at its
+  full row count, not only the five files the transfer summary quoted:
+  CIC-IDS2017 (8/8), CIC-DDoS2019 (18/18), CSE-CIC-IDS2018 (10/10), UNSW-NB15
+  and CTU-13 (13/13, reported not-evaluable because a NetFlow export has no
+  TCP flags or directional counters). The rule layer streams the whole file in
+  250,000-flow chunks; the ML channel runs on the first 200,000 contiguous
+  flows; structural padding rows are dropped and counted, truth labels absent
+  from the register are reported and excluded, and a channel that cannot be
+  computed says so instead of printing a zero. Output: `summary.md` plus
+  `max_results.json` per run, and the run records the byte count and SHA256 of
+  every artifact it loaded, so a cell can be traced to the model that produced it.
 - The wall logs structured JSON lines under `data/logs/`: application events in
   `mission_control.log` (session lifecycle, websocket handshakes, maintenance,
   replay failures) and one record per request in `access.log`. Rotation is
@@ -71,6 +82,15 @@ All notable changes to DiodeWatch are documented here.
 - `tests/detectors/test_ml.py` compares every channel against the committed column
   order pin rather than only against a restored artifact, so the two channels
   whose boosters are not distributed are covered as well as the two that are.
+- The flow-context evaluation axis speaks the official corpus headers now: the
+  CIC-IDS2017 map covers all 15 official labels (DoS GoldenEye, Hulk,
+  slowhttptest, slowloris, Heartbleed, the three WebAttack variants,
+  Infiltration, Bot, PortScan, DDoS), the CIC-DDoS2019 map is complete
+  (WebDDoS included) and UNSW-NB15 has its own map on `attack_cat`.
+  `bench_transfer.normalize_columns` accepts the official column names
+  ("Total Fwd Packets", "Flow Bytes/s", and the rest) and maps "Flow Duration"
+  to microseconds rather than seconds. Without both, whole-corpus scoring
+  silently dropped or mislabelled most of the rows.
 
 ### Fixed
 - The wall's live socket (`/ws/live`) was not covered by `DIODE_WALL_TOKEN`: a
@@ -98,6 +118,16 @@ All notable changes to DiodeWatch are documented here.
   `docs/datasets.md` now records that all 54 on-disk corpus files are pinned, and its
   row counts were corrected: CIC-IDS2017 is 8 files over 5 capture days, and
   CSE-CIC-IDS2018 is 16,233,002 rows with 7 capped day-files, not 17.28M with 8.
+- Two CSE-CIC-IDS2018 ML cells errored in the whole-corpus pass because the
+  window builder drops rows without a usable clock while the truth slice stayed
+  at 200,000 rows, so truth and predictions were 8 and 12 rows apart. The truth
+  follows the same mask now, the dropped rows are counted in the artifact, and a
+  length mismatch raises instead of scoring shifted labels.
+- The CIC-IDS2017 register row carries the measured 2,830,743 real flow rows
+  (288,602 all-null padding rows from the doubled WebAttacks header excluded and
+  counted), and the full-corpus driver reports truth rows it had to exclude
+  (2,002 CIC-IDS2017, 200,786 CSE-CIC-IDS2018, 96,586 UNSW-NB15) instead of
+  leaving them out of the totals silently.
 
 ## [1.0.0] (2026-11-20)
 

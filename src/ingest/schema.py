@@ -286,7 +286,7 @@ def to_timestamp(v) -> tuple[str | None, float | None]:
             try:
                 # Naive by design: CIC timestamps carry no zone; we assume the
                 # source clock and tag UTC so ordering/epochs stay consistent.
-                dt = datetime.strptime(s, fmt)  # noqa: DTZ007
+                dt = datetime.strptime(s, fmt)
                 break
             except ValueError:
                 continue

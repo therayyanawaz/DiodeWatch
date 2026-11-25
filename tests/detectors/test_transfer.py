@@ -49,10 +49,10 @@ def test_label_map_prefix_resolution():
 
 def test_unmapped_labels_reported_not_merged():
     df = bt.synth_ddos2019(n_benign=50, n_attack=50)
-    df.loc[df.index[:5], "label"] = "WebDDoS"          # not in the map
+    df.loc[df.index[:5], "label"] = "SYN-Reflection-X"   # absent from the map
     cell = bt.evaluate_corpus("cic-ddos2019-selftest", df, model_dir=REPO / "models",
                               window_s=10, run_ml=False)
-    assert cell["unmapped_labels"].get("WebDDoS") == 5
+    assert cell["unmapped_labels"].get("SYN-Reflection-X") == 5
 
 
 # ------------------------------------------------------------ metrics math

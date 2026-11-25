@@ -76,15 +76,37 @@ LABEL_MAPS: dict[str, dict[str, str]] = {
         "DoS slowloris": "slowdos", "DoS Slowhttptest": "slowdos",
         "Heartbleed": "benign",     # no volumetric/DoS-window mapping -> benign
     },
+    # full week (8 day-files): the shape the max-scale pass scores. Web attacks
+    # and Patator join scan on the canonical axis, like ICS2018 brute force;
+    # Bot/Infiltration have no canonical flow-window key and stay unmapped.
+    "cic-ids2017": {
+        "BENIGN": "benign",
+        "DoS Hulk": "ddos", "DoS GoldenEye": "ddos", "DDoS": "ddos",
+        "DoS slowloris": "slowdos", "DoS Slowhttptest": "slowdos",
+        "Heartbleed": "benign",
+        "PortScan": "scan", "FTP-Patator": "scan", "SSH-Patator": "scan",
+        "Web Attack \x96 Brute Force": "scan",
+        "Web Attack \x96 XSS": "scan",
+        "Web Attack \x96 Sql Injection": "scan",
+        "Bot": "unmapped", "Infiltration": "unmapped",
+    },
     "cic-ddos2019": {
-        "DDoS": "ddos", "BENIGN": "benign",
+        "DDoS": "ddos", "BENIGN": "benign", "WebDDoS": "ddos",
         # UDP-lag slow attack families map to slowdos where present:
-        "UDPLag": "slowdos", "Syn": "ddos", "DrDoS_DNS": "ddos",
+        "UDPLag": "slowdos", "Syn": "ddos",
+        # DrDoS (01-12) and reflection families (03-11), every one volumetric:
+        "DrDoS_DNS": "ddos", "DrDoS_LDAP": "ddos", "DrDoS_MSSQL": "ddos",
+        "DrDoS_NTP": "ddos", "DrDoS_NetBIOS": "ddos", "DrDoS_SNMP": "ddos",
+        "DrDoS_SSDP": "ddos", "DrDoS_UDP": "ddos",
+        "LDAP": "ddos", "MSSQL": "ddos", "NetBIOS": "ddos", "Portmap": "ddos",
+        "TFTP": "ddos", "UDP": "ddos",
     },
     "cic-ids2018-nf-v2": {
         "Benign": "benign", "DDOS attack-HOIC": "ddos",
         "DDOS attack-LOIC-UDP": "ddos", "DDOS attack-LOIC-HTTP": "ddos",
         "DoS attacks-Hulk": "ddos", "DoS attacks-SlowHTTPTest": "slowdos",
+        # both spellings occur: the corpus spells it 'Slowloris' with a hyphen
+        "DoS attacks-Slowloris": "slowdos",
         "DoS attacks slowloris": "slowdos", "DoS attacks-GoldenEye": "ddos",
         "FTP-BruteForce": "scan", "SSH-Bruteforce": "scan",
         "Brute Force -Web": "scan", "Brute Force -XSS": "scan",
@@ -92,8 +114,16 @@ LABEL_MAPS: dict[str, dict[str, str]] = {
         # binary-only axes (no canonical mapping) -> reported unmapped:
         "Bot": "unmapped", "Infilteration": "unmapped", "Heartbleed": "unmapped",
     },
-    "unsw-nb15-benign": {
-        "normal": "benign",            # FPR-pressure corpus; attacks are noise
+    # UNSW-NB15 multi-class axis: attack_cat, not the binary label (the binary
+    # split cannot tell a DoS from a fuzzer). DoS and Reconnaissance have a
+    # canonical key; the remaining families do not, and are kept off the benign
+    # denominator by mapping them to 'unmapped' rather than leaving them absent.
+    "unsw-nb15": {
+        "Normal": "benign",
+        "DoS": "ddos", "Reconnaissance": "scan",
+        "Exploits": "unmapped", "Fuzzers": "unmapped", "Generic": "unmapped",
+        "Analysis": "unmapped", "Backdoor": "unmapped",
+        "Shellcode": "unmapped", "Worms": "unmapped",
     },
     "ctu13-heldout": {
         "Botnet": "benign",            # beacon is pair-level, not flow-window;
@@ -112,10 +142,13 @@ RELATIONSHIP: dict[tuple[str | None, str], str] = {
     ("ddos", "benign"): "Heartbleed (2017): not volumetric/DoS-window -> benign pressure",
     ("ddos", "unmapped"): "Heartbleed (2018): binary axis only",
     ("bruteforce", "scan"): "IDS2018 brute-force families score as scan on the eval axis",
-    (None, "scan"): "SQL Injection: no production substring key",
-    (None, "ddos"): "DrDoS_DNS: family label without a production substring key",
+    ("scan", "scan"): "exact: 2017 PortScan reaches its own canonical class",
+    ("webattack", "scan"): "2017 web attacks join scan, like the ICS2018 brute-force families",
+    (None, "scan"): "SQL Injection and UNSW Reconnaissance: no production substring key",
+    (None, "ddos"): "DrDoS_*/TFTP/LDAP-family and UNSW DoS labels lack a production substring key",
     (None, "slowdos"): "UDPLag: family label without a production substring key",
-    (None, "benign"): "UNSW 'normal' / CTU 'Normal' corpus conventions",
+    (None, "unmapped"): "UNSW exploit/fuzzer/backdoor families have no canonical flow-window key",
+    (None, "benign"): "UNSW 'Normal' / CTU 'Normal' corpus conventions",
     ("bot", "unmapped"): "Bot: binary-only axis, no canonical mapping",
     ("infiltration", "unmapped"): "Infilteration: binary-only axis, no canonical mapping",
     ("bot", "benign"): "CTU-13 heldout: FPR-pressure corpus only",

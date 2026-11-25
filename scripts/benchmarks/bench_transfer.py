@@ -83,7 +83,10 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Best-effort rename of common CIC-style headers to canonical registry
     names (case/spacing tolerant, matching src.ingest.schema semantics)."""
     ren = {
-        "flow duration": "duration_s", "tot fwd pkts": "fwd_pkts",
+        # 'Flow Duration' is CIC's MICROSECOND field: keep the µs name so the
+        # consumer does not multiply it by 1e6 again. 'duration_s' is reserved
+        # for tables that already converted (UNSW-NB15's 'dur').
+        "flow duration": "flow_duration", "tot fwd pkts": "fwd_pkts",
         "tot bwd pkts": "bwd_pkts", "totlen fwd pkts": "fwd_bytes",
         "totlen bwd pkts": "bwd_bytes", "flow byts/s": "flow_bytes_per_s",
         "flow pkts/s": "flow_pkts_per_s", "fwd pkts/s": "fwd_pkts_per_s",
@@ -91,6 +94,16 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
         # real-corpus identity headers (CIC-DDoS2019 / CSE-CIC-IDS2018)
         "source ip": "src_ip", "destination ip": "dst_ip",
         "source port": "src_port", "destination port": "dst_port",
+        # CIC-IDS2017/2019 official headers. Without these the flow core fell
+        # back to fabricated defaults (4 pkts / 800 B / 2000 B), which made
+        # window rates meaningless on the corpora the docstring names.
+        "total fwd packets": "fwd_pkts",
+        "total backward packets": "bwd_pkts",
+        "total length of fwd packets": "fwd_bytes",
+        "total length of bwd packets": "bwd_bytes",
+        "fin flag count": "fin_flags", "syn flag count": "syn_flags",
+        "rst flag count": "rst_flags", "psh flag count": "psh_flags",
+        "ack flag count": "ack_flags", "urg flag count": "urg_flags",
     }
     cols = {c: ren.get(str(c).strip().lower(), str(c).strip().lower()
                        .replace(" ", "_").replace("/", "_per_"))
