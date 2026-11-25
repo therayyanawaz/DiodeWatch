@@ -67,7 +67,11 @@ def _wall_corpus() -> str:
 
 def test_read_routes_answer(tmp_path, monkeypatch):
     client = _client(tmp_path, monkeypatch, None)
-    assert client.get("/api/health").json() == {"ok": True}
+    health = client.get("/api/health").json()
+    # the status board reads `ok`; the rest of the payload names the evidence
+    # behind it (store probe, data-dir writability, maintenance counters)
+    assert health["ok"] is True
+    assert health["checks"]["store"]["ok"] is True
 
     chain = client.get("/api/chain").json()
     # the UI renders these three; a missing key means a silent blank panel

@@ -18,11 +18,11 @@ The remaining work is **not more features**, it is proof packaging: cross-corpus
 
 | Check | Result |
 |---|---|
-| Test suite (`pytest tests/ -q`) | **465 collected**, no failures; the cells that need a corpus the repository never commits skip and say so (`docs/datasets.md`), and `.github/workflows/integration.yml` fetches those corpora and requires that they run there |
+| Test suite (`pytest tests/ -q`) | **481 collected**, no failures; the cells that need a corpus the repository never commits skip and say so (`docs/datasets.md`), and `.github/workflows/integration.yml` fetches those corpora and requires that they run there |
 | `ruff check src/ tests/ apps/ scripts/ waf/` | **All checks passed** |
 | Claim guardrail (`scripts/checks/check_claims.py`) | **GUARDRAIL CLEAN**: 60 judge-facing files scanned (the count the run prints, not a hand-kept figure), 18 documented metrics reconciled against the pinned artifacts, documented counts re-derived from `pytest --collect-only`, documented commands and every slashed path a surface names verified to resolve, and every `github.com` link under this account checked against remote `origin` |
 | `bench_transfer.py --selftest` | rules F1 = 1.0 / FPR = 0.0 on the **synthetic** self-test corpus (harness sanity, not an evaluation result); ML cell fail-closed + PSI-explained |
-| Canonical test count | **465 collected** (re-derived by `check_claims.py` on every run, no hand-kept figure) |
+| Canonical test count | **481 collected** (re-derived by `check_claims.py` on every run, no hand-kept figure) |
 
 ## 1. Approved claim language (lock these verbatim, do not paraphrase)
 
