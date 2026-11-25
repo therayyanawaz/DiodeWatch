@@ -51,6 +51,28 @@ All notable changes to DiodeWatch are documented here.
   order pin rather than only against a restored artifact, so the two channels
   whose boosters are not distributed are covered as well as the two that are.
 
+### Fixed
+- The wall's live socket (`/ws/live`) was not covered by `DIODE_WALL_TOKEN`: a
+  WebSocket handshake is not an HTTP request, so the middleware that guarded
+  `/api` never saw it and the whole alert stream stayed open. The handshake is
+  checked now and closed with 1008 before it is accepted.
+- The wall's policy allowed `connect-src 'self' ws: wss:`, and a bare `ws:` scheme
+  source permits a socket to any host that speaks WebSocket. `'self'` already
+  covers this origin.
+- An exported evidence digest could not be checked by anyone holding only that
+  file; `attest.verify_digest` and `--verify` close that, and a digest of a broken
+  chain never reports a clean verification.
+- The reference-IDS harness reported `0 alerts` for a tool that exited non-zero.
+  A crashed run now reports unknown, because a partial log counted as zero reads
+  as a clean pass at unusually low cost.
+- `integration.yml` piped pytest through `tee` without `pipefail`, so a failing
+  suite exited 0 and the job would have reported success.
+- The SBOM stamped itself with a 1970 timestamp and an `unknown` application
+  version; it now records the build time, keeps `SOURCE_DATE_EPOCH` for
+  reproducible builds, and reads the version from `pyproject.toml`.
+- The detectors' column-order test returned early whenever `models/` was empty,
+  so on an ordinary checkout it passed while asserting nothing.
+
 ## [1.0.0] (2026-11-20)
 
 First stable release: the detection stack, the evidence chain and the wall are
