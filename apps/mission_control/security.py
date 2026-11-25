@@ -9,8 +9,10 @@ evidence store the wall is displaying. Two protections, deliberately separate:
     its own bundle, and `frame-ancestors 'none'` means no page can wrap it.
     These cost nothing and apply whether or not a token is configured.
 
-  * **A bearer token for the API, when one is configured.** `DIODE_WALL_TOKEN`
-    (or `--token`) turns every `/api` route into a 401 without it. Binding to a
+  * **A bearer token for the API and the live socket, when one is configured.**
+    `DIODE_WALL_TOKEN` (or `--token`) turns every `/api` route into a 401 without
+    it, and refuses the `/ws/live` handshake, which carries the same alerts over
+    a channel HTTP middleware never inspects. Binding to a
     non-loopback interface requires a token: `startup_guard` refuses to start
     otherwise, because an unauthenticated wall on a shared network lets anyone
     who can reach the port drive and read the capture.
@@ -34,12 +36,14 @@ LOOPBACK = {"127.0.0.1", "::1", "localhost", "0:0:0:0:0:0:0:1"}
 
 # script-src 'self': the wall runs only the bundle Vite emitted. style-src needs
 # 'unsafe-inline' because React writes style attributes; no <style> block or
-# third-party stylesheet is loadable. connect-src allows the live socket.
+# third-party stylesheet is loadable. connect-src is 'self' alone: under CSP3 that
+# already permits ws/wss to this origin, while the bare `ws:` scheme source would
+# have allowed the page to open a socket to any host that spoke WebSocket.
 CSP = (
     "default-src 'self'; base-uri 'none'; form-action 'none'; "
     "frame-ancestors 'none'; object-src 'none'; "
     "script-src 'self'; style-src 'self' 'unsafe-inline'; "
-    "img-src 'self' data:; connect-src 'self' ws: wss:; font-src 'self'"
+    "img-src 'self' data:; connect-src 'self'; font-src 'self'"
 )
 
 HEADERS: tuple[tuple[str, str], ...] = (
@@ -88,6 +92,24 @@ async def _dispatch(request, call_next):
     for key, value in HEADERS:
         response.headers.setdefault(key, value)
     return response
+
+
+def ws_token_denied(ws, token: str | None = None) -> bool:
+    """True when a WebSocket handshake must be refused.
+
+    A `BaseHTTPMiddleware` dispatch function is not called for a WebSocket: the
+    token that protects every `/api` route left `/ws/live` open, and that socket
+    is the whole alert stream. A browser cannot set a header on a handshake, so
+    the token is accepted from `?token=` as well; it is the same secret over the
+    same loopback, and the alternative is an unauthenticated evidence feed.
+    """
+    token = configured_token() if token is None else token
+    if not token:
+        return False
+    supplied = (ws.query_params.get("token")
+                or ws.headers.get(TOKEN_HEADER)
+                or "").strip()
+    return not hmac.compare_digest(supplied, token)
 
 
 def install(app: FastAPI) -> None:
