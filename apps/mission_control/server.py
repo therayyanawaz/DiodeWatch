@@ -26,8 +26,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import os
 import sys
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -36,11 +38,14 @@ from fastapi import FastAPI, HTTPException, Response, WebSocket, WebSocketDiscon
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import security
+from . import logging_setup, security
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+_STARTED_AT = time.time()
+_LOG = logging.getLogger("diode.wall")
 
 from src.alerts.export_stix import write_stix
 from src.alerts.live_store import LiveEvidenceStore
@@ -161,6 +166,10 @@ class ReplaySession:
             if not ok or self._epoch != epoch:
                 return
             self.state = "running"
+            _LOG.info("replay started", extra={
+                "source": self.params["source"],
+                "window_s": self.params["window_s"],
+                "epoch": epoch})
             await self._broadcast(self._window_msg(state="running"))
             self._task = asyncio.create_task(self._loop(self.window_gen, epoch))
 
@@ -220,6 +229,8 @@ class ReplaySession:
         except Exception as e:  # noqa: BLE001, surfaced to the client
             self.state = "error"
             self.error = str(e)
+            _LOG.error("replay failed to start", extra={"source": src,
+                                                        "error": str(e)})
             return False
 
     def _absorb_ml_due(self, capture_end: float | None,
@@ -286,6 +297,8 @@ class ReplaySession:
         except Exception as e:  # noqa: BLE001
             self.state = "error"
             self.error = str(e)
+            _LOG.error("replay loop failed", extra={"epoch": epoch,
+                                                    "error": str(e)})
             await self._broadcast({"type": "error", "message": str(e)})
 
     async def pause(self) -> None:
@@ -311,6 +324,7 @@ class ReplaySession:
             self.span = None
             self.last_capture_end = None
             self.error = None
+        _LOG.info("replay reset")
         await self._broadcast({"type": "state", "state": "idle"})
 
     async def _stop_task(self) -> None:
@@ -602,6 +616,7 @@ async def ws_live(ws: WebSocket) -> None:
         return
     await ws.accept()
     CLIENTS.add(ws)
+    _LOG.info("websocket connected", extra={"clients": len(CLIENTS)})
     try:
         await ws.send_json({"type": "snapshot",
                             "data": await SESSION.snapshot()})
@@ -611,6 +626,7 @@ async def ws_live(ws: WebSocket) -> None:
         pass
     finally:
         CLIENTS.discard(ws)
+        _LOG.info("websocket closed", extra={"clients": len(CLIENTS)})
 
 
 @app.get("/api/health")
@@ -644,6 +660,11 @@ app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True),
           name="static")
 
 
+# Last, so the access log is the outermost middleware and records the status
+# every inner layer (headers, cache policy, 401s) settled on.
+logging_setup.access_middleware(app)
+
+
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description="DiodeWatch mission-control server")
     ap.add_argument("--port", type=int, default=8530)
@@ -656,6 +677,11 @@ def main(argv: list[str] | None = None) -> None:
     if args.token:
         os.environ[security.TOKEN_ENV] = args.token
     token = security.startup_guard(args.host, args.allow_unauthenticated)
+    loginfo = logging_setup.ensure_setup()
+    _LOG.info("server starting", extra={
+        "host": args.host, "port": args.port, "token_required": bool(token),
+        "app_log": loginfo.get("app_log"),
+        "access_log": loginfo.get("access_log")})
     if token:
         print(f"wall: /api requires {security.TOKEN_HEADER} ({len(token)} chars)")
     elif args.host not in security.LOOPBACK:
