@@ -64,7 +64,11 @@ jobs:
           cp docs/evaluation/models/*.joblib models/
 
       - name: Full suite with the corpora present
-        run: python -m pytest tests/ -q -rs | tee pytest-report.txt
+        # pipefail is not on by default in the runner's bash: without it a failing
+        # suite exits 0 through `tee` and this job reports success for a red run.
+        run: |
+          set -o pipefail
+          python -m pytest tests/ -q -rs | tee pytest-report.txt
 
       - name: The corpus cells must have run, not skipped
         # The point of this job. A skip reason that still says "not downloaded"

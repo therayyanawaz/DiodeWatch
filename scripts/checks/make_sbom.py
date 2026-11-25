@@ -14,10 +14,14 @@ Design choices worth knowing:
     runs over one environment produce byte-identical files and a diff means a
     dependency really moved.
   * No network, ever. An air-gapped enclave has to be able to produce this.
+  * `metadata.timestamp` is the build time, or `SOURCE_DATE_EPOCH` when a
+    reproducible build sets one. A fixed 1970 stamp would make every SBOM claim
+    it was produced before the software existed.
 """
 from __future__ import annotations
 
 import argparse
+import datetime
 import hashlib
 import json
 import os
@@ -66,7 +70,7 @@ def build(skip: set[str] | None = None, timestamp: str | None = None) -> dict[st
         "specVersion": SPEC_VERSION,
         "version": 1,
         "metadata": {
-            "timestamp": timestamp or "1970-01-01T00:00:00Z",
+            "timestamp": timestamp or _now(),
             "tools": [{"vendor": "DiodeWatch", "name": "make_sbom.py"}],
             "component": {
                 "type": "application",
@@ -80,19 +84,39 @@ def build(skip: set[str] | None = None, timestamp: str | None = None) -> dict[st
         },
         "components": components,
     }
-    # Serial from content: stable across runs, different when the set changes.
+    # Serial from content: stable across runs, different when the set changes and
+    # different when the same components were resolved on another interpreter.
+    material = {"components": components, "metadata": body["metadata"]}
     digest = hashlib.sha256(
-        json.dumps(components, sort_keys=True).encode("utf-8")).hexdigest()
+        json.dumps(material, sort_keys=True).encode("utf-8")).hexdigest()
     body["serialNumber"] = (f"urn:uuid:{digest[:8]}-{digest[8:12]}-{digest[12:16]}-"
                             f"{digest[16:20]}-{digest[20:32]}")
     return body
 
 
+def _now() -> str:
+    return datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def _project_version() -> str:
+    """The version of the tree this SBOM describes.
+
+    `metadata.version` only answers when the project is installed (CI installs
+    dependencies, not the package), so the fallback reads `pyproject.toml`
+    directly. "unknown" in the component field would make the SBOM describe an
+    unnamed application."""
     try:
         return metadata.version("diodewatch")
     except metadata.PackageNotFoundError:
+        pass
+    pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
+    try:
+        text = pyproject.read_text(encoding="utf-8")
+    except OSError:
         return "unknown"
+    project = text.split("[project]", 1)[-1].split("\n[", 1)[0]
+    match = re.search(r'^version\s*=\s*"([^"]+)"', project, re.MULTILINE)
+    return match.group(1) if match else "unknown"
 
 
 def main(argv: list[str] | None = None) -> int:
