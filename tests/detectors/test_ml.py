@@ -615,17 +615,29 @@ def test_a_channel_still_scores_the_columns_it_was_trained_on(channel, live,
 
 
 @pytest.mark.parametrize("channel,live,artifact", _PINNED_VECTORS)
-def test_a_restored_artifact_agrees_with_the_pin(channel, live, artifact):
-    """When the boosters have been restored, the artifact's own record of its
-    training order must match the module and the pin. Absence is not failure:
-    `models/` is git-ignored and the loader degrades deliberately, so this
-    asserts over whichever artifacts are actually present."""
+def test_an_artifact_agrees_with_the_pin(channel, live, artifact):
+    """An artifact's own record of its training order must match the module and
+    the pin, checked against whichever copy of the bytes exists.
+
+    This used to `return` when `models/` was empty, which made it a pass that
+    asserted nothing on an ordinary checkout. Every parameter now asserts
+    something: the two distributed artifacts are read from their shipped copy in
+    `docs/evaluation/models/`, and the two that are not distributed are asserted
+    to be genuinely absent, which is precisely why the pin exists.
+    """
     joblib = pytest.importorskip("joblib")
-    path = REPO / "models" / artifact
-    if not path.exists():
+    candidates = [REPO / "models" / artifact,
+                  REPO / "docs" / "evaluation" / "models" / artifact]
+    present = [p for p in candidates if p.exists()]
+    if not present:
+        assert channel in {"flowctx", "tls"}, (
+            f"{artifact} is not distributed and not restored, but {channel} is "
+            f"one of the channels that ships a copy")
         return
-    assert list(joblib.load(path)["medians"]) == list(live())
-    assert list(joblib.load(path)["medians"]) == _feature_pin()[channel]
+    medians = list(joblib.load(present[0])["medians"])
+    assert medians == list(live()), f"{present[0].name} drifted from {channel}.FEATURES"
+    assert medians == _feature_pin()[channel], (
+        f"{present[0].name} drifted from docs/models/feature_order.json")
 
 
 def test_dga_demo_alert_is_lexical_not_tld_based():
