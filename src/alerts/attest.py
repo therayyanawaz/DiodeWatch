@@ -70,6 +70,36 @@ def digest(db_path: str | Path) -> dict[str, Any]:
     return doc
 
 
+def verify_digest(path: str | Path) -> tuple[bool, str]:
+    """Check an exported digest from its own bytes, with no database at hand.
+
+    This is the half that makes the export portable: a verifier receives one JSON
+    file and re-derives `digest_sha256` from the fields it contains. Without it
+    the digest is only checkable by someone holding this source and knowing which
+    key to strip, which is not a proof a third party can run.
+
+    Returns (ok, message). A field added or edited after export fails, and so does
+    a digest whose own hash was left out.
+    """
+    doc_path = Path(path)
+    try:
+        doc = json.loads(doc_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return False, f"cannot read {doc_path.name}: {exc}"
+    if not isinstance(doc, dict) or "digest_sha256" not in doc:
+        return False, f"{doc_path.name} carries no digest_sha256"
+    claimed = doc["digest_sha256"]
+    body = {k: v for k, v in doc.items() if k != "digest_sha256"}
+    actual = hashlib.sha256(canonical_bytes(body)).hexdigest()
+    if actual != claimed:
+        return False, (f"{doc_path.name} does not match its own digest "
+                       f"(claims {claimed[:16]}, recomputes to {actual[:16]})")
+    if not doc.get("chain_ok"):
+        return False, (f"{doc_path.name} verifies as a record of a BROKEN chain: "
+                       f"{doc.get('chain_error')}")
+    return True, f"{doc_path.name} verifies: {doc.get('links')} links, head {claimed[:16]}"
+
+
 def export(db_path: str | Path, out_dir: str | Path,
            name: str | None = None) -> dict[str, Any]:
     """Write the digest as `<digest>.json` and return it.
@@ -147,12 +177,23 @@ def verify_timestamp(tsq_path: str | Path, tsr_path: str | Path,
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         description="Export an evidence-chain digest and an RFC 3161 request")
-    ap.add_argument("--db", required=True, help="alert store to digest")
-    ap.add_argument("--out", required=True, help="directory for the digest")
+    ap.add_argument("--db", default=None, help="alert store to digest")
+    ap.add_argument("--out", default=None, help="directory for the digest")
     ap.add_argument("--name", default=None, help="file stem for the digest")
     ap.add_argument("--tsq", action="store_true",
                     help="also build the RFC 3161 request next to the digest")
+    ap.add_argument("--verify", default=None,
+                    help="verify an exported digest file instead of exporting")
     args = ap.parse_args(argv)
+
+    if args.verify:
+        ok, message = verify_digest(args.verify)
+        print(("PASS " if ok else "FAIL ") + message,
+              file=sys.stdout if ok else sys.stderr)
+        return 0 if ok else 1
+
+    if not args.db or not args.out:
+        ap.error("--db and --out are required unless --verify is given")
 
     doc = export(args.db, args.out, args.name)
     print(f"digest  {doc['digest_sha256']}")

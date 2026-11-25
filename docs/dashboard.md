@@ -124,6 +124,36 @@ python -m src.diode.cli monitor          # monitor-only (no root needed)
 python -m src.diode.cli monitor --enforce   # enforced (root, Linux/nftables)
 ```
 
+### Who may drive the wall (`apps/mission_control/security.py`)
+
+The wall binds `127.0.0.1` by default, and loopback is not a boundary: any page
+the browser loads can reach it, and the POST routes start, pause and reset a
+replay that writes to the evidence store. Two protections apply, and they are
+independent:
+
+* **Headers on every response**, including the 401: `frame-ancestors 'none'`,
+  `script-src 'self'`, `object-src 'none'`, `form-action 'none'`, `nosniff`,
+  `no-referrer`, a same-origin opener policy and a permissions policy. The page
+  cannot be framed, cannot load a third-party script and cannot post a form
+  anywhere.
+* **A token, when one is configured.** `DIODE_WALL_TOKEN` (or `--token`) makes
+  every `/api` route answer 401 without it, and refuses the `/ws/live` handshake,
+  which is a separate channel: HTTP middleware never sees a WebSocket, and the
+  socket carries the same alert stream as the REST routes.
+
+```bash
+DIODE_WALL_TOKEN=$(python -c "import secrets;print(secrets.token_urlsafe(24))")   python apps/mission_control/server.py --port 8530
+curl -H "X-Diode-Token: $DIODE_WALL_TOKEN" http://127.0.0.1:8530/api/session
+```
+
+Binding to anything other than loopback refuses to start without a token, because
+an unauthenticated wall on a shared network lets anyone who can reach the port
+drive and read the capture; `--allow-unauthenticated` exists for the case where
+that is genuinely intended. The browser client does not send a token, on purpose:
+a token pasted into a page is a token in a page. A token-protected wall is driven
+through the API (the launchers, the CLI, `curl -H`), and the read-only pages stay
+readable so there is somewhere to put the token at all.
+
 ## The Streamlit dashboard, four tabs
 
 ### Tab 1, 🔴 Live
