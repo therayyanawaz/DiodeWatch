@@ -59,16 +59,17 @@ each claim:
   a row for a run that never happened.
 * **Full-scale evaluation.** All 50 pinned files of five corpora, 109,643,423
   flows, scored in one pass and published in
-  [`evaluation/runs/max_scale.md`](evaluation/runs/max_scale.md). Two of the four
-  pre-committed gate checks pass; both CIC-IDS2017 failures stay on the page.
+  [`evaluation/runs/max_scale.md`](evaluation/runs/max_scale.md). All four
+  pre-committed gate checks pass; the CIC-IDS2017 F1 margin is only 0.0147, so
+  the pass is reported with its alert-level weaknesses beside it.
 * **Window-scoped attribution and alert-level scoring.** A rule alert now labels
   only its own entity inside its own 10-second window, and every rules cell
   reports exact precision, any-attack precision and incident recall `(window,
-  entity, class)`. The full pass gives CIC-DDoS2019 exact precision 0.919 but
-  incident recall 0.122, and CIC-IDS2017 exact precision 0.084 with 523 of 594
+  entity, class)`. The full pass gives CIC-DDoS2019 exact precision 0.972 but
+  incident recall 0.113, and CIC-IDS2017 exact precision 0.268 with 120 of 164
   alerts benign-only. The old 0.845 and 0.797 flow FPRs were attribution and
   label artifacts; they are withdrawn.
-* **The suite** collects 498 tests. Three of them need corpora this repository
+* **The suite** collects 502 tests. Three of them need corpora this repository
   deliberately never commits, so they skip locally and run in
   `.github/workflows/integration.yml`, which fails if they skip there.
 
@@ -79,7 +80,7 @@ have, not a decision we have not made.
 
 | Item | Why it matters | State |
 |---|---|---|
-| Rule precision on benign windows: per-destination baselines, source-IP entropy, dedup | alert-level scoring shows the gap directly: CIC-IDS2017 exact precision is 0.084 with 523 of 594 alerts benign-only, and CIC-DDoS2019 DDoS incident recall is 0.122 | **next** |
+| Residual rule precision: 120 benign-only CIC-IDS2017 alerts, mostly scan and exfil shapes | the gated flow FPR passes, but exact alert precision is 0.268 and CIC-DDoS2019 DDoS incident recall is 0.113 | **next** |
 | Pin the two retrained channel artifacts, or delete the rows that depend on them | an unpinned artifact cannot be re-scored | **next** |
 | Flow-record ingest: Argus CSV, nfdump CSV, goflow2 JSON | the PS accepts NetFlow/IPFIX/sFlow and CTU-13, 19,976,700 flows, is unscored for rules and flow context | **next** |
 | JA4 and JA4S over TLS, QUIC observable metadata | PS clause (d) names JA4; only JA3 is shipped and QUIC has no reader | **next** |

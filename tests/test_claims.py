@@ -24,9 +24,9 @@ _SPEC.loader.exec_module(cc)
 BEACON = {"roc_auc_macro": 0.9184}
 ROW = "| beacon (C2 periodicity) | leave-one-scenario-out, CTU-13 " \
       "| ROC-AUC (macro) | **{}** |"
-# a file that quotes the benign denominator honestly: layer named, 91 stated
+# a file that quotes the benign denominator honestly: layer named, 15 stated
 HONEST_FP = "The ML engine measured 1 FP in 440,031 benign flows; the rule " \
-            "layer fires 91 alerts on benign-labelled windows of it.\n"
+            "layer fires 15 alerts on benign-labelled windows of it.\n"
 SLOGAN_FP = "Measured 1 FP in 440,031 benign flows.\n"
 
 

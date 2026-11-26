@@ -49,7 +49,7 @@ _SPEC = importlib.util.spec_from_file_location(
 bt = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(bt)
 
-from src.detectors.rules import run_rules
+from src.detectors.rules import make_rules, run_rules
 
 RAW = REPO / "data" / "raw"
 LEDGER = RAW / "corpus_ledger.json"
@@ -241,15 +241,20 @@ def label_truth(df: pd.DataFrame, family: str, label_map: dict) -> tuple[np.ndar
     return mapped.fillna("unmapped").to_numpy(dtype=object), counts
 
 
-def rule_predictions_fast(flows: pd.DataFrame, window_s: int) -> tuple[np.ndarray, list]:
+def rule_predictions_fast(flows: pd.DataFrame, window_s: int,
+                          rules: list | None = None,
+                          ) -> tuple[np.ndarray, list]:
     """Rule layer -> window-scoped flow classes, vectorized.
 
     Same attribution as bench_transfer.attribute_alerts: an alert labels only
     its own entity inside its own window, later alerts winning. The old
     whole-file endpoint mask painted hours of unrelated traffic with one alert
     and turned benign flows into detector false positives.
+
+    Passing one rule list across every chunk of a file preserves the DDoS
+    rule's online baseline; a fresh list per chunk would reset it at each seam.
     """
-    alerts = run_rules(flows, window_s=window_s)
+    alerts = run_rules(flows, rules=rules, window_s=window_s)
     pred = np.asarray(bt.attribute_alerts(flows, alerts, window_s=window_s),
                       dtype=object)
     return pred, alerts
@@ -407,6 +412,7 @@ def evaluate_file(job: dict) -> dict:
     n_ml_no_clock = 0
     synthetic_clock = False
     error: str | None = None
+    rule_engine = make_rules() if job["rules"] else None
     try:
         if not job["rules"] and not job["ml"]:
             return _cell(job, job.get("total_rows") or 0, None, unmapped,
@@ -433,7 +439,8 @@ def evaluate_file(job: dict) -> dict:
             if job["rules"] and flows is not None:
                 before = int(flows["ts_epoch"].isna().sum())
                 n_ts_dropped += before
-                pred, alerts = rule_predictions_fast(flows, job["window_s"])
+                pred, alerts = rule_predictions_fast(
+                    flows, job["window_s"], rule_engine)
                 counts.add(y[scored], pred[scored])
                 alert_acc.add(alerts, flows, y, job["window_s"])
                 for a in alerts:
@@ -611,9 +618,11 @@ def render(results: dict[str, dict], checks: list[dict], meta: dict) -> str:
              (f"Every corpus file on disk scored at its full row count, with the "
               f"rule layer streamed in {meta['chunk']:,}-flow chunks and the ML "
               f"channel on the first {meta['ml_rows']:,} contiguous flows of each "
-              f"file. Rules never train, so every rule cell is out-of-sample. The "
-              f"ML cells name their own status: in-sample where the corpus trained "
-              f"the shipped artifact, out-of-sample where it never did. Artifacts: "
+              f"file. Rules never train, though the CIC-IDS2017 thresholds are "
+              f"calibrated on its Wednesday table; every other rule cell is "
+              f"out-of-sample. The ML cells name their own status: in-sample where "
+              f"the corpus trained the shipped artifact, out-of-sample where it "
+              f"never did. Artifacts: "
               + (", ".join(f"`{k}` {v['sha256'][:12]}"
                            for k, v in (meta.get("models") or {}).items())
                  or "none found in the model directory") + "."),

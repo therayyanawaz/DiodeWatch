@@ -26,8 +26,9 @@ alerts.schema.Alert  →  JSON / SQLite / STIX
 
 Thresholds are calibrated against the pinned CIC-IDS2017 Wednesday working-hours
 table (`data/raw/cic2017/Wednesday-workingHours.pcap_ISCX.csv.parquet`,
-692,703 flows / 440,031 BENIGN). Every number in the tables below is re-derived
-by one command:
+692,703 flows / 440,031 BENIGN). The rule layer emits 39 alerts on this table,
+15 of them on benign windows; every threshold number below is re-derived by one
+command:
 
 ```bash
 python scripts/checks/check_thresholds.py    # exit 1 on drift, 2 if no corpus
@@ -35,47 +36,41 @@ python scripts/checks/check_thresholds.py    # exit 1 on drift, 2 if no corpus
 
 ### Acceptance reality
 
-On that corpus the rule engine emits **128 alerts, of which 91 land on
-benign-labelled windows** (ddos 79, exfil 9, scan 3).
+Full-pass results for the shipped rules, 10 s windows, same code as the
+benchmark:
 
-| metric | value |
-|---|---|
-| total alerts | 128 (ddos 115, exfil 9, scan 4) |
-| alerts on BENIGN windows | **91** |
-| worst single contributor | `192.168.10.3`, 74 ddos alerts via `volumetric_rate` |
-| benign dst windows / src windows | 57,134 / 39,213 |
+| corpus | alerts | exact | benign-only | ddos P / R / F1 | benign FPR |
+|---|---|---|---|---|---|
+| CIC-IDS2017 | 164 | 44 (0.268) | 120 | 0.947 / 0.983 / 0.965 | 0.0121 |
+| CIC-DDoS2019 | 1,159 | 1,126 (0.972) | 12 | 0.997 / 0.967 / 0.982 | 0.0068 |
 
-The full-corpus pass now scores the same alert stream at alert level: on
-CIC-IDS2017, 594 alerts, 50 exact (precision 0.084) and 523 benign-only; on
-CIC-DDoS2019, 1,424 alerts, exact precision 0.919 but DDoS incident recall
-0.122. The Wednesday table above is the single-day calibration record that
-explains the CIC-IDS2017 false-positive mechanism; it is not a cross-corpus
-precision claim.
+Flow-level precision is higher than alert-level precision because one alert
+paints its whole `(window, destination)` scope, and a CIC-IDS2017 benign
+window can contain thousands of flows. The residual CIC-IDS2017 alerts are
+30 scan, 63 exfil and 71 ddos-class claims, not one volumetric source: on the
+Wednesday table the old `192.168.10.3` rate spike is now one alert.
 
-Earlier revisions of this document reported "29 alerts, all on DoS-labelled
-windows, 0 on benign-labelled windows" over the 200k-flow stratified slice
-(`data/slices/flows.ndjson`). That slice is git-ignored runtime output, but it
-is regenerable (`scripts/fetch/download_baseline_slice.py`, then
-`python -m src.ingest.unify`) and the 29/0 figure still reproduces there. It is
-a 50/50 subsample, however; the full pinned Wednesday table is the stricter
-test, and the figures above quote it: 128 alerts, 91 on benign-labelled
-windows. The prose rationale in each table has been corrected to match the
-full day. The remaining false positives are dominated by one busy benign host
-crossing the raw volumetric-rate threshold; see the `ddos` table and "Known
-limits".
+The raw 50 flows/s line is still not clean on the pinned Wednesday table:
+benign traffic reaches 210.9 flows/s and 77 benign windows cross it, 74 of
+them against `192.168.10.3` (median 66.9 flows/s). The guards below are what
+make the branch usable; do not quote the raw threshold as a detector on its
+own.
 
 ### ddos, volumetric flood / fan-in / SYN flood  (mode="any")
 
 | condition | threshold | rationale (measured on the pinned corpus) |
 |---|---|---|
-| `volumetric_rate` | ≥ 50 flows/s to one dst | **not clean**: benign max 210.9 flows/s; 77 benign windows cross it, 74 of them one destination (192.168.10.3, median 66.9 flows/s) |
+| `volumetric_rate` | ≥ 50 flows/s to one dst, plus the guards below | raw threshold alone is **not clean** (see above); the guards cut CIC-IDS2017 benign FPR to 0.0121 |
+| `volumetric_rate` (persistence) | ≥ 250 flows/s one window; 200-250 two windows; 50-200 three windows | a one-window busy-server spike is not a flood; the baseline still applies, so this gate controls delay, not the rate floor |
+| `volumetric_rate` (byte floor) | ≥ 20 KB/s below 200 flows/s | 50-200 flows/s of 40-80 B requests is ordinary chatter; CIC-IDS2017 false bursts carried 4-21 KB/s while true low-rate floods carried 37-640 KB/s |
+| `volumetric_rate` (port gate) | ≤ 16 dst ports, or ≥ 500 KB/s | a low-bandwidth burst over hundreds of ports is a sweep; a high-bandwidth multi-port burst is a reflection flood |
+| `volumetric_rate` (baseline) | rate >= max(50, 3× online baseline) after 10 windows | tracks each destination's own normal rate; EWMA α 0.2, 60 s gap tolerance for minute-granular exports |
 | `volumetric_rate` (bandwidth branch) | ≥ 2 MB/s fwd with ≥ 3 srcs | bandwidth floods that shard across many ports |
 | `fan_in_distinct_sources` | ≥ 50 distinct srcs AND src_conc ≤ 0.3 | **near-clean**: benign max 136 srcs/window and 73 benign windows reach 50 srcs, but only 2 are also concentrated |
 | `syn_flood_half_open` | SYN share ≥ 0.8 of fwd pkts AND ≥ 50 unacked SYNs | classic fwd ≫ bwd half-open signature |
 
-The fan-in branch, not the raw rate, is what separates on this corpus. A
-per-destination baseline (each host's own normal rate) would remove the
-single-host false positives; that is a config change, not a constant edit.
+The fan-in branch is still the cleanest single separator. The volume branch is
+now a gated rate claim, not a bare constant.
 
 ### slowdos, slow-rate asymmetric DoS, slowloris family  (mode="all")
 
@@ -152,10 +147,23 @@ run_rules(flows, rules=make_rules({"ddos": {"flows_per_sec": 100.0}}))
   blanket private-address test when the config stage lands.
 * Windows are tumbling; a scan straddling a boundary is detected in the
   window holding most of its probes, not split.
-* `volumetric_rate` is an absolute constant, so a single legitimately busy
-  host generates recurring false positives (74 of the 91 on the pinned
-  corpus). A per-destination baseline would fix this; the constant stays
-  until that exists.
-* The 91 benign alerts are measured against one CIC day. The cross-corpus
-  transfer numbers in `docs/evaluation/transfer.md` are the source of truth
-  for generalisation, this table is a single-corpus calibration record.
+* The per-destination baseline lives in a rule-engine instance and warms over
+  10 windows. A fresh call or a capture shorter than that relies on the
+  absolute floor and persistence guards; the baseline does not model daily
+  seasonality.
+* Slow-DoS corroboration drops the first window of a sustained run and any
+  isolated claim when the batch contains another slow window. A short capture
+  with only one slow window is exempt, so streaming chunks can differ from a
+  single full-file replay.
+* CIC-IDS2017 alert precision is 0.268 even though flow precision is 0.947.
+  The remaining 120 benign-only alerts are mostly scan and exfil shapes on
+  benign windows, not the volume branch; report alert precision, not only
+  flow F1.
+* CIC-DDoS2019 DDoS incident recall is 1,126/9,927 (0.113) even though flow
+  recall is 0.967. Incident units demand the exact `(window, destination,
+  class)`; a scoped alert cannot cover every attack window in a long capture.
+* Slow-DoS truth recall is 0 on both corpora because the production
+  `ATTACK_MAP` has no `slowdos` class and `SlowDoSRule` emits `ddos`. That is
+  a known class-register gap, not a detector claim.
+* The cross-corpus transfer numbers in `docs/evaluation/transfer.md` are the
+  source of truth for generalisation; this table is a calibration record.

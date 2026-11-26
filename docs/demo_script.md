@@ -60,15 +60,15 @@ the HTML incident report (`python -m src.alerts.cli report ...`, docs/alerts.md)
 
 Switch to 📈 Metrics.
 
-> "Accuracy claims are from the full-corpus pass, not a curated slice. The
-> pre-committed rule gates split: CIC-DDoS2019 F1 0.958 with benign FPR
-> 0.0069 passes; CIC-IDS2017 F1 0.611 with FPR 0.1496 fails. At alert level
-> the same layer is exact on 0.919 of DDoS2019 alerts but catches only 0.122
-> of DDoS incidents; on CIC2017 exact precision is 0.084 and 523 of 594
-> alerts are benign-only. The C2 beacon model scores ROC-AUC 0.92 on botnets
-> it has never seen; the DGA model sits at 0.90 precision with a 0.11
-> false-positive rate on a million benign domains. The failures are on the
-> page beside the passes."
+> "Accuracy claims are from the full-corpus pass, not a curated slice. All four
+> pre-committed rule gates pass: CIC-IDS2017 F1 0.9647 with benign FPR 0.0121,
+> CIC-DDoS2019 F1 0.9815 with FPR 0.0068. At alert level CIC2017 is exact on
+> 0.268 of alerts and 120 of 164 are benign-only, while CIC-DDoS2019 is exact
+> on 0.972 but catches only 0.113 of DDoS incidents. The C2 beacon model scores
+> ROC-AUC 0.92 on botnets it has never seen; the DGA model sits at 0.90
+> precision with a 0.11 false-positive rate on a million benign domains. The
+> narrow CIC2017 margin and the alert-level gaps are on the page beside the
+> passes."
 
 ## 4. Diode Proof, the zero that must stay zero (45 s)
 

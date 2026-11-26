@@ -73,9 +73,10 @@ the same table and catch.
 | supervised reference | per-day holdout | macro-F1 (documented plateau) | ~0.30 |
 
 The rule-layer row is the 50/50 acceptance slice. On the full pinned Wednesday
-table (692,703 flows, 440,031 benign) the same thresholds emit 91 benign-window
-alerts, dominated by one busy host; see [rules.md](rules.md#acceptance-reality).
-Both numbers are measured, not estimated.
+table (692,703 flows, 440,031 benign) the same thresholds emit 39 alerts, 15 of
+them on benign windows; on the full CIC-IDS2017 register they emit 164 alerts,
+120 on benign windows. See [rules.md](rules.md#acceptance-reality). All numbers
+are measured, not estimated.
 
 The two TLS rows are one plant evaluation split by channel, so a lookup cannot
 be quoted as an ML result: the 1.0 is the 97-hash abuse.ch watchlist, and the

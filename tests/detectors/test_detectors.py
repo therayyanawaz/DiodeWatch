@@ -14,6 +14,7 @@ import pytest
 
 from src.alerts.schema import ATTACK_MAP, Alert, EvidenceItem, validate_alert
 from src.detectors.rules import DEFAULT_RULES, make_rules, run_rules
+from src.detectors.scan import ScanRule
 from src.detectors.window import build_windows
 
 REPO = Path(__file__).resolve().parents[2]
@@ -147,11 +148,12 @@ def test_benign_traffic_produces_no_alerts():
 
 
 def test_volumetric_ddos_fires_and_benign_does_not():
-    # 100 distinct sources, ~150 flows/s of tiny flows to one dst over ~10 s
+    # 100 distinct sources, ~278 flows/s of tiny flows to one dst over ~22 s:
+    # the rate must hold across two windows, not just spike in one.
     atk = [rec(i, src=f"10.1.0.{i % 100}", dst="10.9.9.9", sport=20000 + i,
-               ts=BASE_TS + i * 0.006, dur=0.05, fwd_pkts=3, bwd_pkts=1,
+               ts=BASE_TS + i * 0.0036, dur=0.05, fwd_pkts=3, bwd_pkts=1,
                fwd_bytes=120, bwd_bytes=60, label="DoS Hulk")
-           for i in range(1500)]
+           for i in range(6000)]
     alerts = [a for a in run_rules(pd.DataFrame(benign_mix() + atk))
               if a.detector == "ddos" and a.key == "10.9.9.9"]
     assert alerts, "volumetric flood must alert"
@@ -159,6 +161,31 @@ def test_volumetric_ddos_fires_and_benign_does_not():
     conds = {e.condition for e in top.evidence}
     assert "volumetric_rate" in conds
     assert top.confidence <= 1.0 and top.evidence
+
+
+def test_port_sweep_is_not_a_volumetric_ddos():
+    # High flow rate but spread over 100 destination ports: this is sweep
+    # shape, so the DDoS volume branch must abstain.
+    sweep = [rec(i, src=f"10.1.1.{i % 3}", dst="10.9.9.9", sport=20000 + i,
+                 dport=1000 + i % 100, ts=BASE_TS + i * 0.0036, dur=0.05,
+                 fwd_pkts=3, bwd_pkts=1, fwd_bytes=120, bwd_bytes=60,
+                 label="BENIGN")
+             for i in range(8000)]
+    alerts = [a for a in run_rules(pd.DataFrame(benign_mix() + sweep))
+              if a.threat_class == "ddos" and a.key == "10.9.9.9"]
+    assert not alerts, "a multi-port sweep must not be called a DDoS flood"
+
+
+def test_isolated_rate_spike_does_not_alert():
+    # 1,200 flows in one 8.4 s window is 143 flows/s, but the next window is
+    # quiet. A busy server spike is not a sustained flood.
+    burst = [rec(i, src=f"10.1.1.{i % 3}", dst="10.9.9.9", sport=20000 + i,
+                 ts=BASE_TS + i * 0.007, dur=0.05, fwd_pkts=3, bwd_pkts=1,
+                 fwd_bytes=400, bwd_bytes=60, label="BENIGN")
+             for i in range(1200)]
+    alerts = [a for a in run_rules(pd.DataFrame(benign_mix() + burst))
+              if a.threat_class == "ddos" and a.key == "10.9.9.9"]
+    assert not alerts, "a single-window spike must not be called a flood"
 
 
 def test_fanin_and_synflood_signatures_fire():
@@ -176,11 +203,12 @@ def test_fanin_and_synflood_signatures_fire():
 
 
 def test_slowdos_fires_on_slowloris_shape_only():
-    # 30 flows from one source, tiny requests, connections held across windows
+    # 120 flows from one source over 18 s, tiny requests, connections held:
+    # the shape holds across two windows before it is called slow DoS
     atk = [rec(i, src="10.3.0.7", dst="10.7.7.7", sport=40000 + i,
-               ts=BASE_TS + i * 0.1, dur=45.0, fwd_pkts=6, bwd_pkts=2,
+               ts=BASE_TS + i * 0.15, dur=45.0, fwd_pkts=6, bwd_pkts=2,
                fwd_bytes=90, bwd_bytes=120, label="DoS slowloris")
-           for i in range(35)]
+           for i in range(120)]
     alerts = [a for a in run_rules(pd.DataFrame(benign_mix() + atk))
               if a.detector == "slowdos" and a.key == "10.7.7.7"]
     assert alerts, "slowloris shape must alert"
@@ -196,6 +224,23 @@ def test_slowdos_fires_on_slowloris_shape_only():
     alerts2 = [a for a in run_rules(pd.DataFrame(benign_mix() + benign_poller))
                if a.detector == "slowdos" and a.key == "10.6.6.6"]
     assert alerts2 == []
+
+
+def test_low_rate_flood_needs_real_bytes():
+    # 125 flows/s for three windows is a persistent rate, but 6 KB/s of tiny
+    # polls is normal chatter. The same rate carrying 50 KB/s is a flood.
+    def burst(src, fwd_bytes):
+        return [rec(i, src=f"{src}.{i % 3}", dst="10.9.9.9", sport=20000 + i,
+                    ts=BASE_TS + i * 0.008, dur=0.05, fwd_pkts=3, bwd_pkts=1,
+                    fwd_bytes=fwd_bytes, bwd_bytes=60, label="BENIGN")
+                for i in range(3600)]
+
+    thin = [a for a in run_rules(pd.DataFrame(benign_mix() + burst("10.11.0", 50)))
+            if a.threat_class == "ddos" and a.key == "10.9.9.9"]
+    assert thin == []
+    thick = [a for a in run_rules(pd.DataFrame(benign_mix() + burst("10.12.0", 400)))
+             if a.threat_class == "ddos" and a.key == "10.9.9.9"]
+    assert thick, "a persistent rate carrying real bytes must alert"
 
 
 def test_scan_fires_on_port_sweep_only():
@@ -243,15 +288,46 @@ def test_exfil_ratio_and_bulk_signatures_fire():
     assert "upload_ratio" in conds7 and "bulk_upload_bytes" not in conds7
     assert "bulk_upload_bytes" in conds9
 
+def test_scan_claim_inside_ddos_flood_is_suppressed():
+    # A SYN flood and a port sweep look identical from one source: tiny flows
+    # to many ports, no replies. The victim's DDoS alert owns that traffic.
+    flood = [rec(i, src=f"10.1.0.{i % 100}", dst="10.9.9.9", sport=20000 + i,
+                 ts=BASE_TS + i * 0.006, dur=0.05, fwd_pkts=3, bwd_pkts=1,
+                 fwd_bytes=120, bwd_bytes=60, label="DoS Hulk")
+             for i in range(1500)]
+    sweep = [rec(i, src="10.5.0.7", dst="10.9.9.9", sport=41000 + i,
+                 dport=1000 + i, ts=BASE_TS + i * 0.05, dur=0.0,
+                 fwd_pkts=1, bwd_pkts=0, fwd_bytes=60, bwd_bytes=0,
+                 label="PortScan")
+             for i in range(60)]
+    flows = pd.DataFrame(benign_mix() + flood + sweep)
+
+    raw = ScanRule().evaluate(build_windows(flows))
+    assert any(a.key == "10.5.0.7" for a in raw), "sweep must look like a scan"
+    alerts = run_rules(flows)
+    assert any(a.threat_class == "ddos" and a.key == "10.9.9.9" for a in alerts)
+    assert not any(a.threat_class == "scan" and a.key == "10.5.0.7"
+                   for a in alerts), "scan inside a DDoS flood is double-counting"
+
+    # A sweep that never touches the flood victim is still a scan.
+    apart = [rec(i, src="10.5.0.8", dst=f"10.60.0.{i + 1}",
+                 sport=42000 + i, dport=80, ts=BASE_TS + i * 0.05,
+                 dur=0.0, fwd_pkts=1, bwd_pkts=0, fwd_bytes=60,
+                 bwd_bytes=0, label="PortScan")
+             for i in range(60)]
+    alerts2 = run_rules(pd.DataFrame(benign_mix() + flood + apart))
+    assert any(a.threat_class == "scan" and a.key == "10.5.0.8"
+               for a in alerts2), "unrelated scan must survive arbitration"
+
 
 def test_rules_respect_param_overrides():
     # with a huge rate threshold the volumetric branch goes quiet
     # (the independent fan-in signature may still fire, that is correct)
     rules = make_rules({"ddos": {"flows_per_sec": 10_000.0}})
     atk = [rec(i, src=f"10.1.0.{i % 50}", dst="10.9.9.9", sport=20000 + i,
-               ts=BASE_TS + i * 0.005, dur=0.05, fwd_pkts=3, bwd_pkts=1,
+               ts=BASE_TS + i * 0.004, dur=0.05, fwd_pkts=3, bwd_pkts=1,
                fwd_bytes=120, bwd_bytes=60, label="DoS Hulk")
-           for i in range(600)]  # 60 flows/s over the 10 s window
+           for i in range(7000)]  # 250 flows/s, sustained over three windows
     alerts = [a for a in run_rules(pd.DataFrame(benign_mix() + atk), rules=rules)
               if a.key == "10.9.9.9"]
     conds = {e.condition for a in alerts for e in a.evidence}

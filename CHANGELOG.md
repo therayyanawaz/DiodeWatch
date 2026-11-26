@@ -65,6 +65,14 @@ All notable changes to DiodeWatch are documented here.
 - The wall's accessibility contract is tested: accessible names on every control,
   a named listbox that announces its highlighted option, the tooltip wired as the
   button's description, and no focus indicator removed without a replacement.
+- The volumetric rule claims a flood only after four guards: an online
+  per-destination rate baseline, persistence (250 flows/s for one window, 200-250
+  for two, 50-200 for three), a 20 KB/s byte floor below 200 flows/s, and a
+  destination-port check that requires 500 KB/s for a multi-port burst. Scan
+  claims that overlap a DDoS victim in the same window are suppressed, and a
+  slow-DoS claim is kept only when a same-window volume claim or a prior slow
+  window within 60 s corroborates it. Short captures with a single slow window are
+  exempt, so the demo pcap still alerts.
 
 ### Changed
 - The README's CI badge is back. Its removal at 1.0.0 named the condition for
@@ -100,9 +108,11 @@ All notable changes to DiodeWatch are documented here.
   incident recall over `(window, entity, class)`. The corpus spellings for
   `DDoS attacks-LOIC-HTTP` and `UDP-lag` are mapped, so those attack flows are
   no longer counted on the benign side.
-- The full-corpus record is republished with the corrected denominators: two
-  pre-committed gates pass and two fail, and the old 1.0 / 0-of-392 and 0.797
-  flow FPR figures are withdrawn.
+- The full-corpus record is republished with the corrected denominators: all
+  four pre-committed gates pass (CIC-IDS2017 F1 0.964664 / FPR 0.01211425,
+  CIC-DDoS2019 F1 0.981516 / FPR 0.00679973), and the old 1.0 / 0-of-392 and
+  0.797 flow FPR figures are withdrawn. The CIC-IDS2017 margin is 0.0147 and its
+  120 benign-only alerts stay on the page.
 - The wall's live socket (`/ws/live`) was not covered by `DIODE_WALL_TOKEN`: a
   WebSocket handshake is not an HTTP request, so the middleware that guarded
   `/api` never saw it and the whole alert stream stayed open. The handshake is

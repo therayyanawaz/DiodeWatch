@@ -180,6 +180,7 @@ def build_windows(flows: pd.DataFrame, window_s: int = 10) -> WindowFrames:
         flows=("flow_id", "size"),
         n_src=("src_ip", "nunique"),
         src_ports=("src_port", "nunique"),
+        n_dports=("__dp_gt0", "nunique"),
         fwd_pkts=("fwd_pkts", "sum"),
         bwd_pkts=("bwd_pkts", "sum"),
         fwd_bytes=("fwd_bytes", "sum"),
@@ -199,6 +200,7 @@ def build_windows(flows: pd.DataFrame, window_s: int = 10) -> WindowFrames:
     dst["syn_share"] = dst["syn_pkts"] / dst["fwd_pkts"].replace(0, np.nan)
     dst["half_open"] = (dst["syn_pkts"] - dst["ack_pkts"]).clip(lower=0)
     dst["src_conc"] = np.where(dst["flows"] > 0, dst["n_src"] / dst["flows"], np.nan)
+    dst["n_dports"] = dst["n_dports"].astype("float64")
 
     # ---- per-source frame (scan / exfil signals) ------------------------------
     src = frame.groupby(["__win", "src_ip"], sort=False).agg(

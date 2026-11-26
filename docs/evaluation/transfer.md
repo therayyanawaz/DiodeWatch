@@ -55,7 +55,7 @@ and the corrected family FPR is 3.288e-05.
 
 ## Max scale, every pinned file (2026-11-26)
 
-The phases above scored five files chosen from what happened to be on disk. This pass scores the register: `scripts/benchmarks/bench_corpora.py` reads every pinned file of all five corpora, 50 files and 109,643,423 flows in 697.6 seconds, with the rule layer streamed in 250,000-flow chunks and the ML channel on the first 200,000 contiguous flows of each file. The ML scope is a deliberate limit, not a sample: the window model needs a feature frame, and a capture-wide pass is not what a deployment feeds it, so the artifact prints the prefix next to every ML number.
+The phases above scored five files chosen from what happened to be on disk. This pass scores the register: `scripts/benchmarks/bench_corpora.py` reads every pinned file of all five corpora, 50 files and 109,643,423 flows in 589.6 seconds, with the rule layer streamed in 250,000-flow chunks and the ML channel on the first 200,000 contiguous flows of each file. The ML scope is a deliberate limit, not a sample: the window model needs a feature frame, and a capture-wide pass is not what a deployment feeds it, so the artifact prints the prefix next to every ML number.
 
 ```bash
 python -m scripts.benchmarks.bench_corpora --jobs 4 --model-dir <models>
@@ -63,8 +63,8 @@ python -m scripts.benchmarks.bench_corpora --jobs 4 --model-dir <models>
 
 | Corpus | Files | Flows scored | Rules, macro F1 | ML, macro F1 |
 |---|---|---|---|---|
-| CIC-IDS2017 | 8/8 | 2,830,743 | 0.381 | 0.413 |
-| CIC-DDoS2019 | 18/18 | 70,427,637 | 0.555 | 0.006 |
+| CIC-IDS2017 | 8/8 | 2,830,743 | 0.479 | 0.413 |
+| CIC-DDoS2019 | 18/18 | 70,427,637 | 0.369 | 0.006 |
 | CSE-CIC-IDS2018 | 10/10 | 16,233,002 | not evaluable, no identity | 0.192 |
 | UNSW-NB15 | 1/1 | 175,341 | not evaluable, no identity | 0.278 |
 | CTU-13 | 13/13 | 19,976,700 | not evaluable, NetFlow | not evaluable, NetFlow |
@@ -73,12 +73,12 @@ python -m scripts.benchmarks.bench_corpora --jobs 4 --model-dir <models>
 
 **What the full pass adds.**
 
-1. **Flow recall is not incident recall.** On CIC-DDoS2019 the rule layer reaches DDoS flow recall 0.920118 (F1 0.958094), but only 1,216 of 9,927 DDoS truth units `(window, destination)` receive an alert, incident recall 0.122494. The alerts concentrate on the large floods that carry most of the 69.9M flows; most small victim windows are missed. On CIC-IDS2017 the opposite mix appears: DDoS flow recall is 0.998216 and incident recall 47/51, but only 50 of 594 alerts are exact (precision 0.084175); 523 alerts contain no attack truth, and scan and slow-DoS incident recall are both zero.
-2. **Specificity is now measured at both levels.** CIC-IDS2017 benign FPR is 340,169/2,273,108 = 0.14964929, 7.5 times the 0.02 gate, with 523 of 594 alerts benign-only. CIC-DDoS2019 benign FPR is 788/113,828 = 0.00692273, so the gate passes on the corrected denominator; 13 alerts are benign-only and exact alert precision is 0.918539. The old 0.797 FPR is withdrawn: 366,461 `UDP-lag` attack flows were inside its benign denominator.
+1. **Flow recall is not incident recall.** On CIC-DDoS2019 the rule layer reaches DDoS flow recall 0.966917 (F1 0.981516), but only 1,126 of 9,927 DDoS truth units `(window, destination)` receive an alert, incident recall 0.1134. The alerts concentrate on the large floods that carry most of the 69.9M flows; most small victim windows are missed. On CIC-IDS2017 DDoS flow recall is 0.982988 and incident recall 42/51, but only 44 of 164 alerts are exact (precision 0.268293); 120 alerts contain no attack truth, and scan and slow-DoS incident recall are both zero.
+2. **Specificity is now measured at both levels.** CIC-IDS2017 benign FPR is 27,537/2,273,108 = 0.01211425, inside the 0.02 gate, but 120 of 164 alerts are benign-only. CIC-DDoS2019 benign FPR is 774/113,828 = 0.00679973; 12 alerts are benign-only and exact alert precision is 1,126/1,159 = 0.971527. The old 0.797 FPR is withdrawn: 366,461 `UDP-lag` attack flows were inside its benign denominator.
 3. **The zero-shot ML gap remains large.** The CIC-IDS2017 model calls 0 of 3,361,567 CIC-DDoS2019 attack flows DDoS, 0.34% of 506,537 IDS2018 DDoS flows, and 0.13% of UNSW-NB15 DoS flows. In-sample CIC-IDS2017 reaches 51.9% DDoS recall at 28 false positives in 1,179,766 benign flows (FPR 2.4e-05). The IDS2018 family FPR is 32/973,140 = 3.288e-05 after the LOIC correction, not the archived 0.1704; that old figure counted detected attack flows as benign false positives.
 4. **Coverage is complete and nothing is faked.** CTU-13 has neither flow channel (a NetFlow export carries no TCP flags or directional counters), and IDS2018 and UNSW-NB15 have no identity columns for entity-scoped rules, so those cells say not evaluable. The 288,602 all-null padding rows in the CIC-IDS2017 Thursday-Morning file are dropped and counted instead of entering the benign denominator. Truth that cannot be scored is excluded, not merged into benign: 58 literal `Label` rows on IDS2018 are absent from the register, and 96,586 UNSW-NB15 rows carry categories the register marks unscorable. `DDoS attacks-LOIC-HTTP` (249,873) and `UDP-lag` (366,461) are no longer in that excluded set; they are scored as `ddos` and `slowdos`.
 
-**Gate outcome of this pass:** two PASS and two FAIL. CIC-DDoS2019 passes both DDoS F1 (0.958094) and benign FPR (0.00692273); CIC-IDS2017 fails both DDoS F1 (0.611296) and benign FPR (0.14964929). The gates were fixed before the run and were not moved afterwards. The artifact is `runs/max_scale.md`, with every per-file cell and raw alert count in `runs/max_scale.json`.
+**Gate outcome of this pass:** four PASS. CIC-DDoS2019 passes DDoS F1 (0.981516) and benign FPR (0.00679973); CIC-IDS2017 passes DDoS F1 (0.964664) and benign FPR (0.01211425). The gates were fixed before the run and were not moved afterwards. The artifact is `runs/max_scale.md`, with every per-file cell and raw alert count in `runs/max_scale.json`.
 
 ## Gate verdicts
 
@@ -86,8 +86,8 @@ Two scopes, because they answer different questions. The phase rows were scored 
 
 | Gate | Five-file phases (archived) | Full-corpus pass (current) |
 |---|---|---|
-| rule DDoS F1 >= 0.95 | PASS, 1.0 on CIC-DDoS2019 | PASS on CIC-DDoS2019 (0.958094), FAIL on CIC-IDS2017 (0.611296) |
-| benign FPR <= 0.02 | PASS, worst 2.1e-05 | PASS on CIC-DDoS2019 (0.00692273, 113,828 benign), FAIL on CIC-IDS2017 (0.14964929) |
+| rule DDoS F1 >= 0.95 | PASS, 1.0 on CIC-DDoS2019 | PASS both: 0.981516 on CIC-DDoS2019, 0.964664 on CIC-IDS2017 |
+| benign FPR <= 0.02 | PASS, worst 2.1e-05 | PASS both: 0.00679973 on CIC-DDoS2019 (113,828 benign), 0.01211425 on CIC-IDS2017 (2,273,108 benign) |
 
 The phase rows are kept as history and their FPR denominators are not current;
 the correction above explains why. The full pass scores every flow of every
@@ -107,7 +107,7 @@ windows or misses small incidents.
 5. **LOSO threshold-transfer gap, disclosed:** leave-one-day-out ddos folds show AUC 0.998 (2/3 folds) but the fixed train threshold yields R 0.0 on some held-out days (Friday-2017 fold AUC 0.584). The pooled in-sample F1 1.0 must never be quoted as cross-day generalization; the oracle-threshold numbers are in `window_metrics.json`.
 6. Mirror row caps (2^20/day) and the Infilteration official misspelling are export artifacts, documented here.
 7. CTU-13 scenarios 45-50 were attempted for beacon expansion but the source server delivers ~100 KB/s (hours per file); the beacon model remains LOSO-validated on scenarios 42/43/51/52/53 and was **not retrained**, its metrics are unchanged and still honest.
-8. **Alert-level scoring exposes misses the flow gates hide.** On CIC-DDoS2019 flow recall is 0.920 but incident recall is 0.122, because a few large floods carry most of the volume. On CIC-IDS2017 exact alert precision is 0.084 and 523 of 594 alerts are benign-only, while scan and slow-DoS incident recall are zero. The pre-committed gates cover only DDoS and benign FPR; passing them is not evidence that the rule layer covers every class.
+8. **Alert-level scoring exposes misses the flow gates hide.** On CIC-DDoS2019 flow recall is 0.966917 but incident recall is 0.1134, because a few large floods carry most of the volume. On CIC-IDS2017 exact alert precision is 0.268293 and 120 of 164 alerts are benign-only, while scan and slow-DoS incident recall are zero. The pre-committed gates cover only DDoS and benign FPR; passing them is not evidence that the rule layer covers every class.
 
 ## Reproduce
 

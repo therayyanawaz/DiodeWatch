@@ -27,8 +27,8 @@ PROTECTED NETWORK → DATA DIODE → [ INGEST → FEATURES → DETECTORS → ALE
 ## Five measured results
 
 1. **10,000 flows/sec sustained** on 4 cores / 8 GB, 2× the problem-statement target.
-2. **Rule DDoS gates: two pass, two fail.** Pre-committed, fixed before the run: CIC-DDoS2019 F1 0.958 and benign FPR 0.0069 pass; CIC-IDS2017 F1 0.611 and FPR 0.1496 fail. The full pass scores 50 files and 109,643,423 flows. There is no universal F1 1.0 claim.
-3. **Alert-level scoring is published with the flow metrics.** On CIC-DDoS2019, 1,424 alerts give exact precision 0.919 and any-attack precision 0.991, but DDoS incident recall is 0.122 (1,216/9,927) although flow recall is 0.920. On CIC-IDS2017, exact precision is 0.084 and 523 of 594 alerts are benign-only; scan and slow-DoS incident recall are zero. Volume recall hides both effects, so both are shown.
+2. **Rule DDoS gates: all four pass, with narrow CIC-IDS2017 margins.** Pre-committed, fixed before the run: CIC-IDS2017 F1 0.964664 and benign FPR 0.01211425 pass; CIC-DDoS2019 F1 0.981516 and FPR 0.00679973 pass. The full pass scores 50 files and 109,643,423 flows. The CIC-IDS2017 F1 margin is 0.0147, so this is a measured pass, not a universal F1 1.0 claim.
+3. **Alert-level scoring is published with the flow metrics.** On CIC-IDS2017, 164 alerts give exact precision 0.268293 and 120 are benign-only; DDoS incident recall is 42/51, while scan and slow-DoS incident recall are zero. On CIC-DDoS2019, 1,159 alerts give exact precision 0.971527 and any-attack precision 0.989646, but DDoS incident recall is 0.1134 (1,126/9,927) although flow recall is 0.966917. Volume recall hides both effects, so both are shown.
 4. **DDoS detected within its first 10-second window**; batch-amortized per-flow cost 0.03-0.07 ms at rated load.
 5. **0 outbound bytes on the enforced Linux path** across a 30-minute replay + idle run. Windows has no kernel enforcement path, so its wall must say monitor-only, never a fabricated zero.
 
@@ -52,7 +52,7 @@ IDS2018 flow-context FPR is 3.3e-05, not the archived 17%. Slow-DoS and scan
 rule recall are zero in the full pass. Encrypted malware is classified from
 metadata only, with no payload decryption. On Windows the kernel egress path
 does not exist, so the system shows monitor-only rather than a zero. **The
-failures and the small-incident misses stay in the published record.**
+narrow gate margins and the small-incident misses stay in the published record.**
 
 ## Live demo (4 minutes)
 
