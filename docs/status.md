@@ -60,16 +60,16 @@ each claim:
 * **Full-scale evaluation.** All 50 pinned files of five corpora, 109,643,423
   flows, scored in one pass and published in
   [`evaluation/runs/max_scale.md`](evaluation/runs/max_scale.md). All four
-  pre-committed gate checks pass; the CIC-IDS2017 F1 margin is only 0.0147, so
+  pre-committed gate checks pass; the CIC-IDS2017 F1 margin is only 0.0128, so
   the pass is reported with its alert-level weaknesses beside it.
 * **Window-scoped attribution and alert-level scoring.** A rule alert now labels
   only its own entity inside its own 10-second window, and every rules cell
   reports exact precision, any-attack precision and incident recall `(window,
-  entity, class)`. The full pass gives CIC-DDoS2019 exact precision 0.972 but
-  incident recall 0.113, and CIC-IDS2017 exact precision 0.268 with 120 of 164
+  entity, class)`. The full pass gives CIC-DDoS2019 exact precision 0.983 but
+  incident recall 0.118, and CIC-IDS2017 exact precision 0.365 with 122 of 192
   alerts benign-only. The old 0.845 and 0.797 flow FPRs were attribution and
   label artifacts; they are withdrawn.
-* **The suite** collects 502 tests. Three of them need corpora this repository
+* **The suite** collects 506 tests. Three of them need corpora this repository
   deliberately never commits, so they skip locally and run in
   `.github/workflows/integration.yml`, which fails if they skip there.
 
@@ -80,11 +80,11 @@ have, not a decision we have not made.
 
 | Item | Why it matters | State |
 |---|---|---|
-| Residual rule precision: 120 benign-only CIC-IDS2017 alerts, mostly scan and exfil shapes | the gated flow FPR passes, but exact alert precision is 0.268 and CIC-DDoS2019 DDoS incident recall is 0.113 | **next** |
+| Residual rule precision: 122 benign-only CIC-IDS2017 alerts, mostly scan and exfil shapes | the gated flow FPR passes, but exact alert precision is 0.365 and CIC-DDoS2019 DDoS incident recall is 0.118 | **next** |
 | Pin the two retrained channel artifacts, or delete the rows that depend on them | an unpinned artifact cannot be re-scored | **next** |
 | Flow-record ingest: Argus CSV, nfdump CSV, goflow2 JSON | the PS accepts NetFlow/IPFIX/sFlow and CTU-13, 19,976,700 flows, is unscored for rules and flow context | **next** |
 | JA4 and JA4S over TLS, QUIC observable metadata | PS clause (d) names JA4; only JA3 is shipped and QUIC has no reader | **next** |
-| Scan and slow-DoS recall on CIC-IDS2017 | the port-scan day scores recall 0; slow-DoS scores 0 | **next** |
+| Scan and slow-DoS recall on CIC-IDS2017 | scan incident recall is 11/222 and slow-DoS 18/46; slow DoS now has its own class, but recall remains low | **next** |
 | DGA false-positive work on Umbrella hard negatives | 0.1076 FPR at the operating threshold is not usable | **next** |
 | Packet-to-alert clock, bounded queue, backpressure at 5k/10k/50k flows/s | the 175 ms figure is window-evaluation p95, not end-to-end latency | planned |
 | Calibration and conformal abstention per channel | confidence is not calibrated and no alert can abstain | planned |

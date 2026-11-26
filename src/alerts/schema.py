@@ -35,6 +35,7 @@ from typing import Any
 # threat_class -> (ATT&CK technique ID, technique name, tactic)
 ATTACK_MAP: dict[str, tuple[str, str, str]] = {
     "ddos": ("T1498", "Network Denial of Service", "Impact"),
+    "slowdos": ("T1499.002", "Endpoint Denial of Service: Service Exhaustion Flood", "Impact"),
     "scan": ("T1046", "Network Service Discovery", "Discovery"),
     "exfil": ("T1048", "Exfiltration Over Alternative Protocol", "Exfiltration"),
     # ML-detector threat classes
@@ -55,6 +56,7 @@ SEVERITY_BY_CLASS: dict[str, str] = {
     "exfil": "critical",
     "webattack": "critical",
     "ddos": "high",
+    "slowdos": "high",
     "bot": "high",
     "beacon": "high",
     "dga": "high",
@@ -98,6 +100,7 @@ def threat_level(max_severity: str | None) -> str:
 # same alert ended up "Recon Scan" on one surface and "SCAN" on the other.
 CLASS_NAMES: dict[str, str] = {
     "ddos": "DDoS",
+    "slowdos": "Slow DoS",
     "scan": "Recon Scan",
     "exfil": "Exfiltration",
     "beacon": "C2 Beacon",

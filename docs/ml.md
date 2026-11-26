@@ -149,7 +149,7 @@ print('declared', len(FEATURES), '| active', len(a), '| model', len(MODEL_FEATUR
   alerts = 252,671 ddos + 1 bot, matching the day's 252,672 attack flows
   (precision 0.999996, 440,030/440,031 benign silent). That figure is
   per-flow ML-engine precision only; the rule layer's own benign-window
-  count on the same corpus is 15 of 39 alerts, and 120 of 164 on the full
+  count on the same corpus is 15 of 55 alerts, and 122 of 192 on the full
   CIC-IDS2017 register, see `docs/rules.md`.
   Deployment must preserve the training aggregation horizon (full replay of
   the captured window), and per-deployment threshold calibration is advised

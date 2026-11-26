@@ -26,7 +26,10 @@ evidence item):
                  - persistence: >= 250 flows/s needs one window; 200-250 needs
                    two; 50-200 needs three and 20 KB/s (the baseline still
                    applies to every rate)
-                 - a multi-port burst needs 500 KB/s to count as a flood
+                 - a multi-port burst needs 500 KB/s to count as a flood,
+                   unless it spreads over >= 5000 ports at >= 500 flows/s:
+                   46k ports at 8k flows/s is a random-port SYN flood, not
+                   a sweep (the scan rule caps at 5000 ports)
                OR fwd_bytes_per_sec >= 2 MB/s when n_src >= 3 (bandwidth flood)
   fan_in       n_src >= 50 AND src_conc <= 0.3 (many distinct hosts, each
                sending several flows, onto one target)
@@ -69,6 +72,8 @@ BASELINE_RESET_WINDOWS = 360     # one hour at 10 s windows
 VOLUME_PERSISTENCE_GAP_S = 60.0  # CIC-IDS2017 timestamps are minute-granular
 DPORT_FLOOD_MAX = 16            # a flood targets a service, not a port sweep
 DPORT_SWEEP_BPS = 500_000.0     # a multi-port burst this large is still a flood
+DPORT_RANDOM_MIN = 5000         # beyond the scan rule's port cap
+DPORT_RANDOM_RATE = 500.0       # a random-port burst this fast is a flood
 
 
 class DDoSRule(Rule):
@@ -84,6 +89,9 @@ class DDoSRule(Rule):
         syn_sh = float(self.get("syn_share", SYN_SHARE))
         half_open_th = float(self.get("half_open", HALF_OPEN))
         dport_max = int(self.get("dport_flood_max", DPORT_FLOOD_MAX))
+        dport_random_min = int(self.get("dport_random_min", DPORT_RANDOM_MIN))
+        dport_random_rate = float(self.get("dport_random_rate",
+                                            DPORT_RANDOM_RATE))
 
         alpha = float(self.get("baseline_alpha", BASELINE_ALPHA))
         ratio = float(self.get("baseline_ratio", BASELINE_RATIO))
@@ -133,7 +141,9 @@ class DDoSRule(Rule):
             # a port sweep and belongs to the scan class. A high-bandwidth
             # multi-port burst is a reflection flood, not a sweep.
             service = bool(n_dports == 0 or n_dports <= dport_max
-                            or fwd_bps >= DPORT_SWEEP_BPS)
+                            or fwd_bps >= DPORT_SWEEP_BPS
+                            or (n_dports >= dport_random_min
+                                and fps >= dport_random_rate))
             # Tiny request traffic at 50-200 flows/s is ordinary server
             # chatter. A low-rate volume claim must also carry real bytes;
             # high-rate floods do not need this second check.

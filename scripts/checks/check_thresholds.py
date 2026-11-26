@@ -179,8 +179,8 @@ def build_claims(m: dict[str, float]) -> list[Claim]:
                      "the worst benign window (4,369.8 kB)"),
         Claim("rule_alerts_on_benign",
               "rule alerts landing on benign-labelled windows",
-              91, m["rule_alerts_on_benign"],
-              detail="ddos 79 / exfil 9 / scan 3, these were documented as "
+              15, m["rule_alerts_on_benign"],
+              detail="ddos 3 / exfil 9 / scan 3, these were documented as "
                      "zero; see docs/rules.md 'Acceptance reality'"),
     ]
 

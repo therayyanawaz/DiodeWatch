@@ -38,7 +38,7 @@ def test_pack_manifest_contract():
     assert items["01_ddos.pcap"]["expected"]["rule_expected"] == ["ddos"]
     assert items["04_exfil_scan.pcap"]["expected"]["rule_expected"] == [
         "scan", "exfil"]
-    assert items["05_slowloris.pcap"]["expected"]["rule_expected"] == ["ddos"]
+    assert items["05_slowloris.pcap"]["expected"]["rule_expected"] == ["slowdos"]
     assert items["06_exfil_ratio.pcap"]["expected"]["rule_expected"] == ["exfil"]
     assert items["02_c2_beacon.pcap"]["expected"]["sidecar"] == \
         "02_c2_beacon_netflow.csv"

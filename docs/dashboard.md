@@ -279,7 +279,7 @@ counters so "zero egress" is measured, not asserted.
 | 0-40 s | benign web mix | none (verified quiet) |
 | 50-62 s | volumetric DDoS flood, ~75 flows/s, 100 srcs → 10.9.9.9 | `ddos` on 10.9.9.9 |
 | 50-62 s | port sweep under cover of the flood, 60 unanswered probes from 10.5.0.7 | `scan` on 10.5.0.7 (same window as the DDoS) |
-| 80-93 s | slow-rate DoS: 40 conversations held past the window, 2:1 dribble → 10.7.7.7 | `ddos` on 10.7.7.7 (detector `slowdos`) |
+| 80-93 s | slow-rate DoS: 40 conversations held past the window, 2:1 dribble → 10.7.7.7 | `slowdos` on 10.7.7.7 (detector `slowdos`) |
 | 80-93 s | bulk exfil, ~19 MB outward from 10.20.0.9 | `exfil` on 10.20.0.9 (same window as the slow DoS) |
 
 Regenerate: `python scripts/generators/make_demo_pcap.py [--out PATH]`.

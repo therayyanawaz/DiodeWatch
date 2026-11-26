@@ -618,9 +618,11 @@ def render(results: dict[str, dict], checks: list[dict], meta: dict) -> str:
              (f"Every corpus file on disk scored at its full row count, with the "
               f"rule layer streamed in {meta['chunk']:,}-flow chunks and the ML "
               f"channel on the first {meta['ml_rows']:,} contiguous flows of each "
-              f"file. Rules never train, though the CIC-IDS2017 thresholds are "
-              f"calibrated on its Wednesday table; every other rule cell is "
-              f"out-of-sample. The ML cells name their own status: in-sample where "
+              f"file. Rules never train, but the CIC-IDS2017 thresholds are "
+              f"calibrated on its Wednesday table, the scan and slow-DoS bounds "
+              f"were checked against its PortScan and slowloris days, and the "
+              f"random-port DDoS branch against CIC-DDoS2019 Syn; every other "
+              f"rule cell is out-of-sample. The ML cells name their own status: in-sample where "
               f"the corpus trained the shipped artifact, out-of-sample where it "
               f"never did. Artifacts: "
               + (", ".join(f"`{k}` {v['sha256'][:12]}"
@@ -714,7 +716,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="CSV rows per streamed chunk")
     ap.add_argument("--ml-rows", type=int, default=200_000,
                     help="contiguous flows per file scored by the ML channel")
-    ap.add_argument("--model-dir", default=str(REPO / "models"))
+    ap.add_argument("--model-dir", default=None,
+                    help="artifact directory (default: repository models/)")
     ap.add_argument("--window", type=int, default=10)
     ap.add_argument("--limit-files", type=int, default=None,
                     help="smoke runs: first N files per family")
@@ -724,6 +727,9 @@ def main(argv: list[str] | None = None) -> int:
                     help="re-render summary.md from an existing max_results.json "
                          "instead of scoring (numbers are never recomputed)")
     args = ap.parse_args(argv)
+    model_dir_supplied = args.model_dir is not None
+    if args.model_dir is None:
+        args.model_dir = str(REPO / "models")
 
     ledger: dict = {}
     if LEDGER.exists():
@@ -748,8 +754,11 @@ def main(argv: list[str] | None = None) -> int:
                 if len(seen) == 1:
                     ml["channel"] = seen.pop()
         meta_prev = dict(blob["meta"])
-        meta_prev["models"] = model_provenance(Path(args.model_dir)) or \
-            meta_prev.get("models", {})
+        if model_dir_supplied:
+            meta_prev["models"] = model_provenance(Path(args.model_dir)) or \
+                meta_prev.get("models", {})
+        else:
+            meta_prev["models"] = meta_prev.get("models", {})
         out_dir = Path(args.out)
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "summary.md").write_text(

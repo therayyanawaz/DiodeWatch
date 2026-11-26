@@ -13,7 +13,7 @@ import pandas as pd
 import pytest
 
 from src.alerts.schema import ATTACK_MAP, Alert, EvidenceItem, validate_alert
-from src.detectors.rules import DEFAULT_RULES, make_rules, run_rules
+from src.detectors.rules import DEFAULT_RULES, arbitrate_alerts, make_rules, run_rules
 from src.detectors.scan import ScanRule
 from src.detectors.window import build_windows
 
@@ -176,6 +176,21 @@ def test_port_sweep_is_not_a_volumetric_ddos():
     assert not alerts, "a multi-port sweep must not be called a DDoS flood"
 
 
+def test_random_port_flood_is_ddos_not_scan():
+    # 6,000 flows over 6,000 ports in one 7.2 s window: a random-port
+    # SYN-style flood. The scan rule caps at 5,000 ports; DDoS must claim it.
+    flood = [rec(i, src=f"10.1.2.{i % 3}", dst="10.9.9.8", sport=20000 + i,
+                 dport=1000 + i, ts=BASE_TS + i * 0.0012, dur=0.0,
+                 fwd_pkts=1, bwd_pkts=0, fwd_bytes=0, bwd_bytes=0,
+                 label="Syn")
+             for i in range(6000)]
+    alerts = run_rules(pd.DataFrame(benign_mix() + flood))
+    assert any(a.threat_class == "ddos" and a.key == "10.9.9.8"
+               for a in alerts), "random-port flood must be DDoS"
+    assert not any(a.threat_class == "scan" for a in alerts), (
+        "a random-port flood is not a port sweep")
+
+
 def test_isolated_rate_spike_does_not_alert():
     # 1,200 flows in one 8.4 s window is 143 flows/s, but the next window is
     # quiet. A busy server spike is not a sustained flood.
@@ -212,6 +227,7 @@ def test_slowdos_fires_on_slowloris_shape_only():
     alerts = [a for a in run_rules(pd.DataFrame(benign_mix() + atk))
               if a.detector == "slowdos" and a.key == "10.7.7.7"]
     assert alerts, "slowloris shape must alert"
+    assert {a.threat_class for a in alerts} == {"slowdos"}
     conds = {e.condition for a in alerts for e in a.evidence}
     assert {"flow_count", "fwd_bwd_pkt_ratio", "mean_fwd_pkt_size",
             "held_connections"} <= conds
@@ -224,6 +240,16 @@ def test_slowdos_fires_on_slowloris_shape_only():
     alerts2 = [a for a in run_rules(pd.DataFrame(benign_mix() + benign_poller))
                if a.detector == "slowdos" and a.key == "10.6.6.6"]
     assert alerts2 == []
+
+    # CIC slowloris dribbles average 100-160 B per forward packet, so the
+    # 80 B demo cap missed them. 140 B is still a header-only request.
+    cic = [rec(i, src="10.3.0.8", dst="10.7.7.8", sport=42000 + i,
+               ts=BASE_TS + i * 0.15, dur=45.0, fwd_pkts=6, bwd_pkts=2,
+               fwd_bytes=840, bwd_bytes=120, label="DoS slowloris")
+           for i in range(120)]
+    alerts3 = [a for a in run_rules(pd.DataFrame(benign_mix() + cic))
+               if a.detector == "slowdos" and a.key == "10.7.7.8"]
+    assert alerts3, "the CIC 140 B slowloris shape must alert"
 
 
 def test_low_rate_flood_needs_real_bytes():
@@ -266,6 +292,18 @@ def test_scan_fires_on_port_sweep_only():
                if a.threat_class == "scan" and a.key == "10.5.0.9"]
     assert alerts2 == []
 
+    # A single-host, high-port sweep whose target answers every probe with RST.
+    # CIC-IDS2017 PortScan has this shape and the no-reply gate missed it.
+    rst_sweep = [rec(i, src="10.5.0.8", dst="10.61.0.1", sport=37000 + i,
+                     dport=1000 + i, ts=BASE_TS + i * 0.05, dur=0.0,
+                     fwd_pkts=1, bwd_pkts=1, fwd_bytes=60, bwd_bytes=60,
+                     rst_flags=1, label=None)
+                 for i in range(120)]
+    alerts3 = [a for a in run_rules(pd.DataFrame(benign_mix() + rst_sweep))
+               if a.threat_class == "scan" and a.key == "10.5.0.8"]
+    assert alerts3, "a reset-closed single-host port sweep must alert"
+    assert any(e.condition == "resp_share" for a in alerts3 for e in a.evidence)
+
 
 def test_exfil_ratio_and_bulk_signatures_fire():
     # ratio signature: 25 sustained upload-heavy flows to an external host
@@ -287,6 +325,34 @@ def test_exfil_ratio_and_bulk_signatures_fire():
     conds9 = {e.condition for e in by_key["10.20.0.9"].evidence}
     assert "upload_ratio" in conds7 and "bulk_upload_bytes" not in conds7
     assert "bulk_upload_bytes" in conds9
+
+
+def test_broad_host_and_port_enumeration_is_not_scan():
+    # 35 hosts x 30 ports is the diagonal benign internal enumerators occupy.
+    # A focused sweep is many ports on <=3 hosts, or many hosts on <=16 ports.
+    broad = [rec(i, src="10.5.0.9", dst=f"10.63.{i % 35}.1",
+                 sport=43000 + i, dport=100 + i % 30,
+                 ts=BASE_TS + i * 0.01, dur=0.0, fwd_pkts=1, bwd_pkts=0,
+                 fwd_bytes=60, bwd_bytes=0, label="BENIGN")
+             for i in range(35 * 30)]
+    raw = ScanRule().evaluate(build_windows(pd.DataFrame(broad)))
+    assert not any(a.key == "10.5.0.9" for a in raw), (
+        "broad host+port enumeration must not be called a scan")
+
+
+def test_slowdos_yields_to_ddos_on_same_victim_window():
+    # A fast flood and a slow-rate claim on the same destination/window are one
+    # incident; the volume alert keeps the stronger class.
+    ts = "2026-11-27T00:00:00"
+    ddos = Alert(timestamp=ts, threat_class="ddos", confidence=1.0,
+                 evidence=[], flow_id="10.9.9.9/*", key="10.9.9.9",
+                 dst_ip="10.9.9.9", window_start=ts)
+    slow = Alert(timestamp=ts, threat_class="slowdos", confidence=1.0,
+                 evidence=[], flow_id="10.9.9.9/*", key="10.9.9.9",
+                 dst_ip="10.9.9.9", window_start=ts)
+    out = arbitrate_alerts(pd.DataFrame(), [slow, ddos], 10)
+    assert [a.threat_class for a in out] == ["ddos"]
+
 
 def test_scan_claim_inside_ddos_flood_is_suppressed():
     # A SYN flood and a port sweep look identical from one source: tiny flows

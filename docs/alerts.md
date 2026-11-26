@@ -16,7 +16,7 @@ consumes. `to_dict()` produces JSON-safe plain types:
 | `alert_id` | stable `uuid5` over the detection payload → re-ingesting the same detection is idempotent |
 | `timestamp` | ISO-8601 UTC (detection time / window end) |
 | `flow_id`, `src_ip`, `dst_ip`, `src_port`, `dst_port`, `proto` | flow 5-tuple; best-effort, flow-level detectors (rules, ML on features) fill it, aggregate/window alerts may leave parts unset |
-| `threat_class` | `ddos` · `scan` · `exfil` · `slowdos`-family · `bot` · `beacon` · `dga` · `dns_tunnel` · `tls_anomaly` · `bruteforce` · `webattack` · `infiltration`, of these, two never reach a live alert: `slowdos` is the eval-only name for what the rule layer reports as `ddos` (`src/detectors/slowdos.py`), and `dns_tunnel` is a severity/ATT&CK mapping kept for a channel no detector ships yet |
+| `threat_class` | `ddos` · `scan` · `exfil` · `slowdos`-family · `bot` · `beacon` · `dga` · `dns_tunnel` · `tls_anomaly` · `bruteforce` · `webattack` · `infiltration`, of these, `dns_tunnel` is a severity/ATT&CK mapping kept for a channel no detector ships yet; `slowdos` is a live rule class (`src/detectors/slowdos.py`), while the pinned ML classifier still folds it into `ddos` until its artifacts are retrained |
 | `severity` | **derived, never hand-set**: base from `SEVERITY_BY_CLASS` (exfil/webattack `critical`, most C2/DoS `high`, scan `medium`); a very confident alert (conf ≥ 0.9) escalates one notch; unknown classes stay `medium` without escalation |
 | `confidence` | 0..1 (rules: fired-conditions fraction; ML: calibrated prediction probability) |
 | `evidence[]` | `{condition, operator, observed, threshold, description, unit}`, observed **vs** threshold, human-auditable |

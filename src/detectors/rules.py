@@ -56,12 +56,27 @@ def arbitrate_alerts(flows: pd.DataFrame, alerts: list[Alert],
     removes double-counting without hiding the flood.
 
     A scan that does not touch a DDoS victim in the same window is untouched,
-    and an empty alert list returns immediately.
+    and an empty alert list returns immediately. A `slowdos` claim that
+    duplicates a `ddos` alert on the same `(window, key)` is also dropped:
+    the fast-volume class owns that incident.
     """
     if not alerts:
         return alerts
+    volume = {
+        (_alert_window_index(a, window_s), str(a.key))
+        for a in alerts
+        if a.threat_class == "ddos" and getattr(a, "key", None)
+        and getattr(a, "window_start", None)
+    }
+    if volume:
+        alerts = [
+            a for a in alerts
+            if not (a.threat_class == "slowdos"
+                    and (_alert_window_index(a, window_s), str(a.key)) in volume)
+        ]
     ddos = [a for a in alerts
-            if a.threat_class == "ddos" and getattr(a, "dst_ip", None)
+            if a.threat_class in ("ddos", "slowdos")
+            and getattr(a, "dst_ip", None)
             and getattr(a, "window_start", None)]
     scans = [(i, a) for i, a in enumerate(alerts)
              if a.threat_class == "scan" and getattr(a, "key", None)

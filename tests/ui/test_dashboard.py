@@ -89,7 +89,7 @@ def test_demo_classes_are_named_not_printed_raw(demo_flows):
     fired = {a.threat_class for a in store.alerts}
     assert fired <= set(CLASS_NAMES), f"unnamed: {sorted(fired - set(CLASS_NAMES))}"
     assert {display_class(c) for c in fired} == {
-        "DDoS", "Recon Scan", "Exfiltration"}
+        "DDoS", "Recon Scan", "Exfiltration", "Slow DoS"}
 
 
 def test_demo_pcap_threats_overlap_like_real_captures(demo_flows):

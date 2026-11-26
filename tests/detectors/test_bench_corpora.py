@@ -8,6 +8,7 @@ and the streamed driver reproducing bench_transfer.evaluate_corpus exactly.
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -161,6 +162,23 @@ def test_attribution_matches_bench_rule_predictions():
     assert [a.key for a in alerts] == [a["key"] for a in ref_alerts]
     assert list(mine) == list(ref)
     assert any(p != "benign" for p in mine)
+
+def test_from_json_preserves_archived_artifact_provenance(tmp_path):
+    """A re-render must not swap the archived model digests for whatever is in
+    the local models/ directory; only an explicit --model-dir may replace them."""
+    src = tmp_path / "old.json"
+    src.write_text(json.dumps({
+        "meta": {"chunk": 250_000, "ml_rows": 200_000,
+                 "models": {"keep.joblib": {"sha256": "a" * 64}}},
+        "families": {}, "files": {}, "checks": [],
+    }), encoding="utf-8")
+    out = tmp_path / "out"
+    rc = bc.main(["--only", "cic-ids2017", "--from-json", str(src),
+                  "--out", str(out)])
+    assert rc == 0
+    summary = (out / "summary.md").read_text(encoding="utf-8")
+    assert "`keep.joblib` aaaaaaaaaaaa" in summary
+
 
 # --------------------------------------------------- structural padding rows
 def test_blank_mask_flags_only_all_null_rows():

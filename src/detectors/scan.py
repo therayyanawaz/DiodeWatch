@@ -1,4 +1,4 @@
-"""Port-scan / reconnaissance detector.Fires per (window, src_ip). One source touching many distinct destination
+"""Port-scan / reconnaissance detector. Fires per (window, src_ip). One source touching many distinct destination
 ports or many distinct hosts within a window is the classic scan signature;
 on the CIC slice, benign high-cardinality sources exist (proxies, monitors,
 load balancers), so cardinality alone is noisy (66 benign windows > 30 ports).
@@ -8,10 +8,19 @@ The rule therefore requires the recon SHAPE as well:
                             ports is a server answering clients, the
                             observed 'ports' are client-side ephemeral ports)
   min flows from the source          (>= 8, excludes one-shot stragglers)
-  cardinality                        ports >= 30 OR hosts >= 30
+  cardinality                        ports <= 5000 AND (
+                                       (ports >= 30 AND hosts <= 3) OR
+                                       (hosts >= 30 AND ports <= 16))
+                                     46k ports in one window is a SYN flood
+                                     with random destinations, not a sweep
   low bytes per flow                 <= 600 B total per flow (probes, not sessions)
-  incomplete responses               resp_share <= 0.5 (at least half the
+  a response shape, either:
+    incomplete responses             resp_share <= 0.5 (at least half the
                                      probes never got a single reply packet)
+    reset-closed sweep               ports >= 100 on <= 2 hosts AND
+                                     resp_share >= 0.9 (the target answers every
+                                     probe with RST, so "no reply" is false for
+                                     this scanner style)
 
 Calibration re-derived 2026-08-30 from the pinned CIC-IDS2017 Wednesday table
 (39,213 benign source windows); reproduce with
@@ -23,10 +32,16 @@ Calibration re-derived 2026-08-30 from the pinned CIC-IDS2017 Wednesday table
   benign resp_share p50 = 0.965, so the <= 0.5 gate keeps 9 of the 66
   all four conditions together leave 3 benign windows passing
 
-HONEST STATE: the conjunction is NOT zero on this corpus, it yields 3 benign
+HONEST STATE: the probe branch is NOT zero on this corpus, it yields 3 benign
 alerts. An earlier revision claimed "median > 1 kB/flow" and "yields zero
 benign false positives"; neither reproduced. The overall benign
-bytes-per-flow median is 12 B, far below the > 1 kB quoted."""
+bytes-per-flow median is 12 B, far below the > 1 kB quoted.
+
+The reset-closed branch was added 2026-11-26 after the CIC-IDS2017 PortScan
+file exposed 11 scan-labelled windows that every probe got a reply to. It
+fires those 11 windows and one Thursday BENIGN window (973 flows, 956 ports,
+2 hosts); no Wednesday window passes. That one benign alert is accepted and
+reported rather than papered over."""
 
 from __future__ import annotations
 
@@ -38,9 +53,15 @@ from .window import WindowFrames
 MIN_FLOWS = 8
 MIN_PORTS = 30
 MIN_HOSTS = 30
+MAX_SCAN_PORTS = 5000
+MAX_PORT_SCAN_HOSTS = 3
+MAX_HOST_SWEEP_PORTS = 16
 MAX_BYTES_PER_FLOW = 600.0
 MAX_RESP_SHARE = 0.5
 MAX_SERVER_SHARE = 0.2
+MIN_RESET_PORTS = 100
+MAX_RESET_HOSTS = 2
+MIN_RESET_RESP_SHARE = 0.9
 
 
 class ScanRule(Rule):
@@ -53,9 +74,18 @@ class ScanRule(Rule):
         min_flows = int(self.get("min_flows", MIN_FLOWS))
         min_ports = int(self.get("min_ports", MIN_PORTS))
         min_hosts = int(self.get("min_hosts", MIN_HOSTS))
+        max_host_ports = int(self.get("max_host_sweep_ports",
+                                      MAX_HOST_SWEEP_PORTS))
+        max_scan_hosts = int(self.get("max_port_scan_hosts",
+                                      MAX_PORT_SCAN_HOSTS))
+        max_scan_ports = int(self.get("max_scan_ports", MAX_SCAN_PORTS))
         max_bpf = float(self.get("max_bytes_per_flow", MAX_BYTES_PER_FLOW))
         max_resp = float(self.get("max_resp_share", MAX_RESP_SHARE))
         max_srv = float(self.get("max_server_share", MAX_SERVER_SHARE))
+        min_reset_ports = int(self.get("min_reset_ports", MIN_RESET_PORTS))
+        max_reset_hosts = int(self.get("max_reset_hosts", MAX_RESET_HOSTS))
+        min_reset_resp = float(self.get("min_reset_resp_share",
+                                        MIN_RESET_RESP_SHARE))
 
         alerts: list[Alert] = []
         for tup in wf.src.itertuples():
@@ -70,11 +100,27 @@ class ScanRule(Rule):
             srv = tup.server_share
 
             c_srv = srv <= max_srv
-            c_card = (ports >= min_ports) or (hosts >= min_hosts)
+            c_card = ports <= max_scan_ports and (
+                (ports >= min_ports and hosts <= max_scan_hosts)
+                or (hosts >= min_hosts and ports <= max_host_ports))
             c_bpf = bpf <= max_bpf
-            c_resp = resp <= max_resp
+            c_reset = (ports >= min_reset_ports
+                       and hosts <= max_reset_hosts
+                       and resp >= min_reset_resp)
+            c_resp = (resp <= max_resp) or c_reset
             if not (c_srv and c_card and c_bpf and c_resp):
                 continue
+            if resp <= max_resp:
+                response_ev = ev(
+                    "resp_share", "<=", _fmt(resp, 2), max_resp,
+                    f"only {_fmt(resp * 100, 0)}% of flows received any response "
+                    f"(incomplete handshakes)", unit="fraction")
+            else:
+                response_ev = ev(
+                    "resp_share", ">=", _fmt(resp, 2), min_reset_resp,
+                    f"{_fmt(resp * 100, 0)}% of flows received a reply across "
+                    f"{ports} ports on {hosts} host(s) "
+                    f"(reset-closed single-host sweep)", unit="fraction")
             conditions: list[tuple[bool, object]] = [
                 (bool(srv <= max_srv), ev(
                     "server_share", "<=", _fmt(srv, 2), max_srv,
@@ -85,17 +131,16 @@ class ScanRule(Rule):
                 (c_card, ev(
                     "cardinality", ">=",
                     f"ports={ports}/hosts={hosts}",
-                    f"ports={min_ports}/hosts={min_hosts}",
+                    f"<={max_scan_ports} ports and (ports={min_ports} on "
+                    f"<={max_scan_hosts} hosts, or hosts={min_hosts} on "
+                    f"<={max_host_ports} ports)",
                     f"{ports} distinct dst ports, {hosts} distinct dst hosts "
                     f"from {src_ip} in one window", unit="count")),
                 (bool(bpf <= max_bpf), ev(
                     "bytes_per_flow", "<=", _fmt(bpf), max_bpf,
                     f"{_fmt(bpf)} total bytes per flow (probe-sized, no payloads)",
                     unit="bytes")),
-                (bool(resp <= max_resp), ev(
-                    "resp_share", "<=", _fmt(resp, 2), max_resp,
-                    f"only {_fmt(resp * 100, 0)}% of flows received any response "
-                    f"(incomplete handshakes)", unit="fraction")),
+                (bool(c_resp), response_ev),
             ]
             fired = self.decide(conditions)
             if not fired:

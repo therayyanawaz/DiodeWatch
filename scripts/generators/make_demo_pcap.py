@@ -117,7 +117,7 @@ def slowdos_packets(t_start: float) -> list:
     """Slow-rate DoS: 40 long-held conversations, tiny dribbled requests.
 
     The rule needs, per (10 s window, dst): flows >= 30, fwd/bwd pkt ratio
-    >= 2, mean fwd packet <= 80 B, and >= 5 flows still open past the window
+    >= 2, mean fwd packet 10-160 B, and >= 5 flows still open past the window
     (duration > 10 s). 40 conversations open at t_start and receive a
     header-only dribble every 0.3 s for 13.2 s; the server answers every
     second dribble with a small reply (ratio 2:1, starvation shape).

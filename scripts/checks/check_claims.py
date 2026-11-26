@@ -21,7 +21,7 @@ Streamlit UI):
    layer that produced it and state that corpus's own benign-window reality.
    Those two numbers are what keep a per-flow ML precision figure from
    reading as a system-wide FPR: the rule layer emits 15 alerts on
-   benign-labelled windows of the Wednesday table, and 120 on the full
+   benign-labelled windows of the Wednesday table, and 122 on the full
    CIC-IDS2017 register (``docs/rules.md``).
 4. **Suite-size contract**, any documented "N collected" / "N passed" must
    equal what ``pytest --collect-only`` actually collects here. A hand-kept
@@ -147,10 +147,10 @@ LAYER_QUALIFIER = re.compile(
     r"rule engine|window ensemble|flow[- ]level model|supervised reference)\b",
     re.IGNORECASE)
 # "15 ... benign" or "benign ... 15" in the same file: the rule layer's own
-# count on the Wednesday table (120 on the full CIC2017 register), so the ML
+# count on the Wednesday table (122 on the full CIC2017 register), so the ML
 # number cannot stand in for the whole system.
-BENIGN_WINDOW_COUNT = re.compile(r"\b(?:15|120)\b.{0,80}\bbenign"
-                                 r"|\bbenign.{0,80}\b(?:15|120)\b",
+BENIGN_WINDOW_COUNT = re.compile(r"\b(?:15|122)\b.{0,80}\bbenign"
+                                 r"|\bbenign.{0,80}\b(?:15|122)\b",
                                  re.IGNORECASE)
 
 APPROX = re.compile(r"[~≈]")
@@ -385,7 +385,7 @@ def check_scope(texts: list[tuple[str, str]]) -> list[dict]:
                 "detail": f"{rel} quotes a benign-flow denominator without "
                           "the rule layer's 15 Wednesday alerts on "
                           "benign-labelled windows, or the full CIC2017 "
-                          "count of 120 (docs/rules.md)"})
+                          "count of 122 (docs/rules.md)"})
     return findings
 
 

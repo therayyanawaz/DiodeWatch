@@ -361,7 +361,7 @@ one of two firing modes:
 | Rule | Mode | Conditions | Thresholds |
 |---|---|---|---|
 | **DDoS** (`ddos`) | any | volumetric flood; distributed fan-in; SYN flood | ≥ 50 flows/s to one dst, **or** ≥ 2 MB/s upload with ≥ 3 sources; ≥ 50 distinct sources **and** `src_conc` ≤ 0.3 (many hosts, each sending several flows); SYN share ≥ 0.8 **and** ≥ 50 half-open SYNs |
-| **Slow-rate DoS** (`slowdos`) | all | sustained tiny held connections | ≥ 30 flows, forward/backward packet ratio ≥ 2, mean forward packet ≤ 80 B, ≥ 5 connections held past the window |
+| **Slow-rate DoS** (`slowdos`) | all | sustained tiny held connections | ≥ 30 flows, forward/backward packet ratio ≥ 2, mean forward packet 10-160 B, ≥ 5 connections held past the window |
 | **Scan** (`scan`) | all | reconnaissance shape | server share ≤ 0.2, ≥ 8 flows, ≥ 30 ports **or** ≥ 30 hosts, ≤ 600 B/flow, response share ≤ 0.5 |
 | **Exfiltration** (`exfil`) | any | asymmetric or bulk upload | direction gate: ≥ 50% of flows leave the network. Then either upload ratio ≥ 10:1 over ≥ 20 flows with ≥ 10 kB, **or** ≥ 5 MB uploaded in one window |
 
@@ -899,7 +899,7 @@ them together shows the derived fields doing their jobs rather than being decora
 | ddos | `ddos` | 10.9.9.9 | 1 of 3 (SYN flood, 200 unacked) | 0.3333 | high (base, no escalation) |
 | ddos | `ddos` | 10.9.9.9 | 2 of 3 (70 flows/s + 700 unacked) | 0.6667 | high (base, no escalation) |
 | scan | `scan` | 10.5.0.7 | 4 of 4 (40 ports, 54 B/flow, 0% replies) | 1.0 | medium **escalated to high** at conf ≥ 0.9 |
-| ddos | `slowdos` | 10.7.7.7 | 4 of 4 (40 held conns, 74 B mean pkt) | 1.0 | high **escalated to critical** |
+| slowdos | `slowdos` | 10.7.7.7 | 5 of 5 (40 held conns, 74 B mean pkt) | 1.0 | high **escalated to critical** |
 | exfil | `exfil` | 10.20.0.9 | 1 of 2 (19.2 MB bulk upload) | 0.5 | critical (base) |
 | exfil | `exfil` | 10.20.0.7 | 1 of 2 (28.1:1 upload ratio) | 0.5 | critical (base) |
 

@@ -12,7 +12,7 @@ generated outputs, **no metric was hand-edited.**
 | `runs/supervised_metrics.json` | `results/ml/supervised_metrics.json` (retrained reference model) |
 | `models/beacon_lgbm.joblib` | `models/beacon_lgbm.joblib`, pinned copy used by CI so the sidecar tests exercise the real trained model, not a fallback |
 | `models/dga_lgbm.joblib` | `models/dga_lgbm.joblib`, same for the DGA channel |
-| `runs/max_scale.md` / `.json` | `results/transfer/max/summary.md` / `max_results.json` from `scripts/benchmarks/bench_corpora.py --out results/transfer/max`, regenerated and committed 2026-11-26 |
+| `runs/max_scale.md` / `.json` | `results/transfer/max/summary.md` / `max_results.json` from `scripts/benchmarks/bench_corpora.py --out results/transfer/max`, regenerated and committed 2026-11-27 |
 
 Corpora naming: `ddos2019` = CIC-DDoS2019 Syn day · `hoic` / `bot` /
 `bruteforce` / `infil` = the four CSE-CIC-IDS2018 attack days.
@@ -80,11 +80,11 @@ retrained pass. Both are kept so the gap between them stays visible.
 | [`infil_retrained.md`](runs/infil_retrained.md) | infil (retrained) |
 | [`infil_zeroshot_2017models.md`](runs/infil_zeroshot_2017models.md) | infil (zero-shot, 2017 models) |
 
-## The full-corpus pass (2026-11-26)
+## The full-corpus pass (2026-11-27)
 
 [`max_scale.md`](runs/max_scale.md) is a different kind of record: not a phase,
 but every pinned file of all five corpora scored at its full row count, 50 files
-and 109,643,423 flows in 589.6 seconds. The rule layer streams each file in
+and 109,643,423 flows in 1,020.4 seconds. The rule layer streams each file in
 250,000-flow chunks; the ML channel scores the first 200,000 contiguous flows of
 each file, because the window model needs a feature frame. Each family line says
 whether that corpus trained the artifact, so the ML column cannot be read as
@@ -97,9 +97,9 @@ only in-sample ML family here and why the retrained records cannot be reproduced
 from this checkout.
 
 Gate outcome, pre-committed and unmoved: **four PASS**. On CIC-IDS2017 the
-rule layer reaches DDoS F1 0.964664 and benign FPR 27,537/2,273,108 =
-0.01211425. On CIC-DDoS2019 it reaches F1 0.981516 and FPR 774/113,828 =
-0.00679973. The CIC-IDS2017 F1 is 0.0147 above its gate and its FPR is 0.0079
+rule layer reaches DDoS F1 0.962815 and benign FPR 28,671/2,273,108 =
+0.01261313. On CIC-DDoS2019 it reaches F1 0.996426 and FPR 774/113,828 =
+0.00679973. The CIC-IDS2017 F1 is 0.0128 above its gate and its FPR is 0.0074
 below its ceiling; this is a pass, not a wide margin.
 
 The gain came from several changes, tested in staged runs, not one trick: a
@@ -108,20 +108,21 @@ destination-port gate on the volume branch, scan arbitration against a DDoS
 victim, and slow-DoS corroboration. The older 0.845 FPR was mostly a
 window-attribution artefact; after attribution the rate branch still produced
 0.1496, dominated by the `192.168.10.3` benign burst and other volume claims.
-Those false alerts are now 120 benign-only out of 164, not zero.
+Those false alerts are now 122 benign-only out of 192, not zero.
 
-Alert-level scoring still shows the weak side. On CIC-IDS2017, 164 alerts are
-all scorable: exact precision is 44/164 = 0.268293, any-attack precision is
-also 44/164, and 120 alerts contain no attack truth. DDoS incident recall is
-42/51; scan is 0/222 and slow-DoS is 0/46. On CIC-DDoS2019, 1,159 alerts give
-exact precision 1,126/1,159 = 0.971527, any-attack precision 1,147/1,159 =
-0.989646, and only 12 are benign-only. DDoS incident recall is 1,126/9,927 =
-0.1134 even though flow recall is 0.966917: one scoped alert cannot cover every
+Alert-level scoring still shows the weak side. On CIC-IDS2017, 192 alerts are
+all scorable: exact precision is 70/192 = 0.364583, any-attack precision is
+also 70/192, and 122 alerts contain no attack truth. DDoS incident recall is
+41/51; scan is 11/222 and slow-DoS is 18/46. On CIC-DDoS2019, 1,195 alerts give
+exact precision 1,175/1,195 = 0.983264, any-attack precision 1,183/1,195 =
+0.989958, and only 12 are benign-only. DDoS incident recall is 1,175/9,927 =
+0.1184 even though flow recall is 0.99788: one scoped alert cannot cover every
 small victim window in a long capture. Volume recall and incident recall answer
 different questions, and the artifact prints both.
 
 The corrected CIC-DDoS2019 benign denominator is 113,828, not 480,289,
 because 366,461 `UDP-lag` flows are slow-DoS truth. Its FPR gate passes on
-that smaller denominator, and the slow-DoS class has no detector output, so
-its flow and incident recall are both zero. This is a narrow rule-layer pass,
-not a cross-corpus victory, and the ML column is unchanged by these rules.
+that smaller denominator. The slow-DoS rule finds 18/46 CIC-IDS2017 units but
+0/448 here, because UDPLag is a low-rate flood without the held-connection
+shape. This is a narrow rule-layer pass, not a cross-corpus victory, and the
+ML column is unchanged by these rules.

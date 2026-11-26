@@ -289,7 +289,7 @@ def slowloris_packets() -> list:
 
     40 conversations from one client hold past the 10 s window with tiny
     header-only dribbles (fwd/bwd 2:1, starved-server shape), the exact
-    shape the slowdos rule (flows>=30, ratio>=2, mean fwd<=80 B, held>=5)
+    shape the slowdos rule (flows>=30, ratio>=2, mean fwd 10-160 B, held>=5)
     fires on. Same construction as the combined demo capture. A live
     benign background runs underneath; it never touches the victim.
     """
@@ -457,9 +457,9 @@ def main(argv: list[str] | None = None) -> int:
          [" 0- 8 s  benign web mix",
           " 8-21 s  slow-rate DoS 10.3.0.7 -> 10.7.7.7:80 (40 held dribbles)",
           "21-25 s  benign tail"],
-         {"detector": "rules.slowdos", "threat_class": "ddos",
+         {"detector": "rules.slowdos", "threat_class": "slowdos",
           "key": "10.7.7.7",
-          "rule_expected": ["ddos"], "sidecar": None})
+          "rule_expected": ["slowdos"], "sidecar": None})
 
     # 6 - asymmetric-upload exfil (ratio branch, under the bulk threshold)
     emit("06_exfil_ratio.pcap", ratio_exfil_packets(),

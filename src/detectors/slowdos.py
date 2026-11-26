@@ -11,8 +11,18 @@ Fires per (window, dst_ip) when the shape matches AND connections are held:
 
   flows >= 30            (coordinated pressure, not one chatty client)
   pkts_ratio >= 2        (fwd packets >> bwd; server gets no chance to talk)
-  mean_fwd_pkt <= 80 B   (tiny requests: headers-only / partial-header dribble)
+  mean_fwd_pkt >= 10 B   (a real request has a header; 3 B ACK-only windows
+                          are noise, not slowloris)
+  mean_fwd_pkt <= 160 B  (small requests: headers-only / partial-header dribble)
   held_conns >= 5        (connections still open after the window ends)
+
+The 160 B cap is the CIC-IDS2017 slowloris range, not the 80 B used by the
+synthetic demo. On the Wednesday file 25 of 41 slow-labelled destination
+windows pass the rate, ratio, and 160 B cap; at 80 B only 5 do, which is why
+the stricter value missed the corpus. The 10 B floor rejects 14 Thursday
+benign windows of about 2,000 flows each whose mean forward packet is
+2.7-3.5 B; those are ACK-only bursts, not requests. CIC slowloris is 49-160 B and the demo is 15 B,
+so both clear the floor.
 """
 from __future__ import annotations
 
@@ -23,19 +33,21 @@ from .window import WindowFrames
 
 MIN_FLOWS = 30
 PKT_RATIO = 2.0
-MAX_MEAN_FWD_PKT = 80.0
+MIN_MEAN_FWD_PKT = 10.0
+MAX_MEAN_FWD_PKT = 160.0
 MIN_HELD_CONNS = 5
 
 
 class SlowDoSRule(Rule):
     name = "slowdos"
-    threat_class = "ddos"
+    threat_class = "slowdos"
     mode = "all"
     description = "slow-rate asymmetric DoS: many tiny, long-held connections to one dst"
 
     def evaluate(self, wf: WindowFrames) -> list[Alert]:
         min_flows = int(self.get("min_flows", MIN_FLOWS))
         pkt_ratio_th = float(self.get("pkt_ratio", PKT_RATIO))
+        min_pkt = float(self.get("min_mean_fwd_pkt", MIN_MEAN_FWD_PKT))
         max_pkt = float(self.get("max_mean_fwd_pkt", MAX_MEAN_FWD_PKT))
         min_held = float(self.get("min_held_conns", MIN_HELD_CONNS))
 
@@ -48,7 +60,7 @@ class SlowDoSRule(Rule):
             pr = tup.pkts_ratio
             c2 = pr >= pkt_ratio_th
             mfp = tup.mean_fwd_pkt
-            c3 = mfp <= max_pkt
+            c3 = min_pkt <= mfp <= max_pkt
             held = float(tup.held_conns)
             c4 = held >= min_held
             if not (c1 and c2 and c3 and c4):
@@ -64,6 +76,11 @@ class SlowDoSRule(Rule):
                     f"fwd/bwd packets {_fmt(pr, 2)} "
                     f"(fwd {int(tup.fwd_pkts)}, bwd {int(tup.bwd_pkts)})",
                     unit="ratio")),
+                (bool(min_pkt <= mfp), ev(
+                    "mean_fwd_pkt_floor", ">=",
+                    _fmt(mfp), min_pkt,
+                    f"mean fwd packet {_fmt(mfp)} B carries a real header "
+                    f"(ACK-only 3 B bursts are not slowloris)", unit="bytes")),
                 (bool(mfp <= max_pkt), ev(
                     "mean_fwd_pkt_size", "<=",
                     _fmt(mfp), max_pkt,
