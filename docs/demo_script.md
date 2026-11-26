@@ -60,15 +60,15 @@ the HTML incident report (`python -m src.alerts.cli report ...`, docs/alerts.md)
 
 Switch to 📈 Metrics.
 
-> "Accuracy claims are out-of-sample only. The production flow+window
-> ensemble detects DDoS and scans at F1 1.0 on held-up corpus days; the C2
-> beacon model scores ROC-AUC 0.92 on botnets it has never seen
-> (leave-one-scenario-out); the DGA model sits at 0.90 precision with a
-> 0.11 false-positive rate on a million benign domains it never trained on.
-> The false-positive table at the bottom: **zero** alerts on 100,000
-> benign flows. The honest caveat is on screen too, the reference
-> flow-level model plateaus at macro-F1 0.3, which is exactly why the
-> window-context ensemble is the production detector."
+> "Accuracy claims are from the full-corpus pass, not a curated slice. The
+> pre-committed rule gates split: CIC-DDoS2019 F1 0.958 with benign FPR
+> 0.0069 passes; CIC-IDS2017 F1 0.611 with FPR 0.1496 fails. At alert level
+> the same layer is exact on 0.919 of DDoS2019 alerts but catches only 0.122
+> of DDoS incidents; on CIC2017 exact precision is 0.084 and 523 of 594
+> alerts are benign-only. The C2 beacon model scores ROC-AUC 0.92 on botnets
+> it has never seen; the DGA model sits at 0.90 precision with a 0.11
+> false-positive rate on a million benign domains. The failures are on the
+> page beside the passes."
 
 ## 4. Diode Proof, the zero that must stay zero (45 s)
 
@@ -91,7 +91,8 @@ Switch to 🔒 Diode Proof.
 > infected host at 0.98 confidence and the alert lands in the feed exactly
 > when that C2 contact replays. Then *03 · DNS tunnel / DGA*: watch 46
 > alerts stream in timed to each tunneled DNS query, click one and its
-> lexical evidence is right there. Zero misses on benign names. Two more
+> lexical evidence is right there; the pack's benign names were not flagged.
+> Two more
 > rule stories round out the coverage: *05 · Slow-rate DoS* (40 held
 > dribbles, no volumetric footprint) and *06 · Ratio exfiltration* (28:1
 > asymmetric upload under the bulk bar). The same

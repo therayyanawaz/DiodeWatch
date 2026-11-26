@@ -59,9 +59,16 @@ each claim:
   a row for a run that never happened.
 * **Full-scale evaluation.** All 50 pinned files of five corpora, 109,643,423
   flows, scored in one pass and published in
-  [`evaluation/runs/max_scale.md`](evaluation/runs/max_scale.md). One of the four
-  pre-committed gate checks passes; the three failures stay on the page.
-* **The suite** collects 493 tests. Three of them need corpora this repository
+  [`evaluation/runs/max_scale.md`](evaluation/runs/max_scale.md). Two of the four
+  pre-committed gate checks pass; both CIC-IDS2017 failures stay on the page.
+* **Window-scoped attribution and alert-level scoring.** A rule alert now labels
+  only its own entity inside its own 10-second window, and every rules cell
+  reports exact precision, any-attack precision and incident recall `(window,
+  entity, class)`. The full pass gives CIC-DDoS2019 exact precision 0.919 but
+  incident recall 0.122, and CIC-IDS2017 exact precision 0.084 with 523 of 594
+  alerts benign-only. The old 0.845 and 0.797 flow FPRs were attribution and
+  label artifacts; they are withdrawn.
+* **The suite** collects 498 tests. Three of them need corpora this repository
   deliberately never commits, so they skip locally and run in
   `.github/workflows/integration.yml`, which fails if they skip there.
 
@@ -72,8 +79,7 @@ have, not a decision we have not made.
 
 | Item | Why it matters | State |
 |---|---|---|
-| Alert-level evaluation, then rule precision: per-destination baselines, source-IP entropy, dedup | the published 0.845 flow FPR labels every flow of an alerted entity, so it scores the attribution rule, not the detector; 53 alerts in a 4-hour benign capture is 13.3/h against a 2/h target | **next** |
-| Claim reconciliation: `judge-brief`, `README`, `readiness` | three judge-facing pages still quote the five-file run and its 1.0 rule F1 | **next** |
+| Rule precision on benign windows: per-destination baselines, source-IP entropy, dedup | alert-level scoring shows the gap directly: CIC-IDS2017 exact precision is 0.084 with 523 of 594 alerts benign-only, and CIC-DDoS2019 DDoS incident recall is 0.122 | **next** |
 | Pin the two retrained channel artifacts, or delete the rows that depend on them | an unpinned artifact cannot be re-scored | **next** |
 | Flow-record ingest: Argus CSV, nfdump CSV, goflow2 JSON | the PS accepts NetFlow/IPFIX/sFlow and CTU-13, 19,976,700 flows, is unscored for rules and flow context | **next** |
 | JA4 and JA4S over TLS, QUIC observable metadata | PS clause (d) names JA4; only JA3 is shipped and QUIC has no reader | **next** |

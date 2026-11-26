@@ -1,5 +1,11 @@
 # Transfer evaluation, zero-shot cross-corpus summary
 
+> **Archived result, superseded 2026-11-26.** This run used whole-file
+> entity attribution, so a single alert painted every flow of that entity for
+> the capture and the flow F1 overstated incident coverage. The 392-flow benign
+> denominator is also not the full-corpus denominator. Kept as history; quote
+> [`max_scale.md`](max_scale.md) for current figures.
+
 Zero-shot protocol: models loaded from `models/`; target labels used **only** for scoring. Rules = window-layer alone; ML = gated ensemble (fail-closed).
 
 ## cic-ddos2019, 1,582,681 flows

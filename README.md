@@ -47,9 +47,9 @@ DiodeWatch is built for that constraint from the ground up:
 - **Honest evaluation.** Out-of-sample metrics, pre-committed acceptance
   gates, a per-corpus drift report (PSI), and an automated claim guardrail
   that fails CI if judge-facing docs ever over-claim. Validated across
-  **13 corpus days, 3 datasets and 3 years**, plus cross-lab holdouts for
-  the other channels (CTU-13 from CVUT for beaconing, Cisco Umbrella top-1M
-  as an unseen benign set).
+  **five public corpora, 50 files and 109,643,423 flows** from 2017-2019,
+  plus cross-lab holdouts for the other channels (CTU-13 from CVUT for
+  beaconing, Cisco Umbrella top-1M as an unseen benign set).
 
 | # | Threat class | Primary one-way signals | ATT&CK |
 |---|---|---|---|
@@ -101,11 +101,11 @@ Measured, not promised, every number traces to `results/` or `docs/benchmarks.md
 | Metric | Target | Measured |
 |---|---|---|
 | Sustained throughput | ≥ 5,000 flows/sec | **10,000 flows/s** on 4 cores / 8 GB (2× target) |
-| Rule DDoS detection, cross-corpus | F1 ≥ 0.95 on every corpus | **F1 = 1.0, 0 of 392 benign-labelled windows alerted**: zero-shot on the never-trained CIC-DDoS2019 Syn day (1.58M flows, a different year and capture than the training data). That day is almost all attack traffic, so the benign denominator there is small, the same rule layer on 440k benign windows is the row below |
-| False-positive rate | ≤ 2 alerts/hour | ML engine, full-day flow-context evaluation: **1 FP among 440,031 benign flows** of the pinned CIC-IDS2017 Wednesday corpus (precision 0.999996) and 5 FP across 2.03M benign flows on the 2018/2019 corpora. The rule layer is measured separately: on that same Wednesday corpus it emits 128 alerts, **91 on benign-labelled windows**, carried openly in [rules.md](docs/rules.md#acceptance-reality) |
+| Rule DDoS detection, full corpus | pre-committed F1 ≥ 0.95 | **PASS on CIC-DDoS2019: F1 0.958, FPR 0.0069. FAIL on CIC-IDS2017: F1 0.611, FPR 0.1496.** Alert-level scoring: DDoS2019 exact precision 0.919 but incident recall 0.122; CIC2017 exact precision 0.084 with 523 of 594 alerts benign-only. Both failures and the volume-versus-incident gap stay in [`max_scale.md`](docs/evaluation/runs/max_scale.md) |
+| Benign false positives | pre-committed flow FPR ≤ 0.02 | **PASS 788/113,828 = 0.0069 on CIC-DDoS2019; FAIL 340,169/2,273,108 = 0.1496 on CIC-IDS2017.** The rule layer is not clean on a mixed capture. The ML flow-context channel is a different claim: 1 FP among 440,031 benign CIC-IDS2017 Wednesday flows, but it also reports recall 0.0 on unseen corpora. On that same Wednesday corpus the rule layer emits 128 alerts, 91 on benign-labelled windows ([rules.md](docs/rules.md#acceptance-reality)); the full-corpus alert counts are in [`max_scale.md`](docs/evaluation/runs/max_scale.md) |
 | Detection latency | DDoS within 10 s | Detected within its **first 10-second window**; batch-amortized per-flow cost 0.03-0.07 ms |
-| Outbound bytes to monitored side | 0 | **0** across a 30-minute replay + idle run under enforcement |
-| Validation breadth | - | **13 corpus days / 3 datasets / 3 years** (CIC-IDS2017 ×8, CSE-CIC-IDS2018 ×4, CIC-DDoS2019 ×1, all from the UNB Canadian Institute for Cybersecurity family, so years and captures differ but the lab does not; cross-lab evidence for the other channels is CTU-13 and Umbrella). Full transfer summary in [`docs/evaluation/transfer.md`](docs/evaluation/transfer.md) |
+| Outbound bytes to monitored side | 0 under enforcement | **0 on the enforced Linux path** across a 30-minute replay + idle run. Windows has no kernel egress-enforcement path, so the wall must show monitor-only there, not a fabricated zero |
+| Validation breadth | - | **5 public corpora / 50 files / 109,643,423 flows (2017-2019).** Rules are evaluable on the two identity-bearing CIC corpora (CIC-IDS2017 and CIC-DDoS2019); CSE-CIC-IDS2018 and UNSW-NB15 have no identity columns, and CTU-13 is NetFlow with neither flow channel. Full transfer summary in [`docs/evaluation/transfer.md`](docs/evaluation/transfer.md) |
 
 **What we deliberately don't claim:** the ML flow-context channel reports
 recall 0.0 on the corpora it wasn't trained for, and publishes PSI drift as

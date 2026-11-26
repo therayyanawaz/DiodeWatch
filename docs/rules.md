@@ -45,6 +45,13 @@ benign-labelled windows** (ddos 79, exfil 9, scan 3).
 | worst single contributor | `192.168.10.3`, 74 ddos alerts via `volumetric_rate` |
 | benign dst windows / src windows | 57,134 / 39,213 |
 
+The full-corpus pass now scores the same alert stream at alert level: on
+CIC-IDS2017, 594 alerts, 50 exact (precision 0.084) and 523 benign-only; on
+CIC-DDoS2019, 1,424 alerts, exact precision 0.919 but DDoS incident recall
+0.122. The Wednesday table above is the single-day calibration record that
+explains the CIC-IDS2017 false-positive mechanism; it is not a cross-corpus
+precision claim.
+
 Earlier revisions of this document reported "29 alerts, all on DoS-labelled
 windows, 0 on benign-labelled windows" over the 200k-flow stratified slice
 (`data/slices/flows.ndjson`). That slice is git-ignored runtime output, but it

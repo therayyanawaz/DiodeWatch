@@ -93,6 +93,16 @@ All notable changes to DiodeWatch are documented here.
   silently dropped or mislabelled most of the rows.
 
 ### Fixed
+- Rule evaluation no longer paints every flow of an alerted entity for a whole
+  capture. An alert labels only flows on its own entity inside its own 10-second
+  window, unmapped truth is excluded instead of entering the benign denominator,
+  and every rules cell reports exact and any-attack alert precision plus
+  incident recall over `(window, entity, class)`. The corpus spellings for
+  `DDoS attacks-LOIC-HTTP` and `UDP-lag` are mapped, so those attack flows are
+  no longer counted on the benign side.
+- The full-corpus record is republished with the corrected denominators: two
+  pre-committed gates pass and two fail, and the old 1.0 / 0-of-392 and 0.797
+  flow FPR figures are withdrawn.
 - The wall's live socket (`/ws/live`) was not covered by `DIODE_WALL_TOKEN`: a
   WebSocket handshake is not an HTTP request, so the middleware that guarded
   `/api` never saw it and the whole alert stream stayed open. The handshake is
