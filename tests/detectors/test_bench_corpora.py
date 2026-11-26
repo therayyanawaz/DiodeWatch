@@ -85,10 +85,11 @@ def test_unsw_truth_uses_attack_cat_and_keeps_unmapped_off_benign():
 
 def test_mapped_unmapped_vs_absent_label_are_different_events():
     """A map value 'unmapped' means known-but-unscorable; an absent key means
-    the corpus has a label the register has never seen (reported)."""
+    the corpus has a label the register has never seen. Both are excluded from
+    metrics, but only the absent label is reported as a coverage gap."""
     df = pd.DataFrame({"attack_cat": ["Normal", "Worms", "Mystery"]})
     y, unmapped = bc.label_truth(df, "unsw-nb15", LABEL_MAPS["unsw-nb15"])
-    assert list(y) == ["benign", "unmapped", "benign"]
+    assert list(y) == ["benign", "unmapped", "unmapped"]
     assert unmapped == {"Mystery": 1}
 
 
@@ -131,11 +132,14 @@ def test_streamed_rules_match_transfer_bench(tmp_path):
     assert cell["n_flows"] == len(df)
     assert cell["rules"]["per_class"] == ref["rules"]["per_class"]
     assert cell["rules"]["fpr"] == ref["rules"]["fpr"]
+    assert cell["rules"]["alert_metrics"] == ref["rules"]["alert_metrics"]
+    assert cell["alert_counts"]["alerts"] == \
+        ref["rules"]["alert_metrics"]["alerts"]
     assert cell["unmapped_labels"] == ref["unmapped_labels"]
 
 
 def test_attribution_matches_bench_rule_predictions():
-    """Attribution order (alert order, src and dst both labelled) is the bench's."""
+    """Attribution is window-scoped and identical to the transfer bench."""
     n = 600
     df = pd.DataFrame({
         "flow_id": [f"f{i}" for i in range(n)],

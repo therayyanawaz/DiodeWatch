@@ -53,6 +53,79 @@ def test_unmapped_labels_reported_not_merged():
     cell = bt.evaluate_corpus("cic-ddos2019-selftest", df, model_dir=REPO / "models",
                               window_s=10, run_ml=False)
     assert cell["unmapped_labels"].get("SYN-Reflection-X") == 5
+    # The five unknown-label rows left the benign denominator instead of
+    # becoming five true negatives the detector could be blamed for.
+    assert cell["rules"]["fpr"]["benign_flows"] == 45
+    assert "unmapped" not in cell["rules"]["per_class"]
+
+def test_unmapped_truth_is_excluded_from_class_metrics():
+    m = bt.confusion_metrics(["benign", "unmapped", "ddos"],
+                             ["ddos", "ddos", "ddos"])
+    assert "unmapped" not in m["per_class"]
+    assert m["per_class"]["benign"]["support"] == 1
+    f = bt.benign_fpr(["benign", "unmapped"], ["ddos", "ddos"])
+    assert f["benign_flows"] == 1 and f["false_positives"] == 1
+
+
+def _alert(threat_class, key, start, side="dst_ip"):
+    from src.alerts.schema import Alert
+    iso = pd.Timestamp(start, unit="s", tz="UTC").isoformat()
+    return Alert(timestamp=iso, threat_class=threat_class, confidence=0.9,
+                 key=key, window_start=iso,
+                 window_end=pd.Timestamp(start + 10, unit="s",
+                                         tz="UTC").isoformat(),
+                 window_seconds=10, detector="test",
+                 dst_ip=key if side == "dst_ip" else None,
+                 src_ip=key if side == "src_ip" else None)
+
+
+def test_alert_attribution_is_window_and_entity_scoped():
+    flows = pd.DataFrame({"ts_epoch": [1001.0, 1011.0, 1002.0],
+                          "src_ip": ["a", "a", "b"],
+                          "dst_ip": ["victim", "victim", "other"]})
+    alerts = [_alert("ddos", "victim", 1000)]
+    assert bt.attribute_alerts(flows, alerts, 10) == [
+        "ddos", "benign", "benign"]
+
+
+def test_alert_metrics_separate_exact_any_attack_and_unlabeled():
+    import numpy as np
+    flows = pd.DataFrame({"ts_epoch": [1001.0, 1002.0, 1003.0],
+                          "src_ip": ["a", "a", "c"],
+                          "dst_ip": ["victim", "clean", "unknown"]})
+    alerts = [_alert("ddos", "victim", 1000),
+              _alert("ddos", "clean", 1000),
+              _alert("scan", "unknown", 1000, side="src_ip")]
+    y = np.array(["ddos", "benign", "unmapped"], dtype=object)
+    counts = bt.AlertCounts()
+    counts.add(alerts, flows, y, 10)
+    m = counts.metrics()
+    assert m["alerts"] == 3 and m["scored"] == 2 and m["unlabeled"] == 1
+    assert m["exact_tp"] == 1 and m["exact_fp"] == 1
+    assert m["precision_exact"] == 0.5
+    assert m["precision_any_attack"] == 0.5
+    assert m["benign_alerts"] == 1
+    assert m["by_class"]["scan"]["alerts"] == 1
+    assert m["by_class"]["scan"]["unlabeled"] == 1
+    units = m["unit_recall"]["ddos"]
+    assert units == {"covered": 1, "total": 1, "recall": 1.0}
+
+
+def test_alert_metrics_merge_counts_not_rounded_rates():
+    import numpy as np
+    counts = bt.AlertCounts()
+    flows = pd.DataFrame({"ts_epoch": [1001.0], "dst_ip": ["victim"],
+                          "src_ip": ["a"]})
+    counts.add([_alert("ddos", "victim", 1000)], flows,
+               np.array(["ddos"], dtype=object), 10)
+    merged = bt.AlertCounts()
+    merged.add([_alert("ddos", "victim", 1000)], flows,
+               np.array(["ddos"], dtype=object), 10)
+    counts.merge(merged)
+    m = counts.metrics()
+    assert m["alerts"] == 2 and m["scored"] == 2
+    assert (m["exact_tp"], m["exact_fp"]) == (2, 0)
+    assert m["precision_exact"] == 1.0
 
 
 # ------------------------------------------------------------ metrics math

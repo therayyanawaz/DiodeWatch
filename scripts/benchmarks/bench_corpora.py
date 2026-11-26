@@ -218,17 +218,17 @@ def blank_mask(df: pd.DataFrame) -> pd.Series:
 
 
 def label_truth(df: pd.DataFrame, family: str, label_map: dict) -> tuple[np.ndarray, dict]:
-    """Canonical truth plus the labels the map does not cover.
-
-    Rows mapped to 'unmapped' are truth we cannot score (no canonical key).
-    They stay in the alert/context computation but are excluded from every
-    metric, so the benign denominator never absorbs an attack family.
-    """
     """Map the corpus label column onto the canonical axis.
 
     UNSW-NB15 carries a binary `label` plus the multi-class `attack_cat`; the
     latter is what the canonical axis needs (a binary 0/1 split cannot tell a
     DoS from a fuzzer). Every other corpus uses `label`.
+
+    A label absent from the map becomes 'unmapped', never benign. Otherwise an
+    attack family the register has never seen would enter the benign
+    denominator as a true negative and turn detector hits into false positives.
+    Rows mapped to 'unmapped' are truth we cannot score: they stay in the
+    alert/context computation but are excluded from every metric.
     """
     if family == "unsw-nb15" and "attack_cat" in df.columns:
         raw = df["attack_cat"]
@@ -238,26 +238,20 @@ def label_truth(df: pd.DataFrame, family: str, label_map: dict) -> tuple[np.ndar
     mapped = s.map(label_map)
     unmapped = mapped.isna()
     counts = {str(k): int(v) for k, v in s[unmapped].value_counts().items()}
-    return mapped.fillna("benign").to_numpy(dtype=object), counts
+    return mapped.fillna("unmapped").to_numpy(dtype=object), counts
 
 
 def rule_predictions_fast(flows: pd.DataFrame, window_s: int) -> tuple[np.ndarray, list]:
-    """Rule layer -> per-flow class with vectorized entity attribution.
+    """Rule layer -> window-scoped flow classes, vectorized.
 
-    Same attribution as bench_transfer.rule_predictions: alerts in their sorted
-    order, each one labelling both endpoint matches, later alerts winning. The
-    loop is over alerts (tens per chunk), the masks are numpy, so this stays
-    linear in flows rather than alerts x flows.
+    Same attribution as bench_transfer.attribute_alerts: an alert labels only
+    its own entity inside its own window, later alerts winning. The old
+    whole-file endpoint mask painted hours of unrelated traffic with one alert
+    and turned benign flows into detector false positives.
     """
     alerts = run_rules(flows, window_s=window_s)
-    pred = np.full(len(flows), "benign", dtype=object)
-    src = flows["src_ip"].to_numpy()
-    dst = flows["dst_ip"].to_numpy()
-    for a in alerts:
-        if not a.key:
-            continue
-        pred[src == a.key] = a.threat_class
-        pred[dst == a.key] = a.threat_class
+    pred = np.asarray(bt.attribute_alerts(flows, alerts, window_s=window_s),
+                      dtype=object)
     return pred, alerts
 
 
@@ -402,6 +396,7 @@ def evaluate_file(job: dict) -> dict:
     counts = Counts()
     unmapped: dict[str, int] = {}
     alert_counts: dict[str, int] = {}
+    alert_acc = bt.AlertCounts()
     ml_frames: list[pd.DataFrame] = []
     ml_truth: list[np.ndarray] = []
     ml_scored: list[np.ndarray] = []
@@ -440,6 +435,7 @@ def evaluate_file(job: dict) -> dict:
                 n_ts_dropped += before
                 pred, alerts = rule_predictions_fast(flows, job["window_s"])
                 counts.add(y[scored], pred[scored])
+                alert_acc.add(alerts, flows, y, job["window_s"])
                 for a in alerts:
                     alert_counts[a.threat_class] = alert_counts.get(a.threat_class, 0) + 1
             if need_ml and flows is not None:
@@ -502,7 +498,8 @@ def evaluate_file(job: dict) -> dict:
     return _cell(job, total or n, counts if job["rules"] else None, unmapped,
                  alert_counts, ml_cell, psi_cell, t0, error,
                  n_ts_dropped=n_ts_dropped, synthetic_clock=synthetic_clock,
-                 n_excluded=n_excluded, n_blank=n_blank)
+                 n_excluded=n_excluded, n_blank=n_blank,
+                 alert_acc=alert_acc if job["rules"] else None)
 
 
 def _unsw_adapter(df: pd.DataFrame) -> pd.DataFrame:
@@ -520,7 +517,7 @@ def _unsw_adapter(df: pd.DataFrame) -> pd.DataFrame:
 def _cell(job: dict, n_flows: int, counts, unmapped, alert_counts, ml_cell,
           psi_cell, t0: float, error, n_ts_dropped: int = 0,
           synthetic_clock: bool = False, n_excluded: int = 0,
-          n_blank: int = 0) -> dict:
+          n_blank: int = 0, alert_acc=None) -> dict:
     cell: dict = {
         "family": job["family"],
         "n_flows": int(n_flows),
@@ -537,6 +534,9 @@ def _cell(job: dict, n_flows: int, counts, unmapped, alert_counts, ml_cell,
     elif counts is not None:
         cell["rules"] = counts.metrics()
         cell["rules"]["n"] = counts.n
+        if alert_acc is not None:
+            cell["rules"]["alert_metrics"] = alert_acc.metrics()
+            cell["alert_counts"] = alert_acc.to_dict()
         cell["rule_counts"] = counts.to_dict()
         cell["ts_dropped"] = n_ts_dropped
     if ml_cell is not None:
@@ -577,6 +577,12 @@ def aggregate(cells: list[dict], family: str, meta: dict) -> dict:
         m = merged.metrics()
         m["n"] = merged.n
         m["files"] = len(ok_rules)
+        alert_cells = [c for c in ok_rules if c.get("alert_counts")]
+        if alert_cells:
+            acc = bt.AlertCounts()
+            for c in alert_cells:
+                acc.merge(bt.AlertCounts.from_dict(c["alert_counts"]))
+            m["alert_metrics"] = acc.metrics()
         out["rules"] = m
     else:
         out["rules"] = {"error": cells[0]["rules"].get("error") if cells else
@@ -633,6 +639,20 @@ def render(results: dict[str, dict], checks: list[dict], meta: dict) -> str:
                 lines.append(f"    - benign FPR {c['fpr']['false_positives']:,}/"
                              f"{c['fpr']['benign_flows']:,} = {c['fpr']['fpr']} "
                              f"([{'PASS' if c['fpr']['passes_gate'] else 'FAIL'}])")
+            am = c.get("alert_metrics") or {}
+            if am:
+                lines.append(
+                    f"    - alerts: {am.get('scored', 0):,}/"
+                    f"{am.get('alerts', 0):,} scored, exact precision "
+                    f"{am.get('precision_exact')}, any-attack precision "
+                    f"{am.get('precision_any_attack')}, "
+                    f"{am.get('benign_alerts', 0):,} benign-only")
+                units = ", ".join(
+                    f"{k} {v['covered']:,}/{v['total']:,}"
+                    for k, v in (am.get("unit_recall") or {}).items()
+                    if v.get("total"))
+                if units:
+                    lines.append(f"    - alert recall (window x entity): {units}")
             if det == "ml" and c.get("prefix_flows"):
                 lines.append(
                     f"    - ML prefix {c['prefix_flows']:,} flows (first "

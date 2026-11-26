@@ -152,6 +152,16 @@ def test_relationship_known_deliberate_divergences():
     assert labels.LABEL_MAPS["cic-ids2017-wednesday"]["DoS slowloris"] == "slowdos"
 
 
+def test_real_corpus_label_spellings_are_registered():
+    """The corpus spellings that had silently become benign are mapped."""
+    ids = labels.LABEL_MAPS["cic-ids2018-nf-v2"]
+    assert ids["DDoS attacks-LOIC-HTTP"] == "ddos"
+    assert ids["DDOS attack-LOIC-HTTP"] == "ddos"   # mirror spelling
+    ddos = labels.LABEL_MAPS["cic-ddos2019"]
+    assert ddos["UDP-lag"] == "slowdos"
+    assert ddos["UDPLag"] == "slowdos"
+
+
 def test_canonical_classes_are_frozen():
     """bench_transfer summaries and gates index by these names."""
     assert labels.CANONICAL_CLASSES == ("ddos", "slowdos", "scan", "exfil",

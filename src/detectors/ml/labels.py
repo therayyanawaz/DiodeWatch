@@ -92,8 +92,10 @@ LABEL_MAPS: dict[str, dict[str, str]] = {
     },
     "cic-ddos2019": {
         "DDoS": "ddos", "BENIGN": "benign", "WebDDoS": "ddos",
-        # UDP-lag slow attack families map to slowdos where present:
-        "UDPLag": "slowdos", "Syn": "ddos",
+        # UDP-lag slow attack families map to slowdos where present. The
+        # 01-12 export spells it "UDP-lag"; the 03-11 export spells it "UDPLag",
+        # so both keys are required or one day's attack truth becomes benign.
+        "UDPLag": "slowdos", "UDP-lag": "slowdos", "Syn": "ddos",
         # DrDoS (01-12) and reflection families (03-11), every one volumetric:
         "DrDoS_DNS": "ddos", "DrDoS_LDAP": "ddos", "DrDoS_MSSQL": "ddos",
         "DrDoS_NTP": "ddos", "DrDoS_NetBIOS": "ddos", "DrDoS_SNMP": "ddos",
@@ -103,7 +105,12 @@ LABEL_MAPS: dict[str, dict[str, str]] = {
     },
     "cic-ids2018-nf-v2": {
         "Benign": "benign", "DDOS attack-HOIC": "ddos",
-        "DDOS attack-LOIC-UDP": "ddos", "DDOS attack-LOIC-HTTP": "ddos",
+        "DDOS attack-LOIC-UDP": "ddos",
+        # The corpus spells this family "DDoS attacks-LOIC-HTTP" (plural
+        # attacks). Keep the older singular key for mirrors that use it, but
+        # the plural key is the one the CSE-CIC-IDS2018 files carry.
+        "DDOS attack-LOIC-HTTP": "ddos",
+        "DDoS attacks-LOIC-HTTP": "ddos",
         "DoS attacks-Hulk": "ddos", "DoS attacks-SlowHTTPTest": "slowdos",
         # both spellings occur: the corpus spells it 'Slowloris' with a hyphen
         "DoS attacks-Slowloris": "slowdos",

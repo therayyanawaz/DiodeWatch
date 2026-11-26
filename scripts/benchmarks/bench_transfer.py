@@ -115,7 +115,15 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
 # metrics
 # --------------------------------------------------------------------------
 def confusion_metrics(y_true: list[str], y_pred: list[str]) -> dict:
-    """Per-class P/R/F1/support + macro/micro F1 over observed classes."""
+    """Per-class P/R/F1/support + macro/micro F1 over observed classes.
+
+    Truth labelled 'unmapped' is not a class: it is a row whose corpus label
+    has no canonical key. It is removed from both sides before scoring so the
+    benign denominator never absorbs an unrecognized attack family.
+    """
+    pairs = [(t, p) for t, p in zip(y_true, y_pred) if t != "unmapped"]
+    y_true = [t for t, _ in pairs]
+    y_pred = [p for _, p in pairs]
     classes = sorted(set(y_true) | set(y_pred))
     per_class: dict[str, dict] = {}
     tp_all = fp_all = fn_all = 0
@@ -141,8 +149,10 @@ def confusion_metrics(y_true: list[str], y_pred: list[str]) -> dict:
 
 
 def benign_fpr(y_true: list[str], y_pred: list[str]) -> dict:
-    n_benign = sum(1 for t in y_true if t == "benign")
-    fp = sum(1 for t, p in zip(y_true, y_pred) if t == "benign" and p != "benign")
+    """Benign false-positive rate, with unmapped truth excluded from both sides."""
+    pairs = [(t, p) for t, p in zip(y_true, y_pred) if t != "unmapped"]
+    n_benign = sum(1 for t, _ in pairs if t == "benign")
+    fp = sum(1 for t, p in pairs if t == "benign" and p != "benign")
     rate = fp / n_benign if n_benign else None
     return {"benign_flows": n_benign, "false_positives": fp,
             "fpr": round(rate, 8) if rate is not None else None,
@@ -169,25 +179,277 @@ def psi(expected: np.ndarray, actual: np.ndarray, bins: int = 20) -> float:
 # --------------------------------------------------------------------------
 # scoring
 # --------------------------------------------------------------------------
-def rule_predictions(flows: pd.DataFrame, y_true: list[str],
-                     window_s: int = 10) -> tuple[list[str], list[dict]]:
-    """Rule layer alone -> per-window predicted class per covered flow.
+#: Which side of the flow a rule aggregates on. A DDoS alert names the
+#: victim; a scan/exfil alert names the actor. Attribution must use the same
+#: side the detector used, not both, or an alert paints half the capture.
+_ENTITY_BY_CLASS = {"ddos": "dst_ip", "slowdos": "dst_ip",
+                    "scan": "src_ip", "exfil": "src_ip"}
+_CANONICAL_ATTACK_CLASSES = ("ddos", "slowdos", "scan", "exfil")
 
-    Rules are window-level: a firing window labels the flows it covers with
-    the rule's class + entity key; uncovered flows predict 'benign'. Returns
-    (predictions, alert_summaries)."""
-    alerts = run_rules(flows, window_s=window_s)
-    preds = ["benign"] * len(y_true)
-    # rules are window-level with an entity key; label the flows each alert's
-    # entity covers (src or dst depending on which side the rule scopes)
+
+def alert_entity(alert) -> tuple[str, str] | None:
+    """(column, value) the alert actually covers, or None when it has no key."""
+    if not getattr(alert, "key", None):
+        return None
+    cls = getattr(alert, "threat_class", "")
+    col = _ENTITY_BY_CLASS.get(cls)
+    if col:
+        return col, str(alert.key)
+    # A future class without a declared side: use the side the alert populated.
+    if getattr(alert, "dst_ip", None) == alert.key:
+        return "dst_ip", str(alert.key)
+    if getattr(alert, "src_ip", None) == alert.key:
+        return "src_ip", str(alert.key)
+    return None
+
+
+def _iso_epoch(value: str | None) -> float | None:
+    """Parse an alert ISO-8601 UTC timestamp without local-time conversion."""
+    if not value:
+        return None
+    from datetime import datetime, timezone
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.timestamp()
+
+
+def _scope_mask(flows: pd.DataFrame, alert, window_s: int,
+                ts: np.ndarray | None = None) -> np.ndarray | None:
+    """Flows inside the alert window and on its own entity.
+
+    The old evaluator labelled every flow sharing an endpoint for the whole
+    file, so one alert painted hours of unrelated traffic. A rule alert is a
+    window x entity statement; only that slice is attributed.
+    """
+    entity = alert_entity(alert)
+    if entity is None:
+        return None
+    col, key = entity
+    if col not in flows.columns:
+        return None
+    start = _iso_epoch(getattr(alert, "window_start", None))
+    if start is None:
+        return None
+    if ts is None:
+        ts = pd.to_numeric(flows.get("ts_epoch"), errors="coerce").to_numpy(
+            dtype="float64")
+    # Canonical frames carry IP strings; only cast a numeric test frame.
+    values = flows[col].to_numpy()
+    if values.dtype.kind not in "OUS":
+        values = values.astype(str)
+    mask = values == key
+    return mask & np.isfinite(ts) & (ts >= start) & (ts < start + window_s)
+
+
+def attribute_alerts(flows: pd.DataFrame, alerts: list,
+                     window_s: int = 10) -> list[str]:
+    """Window-scoped rule attribution: only the alert own slice is labelled.
+
+    Alerts are applied in sorted order (last one wins), matching the order
+    run_rules returns. A flow outside every alert window stays benign.
+    """
+    pred = np.full(len(flows), "benign", dtype=object)
+    ts = pd.to_numeric(flows.get("ts_epoch"), errors="coerce").to_numpy(
+        dtype="float64")
     for a in alerts:
-        if not a.key:
+        mask = _scope_mask(flows, a, window_s, ts=ts)
+        if mask is not None:
+            pred[mask] = a.threat_class
+    return pred.tolist()
+
+
+def _truth_units(flows: pd.DataFrame, y: np.ndarray, cls: str,
+                 entity: str, window_s: int) -> pd.DataFrame:
+    """Distinct (window, entity) truth units of one class in this chunk."""
+    att = np.asarray(y == cls)
+    if not att.any() or entity not in flows.columns:
+        return pd.DataFrame(columns=["_win", "_entity"])
+    sub = flows.loc[att, ["ts_epoch", entity]].copy()
+    ts = pd.to_numeric(sub["ts_epoch"], errors="coerce")
+    sub = sub.loc[ts.notna() & sub[entity].notna()]
+    if sub.empty:
+        return pd.DataFrame(columns=["_win", "_entity"])
+    ts = pd.to_numeric(sub["ts_epoch"], errors="coerce")
+    sub["_win"] = (ts // window_s).astype("int64")
+    sub["_entity"] = sub[entity].astype(str)
+    return sub[["_win", "_entity"]].drop_duplicates()
+
+
+def _alert_units(alerts: list, cls: str, window_s: int) -> pd.DataFrame:
+    """Distinct (window, entity) units an alert class actually claimed."""
+    rows: list[tuple[int, str]] = []
+    for a in alerts:
+        if a.threat_class != cls:
             continue
-        for col in ("src_ip", "dst_ip"):
-            if col in flows.columns:
-                mask = (flows[col] == a.key).to_numpy()
-                for i in np.flatnonzero(mask):
-                    preds[i] = a.threat_class
+        entity = alert_entity(a)
+        start = _iso_epoch(getattr(a, "window_start", None))
+        if entity is None or start is None:
+            continue
+        rows.append((int(start // window_s), entity[1]))
+    if not rows:
+        return pd.DataFrame(columns=["_win", "_entity"])
+    return pd.DataFrame(rows, columns=["_win", "_entity"]).drop_duplicates()
+
+
+class AlertCounts:
+    """Alert-level truth accounting, mergeable across chunks and files.
+
+    Alert precision asks whether the alert own window x entity contains the
+    class it claimed. Alert recall asks which truth (window, entity, class)
+    units got any alert of that class. Neither is a relabelled flow metric:
+    they answer the question a SOC queue actually asks.
+    """
+
+    def __init__(self) -> None:
+        self.alerts = 0
+        self.scored = 0
+        self.unlabeled = 0
+        self.unattributed = 0
+        self.exact_tp = 0
+        self.any_attack_tp = 0
+        self.benign_alerts = 0
+        self.by_class: dict[str, dict] = {}
+        self.truth_units: dict[str, int] = {
+            c: 0 for c in _CANONICAL_ATTACK_CLASSES}
+        self.covered_units: dict[str, int] = {
+            c: 0 for c in _CANONICAL_ATTACK_CLASSES}
+
+    def add(self, alerts: list, flows: pd.DataFrame, y_true: np.ndarray,
+            window_s: int = 10) -> None:
+        y = np.asarray(y_true, dtype=object)
+        scorable = y != "unmapped"
+        ts = pd.to_numeric(flows.get("ts_epoch"), errors="coerce").to_numpy(
+            dtype="float64")
+        for a in alerts:
+            self.alerts += 1
+            bc = self.by_class.setdefault(a.threat_class, {
+                "alerts": 0, "scored": 0, "exact_tp": 0,
+                "any_attack_tp": 0, "unlabeled": 0})
+            bc["alerts"] += 1
+            mask = _scope_mask(flows, a, window_s, ts=ts)
+            if mask is None:
+                self.unattributed += 1
+                continue
+            in_scope = mask & scorable
+            if not in_scope.any():
+                self.unlabeled += 1
+                bc["unlabeled"] += 1
+                continue
+            truths = y[in_scope]
+            exact = bool(np.any(truths == a.threat_class))
+            any_attack = bool(np.any((truths != "benign")
+                                     & (truths != "unmapped")))
+            self.scored += 1
+            self.exact_tp += int(exact)
+            self.any_attack_tp += int(any_attack)
+            self.benign_alerts += int(not any_attack)
+            bc["scored"] += 1
+            bc["exact_tp"] += int(exact)
+            bc["any_attack_tp"] += int(any_attack)
+
+        for cls in _CANONICAL_ATTACK_CLASSES:
+            entity = _ENTITY_BY_CLASS[cls]
+            units = _truth_units(flows, y, cls, entity, window_s)
+            self.truth_units[cls] += len(units)
+            claimed = _alert_units(alerts, cls, window_s)
+            if len(units) and len(claimed):
+                self.covered_units[cls] += len(units.merge(
+                    claimed, on=["_win", "_entity"], how="inner"))
+
+    def merge(self, other: AlertCounts) -> None:
+        for attr in ("alerts", "scored", "unlabeled", "unattributed",
+                     "exact_tp", "any_attack_tp", "benign_alerts"):
+            setattr(self, attr, getattr(self, attr) + getattr(other, attr))
+        for c, d in other.by_class.items():
+            mine = self.by_class.setdefault(c, {
+                "alerts": 0, "scored": 0, "exact_tp": 0,
+                "any_attack_tp": 0, "unlabeled": 0})
+            for k, v in d.items():
+                mine[k] = mine.get(k, 0) + v
+        for c in _CANONICAL_ATTACK_CLASSES:
+            self.truth_units[c] += other.truth_units.get(c, 0)
+            self.covered_units[c] += other.covered_units.get(c, 0)
+
+    def to_dict(self) -> dict:
+        return {"alerts": self.alerts, "scored": self.scored,
+                "unlabeled": self.unlabeled,
+                "unattributed": self.unattributed,
+                "exact_tp": self.exact_tp,
+                "any_attack_tp": self.any_attack_tp,
+                "benign_alerts": self.benign_alerts,
+                "by_class": self.by_class,
+                "truth_units": self.truth_units,
+                "covered_units": self.covered_units}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> AlertCounts:
+        out = cls()
+        for attr in ("alerts", "scored", "unlabeled", "unattributed",
+                     "exact_tp", "any_attack_tp", "benign_alerts"):
+            setattr(out, attr, int(d.get(attr, 0)))
+        out.by_class = {str(k): {kk: int(vv) for kk, vv in v.items()}
+                        for k, v in (d.get("by_class") or {}).items()}
+        out.truth_units = {c: int((d.get("truth_units") or {}).get(c, 0))
+                           for c in _CANONICAL_ATTACK_CLASSES}
+        out.covered_units = {c: int((d.get("covered_units") or {}).get(c, 0))
+                             for c in _CANONICAL_ATTACK_CLASSES}
+        return out
+
+    def metrics(self) -> dict:
+        scored = self.scored
+        by_class: dict[str, dict] = {}
+        for c, d in sorted(self.by_class.items()):
+            s = d["scored"]
+            by_class[c] = {
+                "alerts": d["alerts"], "scored": s,
+                "unlabeled": d.get("unlabeled", 0),
+                "exact_tp": d["exact_tp"],
+                "exact_fp": s - d["exact_tp"],
+                "precision_exact": round(d["exact_tp"] / s, 6) if s else None,
+                "precision_any_attack": (
+                    round(d["any_attack_tp"] / s, 6) if s else None),
+            }
+        units: dict[str, dict] = {}
+        for c in _CANONICAL_ATTACK_CLASSES:
+            total = self.truth_units[c]
+            covered = self.covered_units[c]
+            units[c] = {"covered": covered, "total": total,
+                        "recall": round(covered / total, 6) if total else None}
+        return {
+            "alerts": self.alerts,
+            "scored": scored,
+            "unlabeled": self.unlabeled,
+            "unattributed": self.unattributed,
+            "exact_tp": self.exact_tp,
+            "exact_fp": scored - self.exact_tp,
+            "precision_exact": round(self.exact_tp / scored, 6) if scored else None,
+            "any_attack_tp": self.any_attack_tp,
+            "precision_any_attack": (
+                round(self.any_attack_tp / scored, 6) if scored else None),
+            "benign_alerts": self.benign_alerts,
+            "by_class": by_class,
+            "unit_recall": units,
+        }
+
+
+def rule_predictions(flows: pd.DataFrame, y_true: list[str],
+                     window_s: int = 10,
+                     return_alerts: bool = False):
+    """Rule layer -> window-scoped flow classes and alert summaries.
+
+    Rules are window-level: a firing alert labels only flows on its own entity
+    inside its own window; uncovered flows predict benign. Returns
+    (predictions, alert_summaries), or (predictions, Alert objects) when
+    return_alerts is set.
+    """
+    alerts = run_rules(flows, window_s=window_s)
+    preds = attribute_alerts(flows, alerts, window_s=window_s)
+    if return_alerts:
+        return preds, alerts
     summaries = [{"threat_class": a.threat_class, "key": a.key,
                   "confidence": a.confidence} for a in alerts]
     return preds, summaries
@@ -345,7 +607,7 @@ def evaluate_corpus(name: str, df: pd.DataFrame, *, model_dir: Path,
         mapped = label_map.get(str(raw))
         if mapped is None:
             unmapped[str(raw)] = unmapped.get(str(raw), 0) + 1
-            y_true.append("benign")       # conservative: treat as background
+            y_true.append("unmapped")     # unscorable, excluded from every metric
         else:
             y_true.append(mapped)
 
@@ -400,10 +662,18 @@ def evaluate_corpus(name: str, df: pd.DataFrame, *, model_dir: Path,
     # than report a number that measures the stand-in, not the detector.
     has_identity = ("src_ip" in df.columns and "dst_ip" in df.columns
                     and df["src_ip"].notna().any())
+    alert_cell = None
     if has_identity:
-        preds, summaries = rule_predictions(flows, y_true, window_s=window_s)
+        preds, alerts = rule_predictions(flows, y_true, window_s=window_s,
+                                         return_alerts=True)
+        summaries = [{"threat_class": a.threat_class, "key": a.key,
+                      "confidence": a.confidence} for a in alerts]
+        counts = AlertCounts()
+        counts.add(alerts, flows, np.asarray(y_true, dtype=object), window_s)
+        alert_cell = counts.metrics()
         rules_cell: dict = {**confusion_metrics(y_true, preds),
-                            "fpr": benign_fpr(y_true, preds)}
+                            "fpr": benign_fpr(y_true, preds),
+                            "alert_metrics": alert_cell}
     else:
         preds, summaries = ["benign"] * len(y_true), []
         rules_cell = {"error": "identity columns absent in export, "
@@ -557,6 +827,14 @@ def render_summary(results: dict[str, dict], checks: list[dict]) -> str:
                 lines.append(f"    - benign FPR {c['fpr']['false_positives']}/"
                              f"{c['fpr']['benign_flows']:,} = {c['fpr']['fpr']} "
                              f"({'PASS' if c['fpr']['passes_gate'] else 'FAIL'})")
+            am = c.get("alert_metrics") or {}
+            if am:
+                lines.append(
+                    f"    - alerts: {am.get('scored', 0):,}/"
+                    f"{am.get('alerts', 0):,} scored, exact precision "
+                    f"{am.get('precision_exact')}, any-attack precision "
+                    f"{am.get('precision_any_attack')}, "
+                    f"{am.get('benign_alerts', 0):,} benign-only")
         if cell.get("psi"):
             top = sorted(cell["psi"].items(), key=lambda kv: -kv[1])[:3]
             lines.append("- drift (PSI, top-3): " +
