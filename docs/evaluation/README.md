@@ -32,6 +32,18 @@ families. The archived text is left exactly as generated.
 The full `results/` tree is git-ignored runtime output; regenerate anything
 not snapshotted here with the commands in `transfer.md` §Reproduce.
 
+### Reading the rule cells
+
+The rule column is scored per flow, not per alert: `rule_predictions_fast`
+labels every flow of an alerted source or destination for the whole file, and
+the last alert wins. That is not the detector's output, and it distorts both
+directions. On CIC-IDS2017, 594 alerts paint 1,921,687 benign flows as
+attacks, which is the 0.845 FPR. On `ddos2019/01-12/Syn.csv`, 53 DDoS and 30
+scan alerts cover 1,582,289 attack flows; alert order applies scan last, so
+the DDoS cell records zero true positives although the DDoS rule fired.
+Alert-level scoring is the next measurement. These flow cells are not
+detector precision.
+
 ## The ten run records
 
 Five corpora were evaluated, twice each: the zero-shot pass with the 2017 models, and the

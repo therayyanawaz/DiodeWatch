@@ -6,10 +6,11 @@ reviewer, a team picking it up.
 
 Two rules govern it:
 
-* **Every number here is re-derived by CI.** `scripts/checks/check_claims.py`
-  reconciles the figures in the documentation against the pinned artifacts and
-  against pytest itself, and fails the build when one drifts. Nothing on this page
-  is hand-maintained.
+* **Every figure with a pinned artifact is re-derived by CI.**
+  `scripts/checks/check_claims.py` reconciles the documented metrics against the
+  artifacts and the published suite size against pytest itself, and fails the
+  build when one drifts. Figures without an artifact behind them are marked as
+  such rather than presented as measured.
 * **The "not yet" list is real.** An unfinished item stays visible here and in
   `docs/competition/readiness.md` rather than being quietly dropped, because a
   status page that only lists successes is a brochure.
@@ -56,7 +57,11 @@ each claim:
   Suricata or Zeek on one capture beside our own pass, reporting volume and cost
   only, and exits with a distinct code when the tool is absent instead of printing
   a row for a run that never happened.
-* **The suite** collects 465 tests. Three of them need corpora this repository
+* **Full-scale evaluation.** All 50 pinned files of five corpora, 109,643,423
+  flows, scored in one pass and published in
+  [`evaluation/runs/max_scale.md`](evaluation/runs/max_scale.md). One of the four
+  pre-committed gate checks passes; the three failures stay on the page.
+* **The suite** collects 493 tests. Three of them need corpora this repository
   deliberately never commits, so they skip locally and run in
   `.github/workflows/integration.yml`, which fails if they skip there.
 
@@ -67,15 +72,23 @@ have, not a decision we have not made.
 
 | Item | Why it matters | State |
 |---|---|---|
+| Alert-level evaluation, then rule precision: per-destination baselines, source-IP entropy, dedup | the published 0.845 flow FPR labels every flow of an alerted entity, so it scores the attribution rule, not the detector; 53 alerts in a 4-hour benign capture is 13.3/h against a 2/h target | **next** |
+| Claim reconciliation: `judge-brief`, `README`, `readiness` | three judge-facing pages still quote the five-file run and its 1.0 rule F1 | **next** |
+| Pin the two retrained channel artifacts, or delete the rows that depend on them | an unpinned artifact cannot be re-scored | **next** |
+| Flow-record ingest: Argus CSV, nfdump CSV, goflow2 JSON | the PS accepts NetFlow/IPFIX/sFlow and CTU-13, 19,976,700 flows, is unscored for rules and flow context | **next** |
+| JA4 and JA4S over TLS, QUIC observable metadata | PS clause (d) names JA4; only JA3 is shipped and QUIC has no reader | **next** |
+| Scan and slow-DoS recall on CIC-IDS2017 | the port-scan day scores recall 0; slow-DoS scores 0 | **next** |
+| DGA false-positive work on Umbrella hard negatives | 0.1076 FPR at the operating threshold is not usable | **next** |
+| Packet-to-alert clock, bounded queue, backpressure at 5k/10k/50k flows/s | the 175 ms figure is window-evaluation p95, not end-to-end latency | planned |
+| Calibration and conformal abstention per channel | confidence is not calibrated and no alert can abstain | planned |
+| Drift alarm that makes a channel abstain, not just a chart | PSI is published as an explanation, not acted on | planned |
+| OCSF Detection Finding export beside STIX | SOC interoperability a judge can name | planned |
 | Rootless diode proof: container `--network=none` self-test and a PowerShell elevated path, with the enforcement mode wired into both UIs | the one-way guarantee is demonstrated on Linux with root today; a reviewer on a laptop cannot reproduce it | **blocked** on Docker or administrator rights |
 | Live-interface rehearsal over a veth pair, with a recorded clip | proves the pipeline under enforcement on a real interface, not only on a replay | **blocked** on Linux root |
 | Reverse proxy, TLS, and a service unit pinning **one worker** | the wall is plain HTTP on loopback; the shared session is per process, so multiple workers would fragment it | planned |
-| A health check that reads the store, plus a metrics endpoint | `/api/health` answers a constant today, so a healthy process can still be unable to serve evidence | planned |
-| Retention and backup for the alert store and the ledger | they grow without bound and live on one disk | planned |
-| Structured logging with rotation and an access log | the backend logs nothing today | planned |
-| One config module that validates every environment variable at startup | the variables are read at their call sites, so a typo fails at use time | planned |
 | Rate limit, request-size cap and `TrustedHost` on the wall | a token holder can drive the replay in a loop | planned |
 | An authentication story for the Streamlit dashboard | it is a second, unprotected surface | planned |
+| One config module that validates every environment variable at startup | the variables are read at their call sites, so a typo fails at use time | planned |
 | Schema versioning and a migration path for the alert store | tables are created if absent, with no version recorded | planned |
 | A daemon entry point for triage | triage ticks only while a dashboard session is open | planned |
 

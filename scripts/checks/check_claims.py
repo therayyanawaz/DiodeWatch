@@ -156,6 +156,9 @@ APPROX = re.compile(r"[~≈]")
 # collects. "152 collected, 152 passed" sat stale for three weeks because the
 # number was hand-maintained and nothing re-derived it.
 DOC_COLLECTED = re.compile(r"\b(\d{2,4})\s+collected\b", re.IGNORECASE)
+# The verb form is how status.md published its stale figure: "collects 465
+# tests" never matched "N collected", so a 27-test drift passed the guardrail.
+DOC_COLLECTS = re.compile(r"\bcollects?\s+(\d{2,4})\s+tests?\b", re.IGNORECASE)
 DOC_PASSED = re.compile(r"\b(\d{2,4})\s+passed\b", re.IGNORECASE)
 # a suite that skips/deselects legitimately reports fewer passed than collected
 COUNT_EXEMPT = re.compile(r"skip|deselect|xfail|error|fail", re.IGNORECASE)
@@ -412,6 +415,7 @@ def check_test_counts(texts: list[tuple[str, str]],
     for rel, text in texts:
         for line in text.splitlines():
             claimed = (DOC_COLLECTED.findall(line)
+                       + DOC_COLLECTS.findall(line)
                        + DOC_PASSED.findall(line))
             if not claimed:
                 continue

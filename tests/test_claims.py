@@ -198,6 +198,15 @@ def test_stale_documented_count_is_flagged(tmp_path):
     assert "320" in doc["findings"][0]["detail"]
 
 
+def test_verb_form_of_the_suite_size_is_checked(tmp_path):
+    """status.md said "collects 465 tests" while 492 were collected: the
+    original regex only saw "N collected", so the drift passed every run."""
+    root = tree(tmp_path, {"docs/status.md":
+                           "The suite collects 300 tests.\n"})
+    doc = cc.scan(root, collected=320)
+    assert {f["kind"] for f in doc["findings"]} == {"test-count-drift"}
+
+
 def test_count_with_no_way_to_measure_is_loud(tmp_path):
     """A published count that cannot be re-derived is a finding, not a skip."""
     root = tree(tmp_path, {"README.md": "**320 collected**\n"})

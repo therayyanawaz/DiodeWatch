@@ -14,15 +14,15 @@ The project is in **strong pre-finale shape**. All five detection layers are bui
 
 The remaining work is **not more features**, it is proof packaging: cross-corpus transfer validation on real corpora, rootless diode paths, and judge-facing polish.
 
-**Verified in this repo on 2026-11-03:**
+**Verified in this repo on 2026-11-26:**
 
 | Check | Result |
 |---|---|
-| Test suite (`pytest tests/ -q`) | **492 collected**, no failures; the cells that need a corpus the repository never commits skip and say so (`docs/datasets.md`), and `.github/workflows/integration.yml` fetches those corpora and requires that they run there |
+| Test suite (`pytest tests/ -q`) | **493 collected**, no failures; the cells that need a corpus the repository never commits skip and say so (`docs/datasets.md`), and `.github/workflows/integration.yml` fetches those corpora and requires that they run there |
 | `ruff check src/ tests/ apps/ scripts/ waf/` | **All checks passed** |
-| Claim guardrail (`scripts/checks/check_claims.py`) | **GUARDRAIL CLEAN**: 60 judge-facing files scanned (the count the run prints, not a hand-kept figure), 18 documented metrics reconciled against the pinned artifacts, documented counts re-derived from `pytest --collect-only`, documented commands and every slashed path a surface names verified to resolve, and every `github.com` link under this account checked against remote `origin` |
+| Claim guardrail (`scripts/checks/check_claims.py`) | **GUARDRAIL CLEAN**: every judge-facing file scanned (the run prints the count; it is deliberately not repeated here), 18 documented metrics reconciled against the pinned artifacts, documented counts re-derived from `pytest --collect-only`, documented commands and every slashed path a surface names verified to resolve, and every `github.com` link under this account checked against remote `origin` |
 | `bench_transfer.py --selftest` | rules F1 = 1.0 / FPR = 0.0 on the **synthetic** self-test corpus (harness sanity, not an evaluation result); ML cell fail-closed + PSI-explained |
-| Canonical test count | **492 collected** (re-derived by `check_claims.py` on every run, no hand-kept figure) |
+| Canonical test count | **493 collected** (re-derived by `check_claims.py` on every run, no hand-kept figure) |
 
 ## 1. Approved claim language (lock these verbatim, do not paraphrase)
 
