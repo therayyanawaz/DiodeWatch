@@ -288,9 +288,12 @@ DGA_LGBM = {
     "min_child_samples": 50, "class_weight": "balanced",
     "n_jobs": -1, "verbosity": -1, "random_state": 42,
 }
-# A DGA alert must be actionable: the deployment threshold is the most
-# permissive one (max recall) whose known-corpus OOF precision clears this.
-DGA_PRECISION_TARGET = 0.90
+# A DGA alert must be actionable. Precision alone hides the alert volume: the
+# old max-recall cut at 90% precision still flagged about 11% of the independent
+# Umbrella benign holdout. Pick the most permissive cut whose known-corpus OOF
+# false-positive rate on benign names stays at or below this target. Umbrella is
+# never used to choose the cut; it is reported afterwards as a holdout.
+DGA_BENIGN_FPR_TARGET = 0.005
 
 
 def train_dga(model_dir: str | Path = "models",
@@ -393,17 +396,18 @@ def train_dga(model_dir: str | Path = "models",
     valid = ~np.isnan(oof)
     # Operational threshold on OOF rows of the KNOWN corpus (argencon +
     # tunnels, themselves family-holdout), umbrella stays an untouched
-    # reporting set. Most permissive cut with precision >= DGA_PRECISION_TARGET.
+    # reporting set. Most permissive cut whose benign FPR clears the target.
     known = valid.copy()
     known[len(data) + len(tunnels):] = False
     kw = np.where(known)[0]
-    order = np.argsort(-oof[kw])
-    ys_k, ss_k = y_all[kw][order], oof[kw][order]
-    tp_k = np.cumsum(ys_k == 1)
-    fp_k = np.cumsum(ys_k == 0)
-    prec_k = tp_k / np.maximum(tp_k + fp_k, 1)
-    ok = np.where(prec_k >= DGA_PRECISION_TARGET)[0]
-    dga_threshold = float(max(ss_k[int(ok[-1])], 1e-9)) if len(ok) else 0.5
+    benign_scores = np.sort(oof[kw][y_all[kw] == 0])[::-1]
+    allowed = int(np.floor(DGA_BENIGN_FPR_TARGET * len(benign_scores)))
+    if len(benign_scores) and allowed < len(benign_scores):
+        cut = benign_scores[allowed]
+        dga_threshold = float(np.nextafter(cut, np.inf))
+    else:
+        dga_threshold = 0.5
+    dga_threshold = max(dga_threshold, 1e-9)
 
     metrics = _binary_metrics(y_all[valid], oof[valid], threshold=dga_threshold)
     metrics["threshold"] = round(dga_threshold, 4)
@@ -414,6 +418,9 @@ def train_dga(model_dir: str | Path = "models",
     ktp = int(((sk >= dga_threshold) & (yk == 1)).sum())
     kfp = int(((sk >= dga_threshold) & (yk == 0)).sum())
     metrics["known_precision"] = round(ktp / max(ktp + kfp, 1), 4)
+    kb = yk == 0
+    metrics["known_benign_fpr_at_threshold"] = round(
+        float((sk[kb] >= dga_threshold).mean()) if kb.any() else 0.0, 6)
     metrics["pr_auc"] = round(float(average_precision_score(
         y_all[valid], oof[valid])), 4)
     metrics["roc_auc"] = round(float(roc_auc_score(y_all[valid], oof[valid])), 4)

@@ -69,7 +69,7 @@ print('declared', len(FEATURES), '| active', len(a), '| model', len(MODEL_FEATUR
 | `ml.supervised_windows` (flow + window context) | CIC-IDS2017, all 8 days: 2,264,599 training rows and 566,144 held-out rows. The pinned artifact is this model, rebuilt 2026-11-27 on scikit-learn 1.9.0 | Protocol A: stratified per-day flow split 80/20; Protocol B: leave-one-day-out for ddos. LOSO disclosure: the two held-out folds measure AUC 0.9205 and 0.9971, while the fixed training threshold yields recall 0.0 on both; the pooled in-sample result is never quoted as cross-day generalization |
 | `ml.supervised` (reference, flow-level only) | same CIC-IDS2017 days, five one-vs-rest classes | Training diagnostic only. No artifact is pinned and no cross-corpus metric is published; the old retrained table was withdrawn with its unpinned bytes |
 | `ml.beacon` | CTU-13 scenarios 42/43/51/52/53 (labeled NetFlows) | Leave-one-scenario-out; ROC-AUC macro over scenarios with >=30 positive candidate pairs |
-| `ml.dga` | argencon corpus (1.0M benign incl. Bambenek + 1.9M DGA, 51 families) + Umbrella top-1m as never-trained benign | 48-family holdout CV; threshold selected on known corpus at precision >= 0.90; Umbrella FPR reported separately |
+| `ml.dga` | argencon corpus (1.0M benign incl. Bambenek + 1.9M DGA, 51 families) + Umbrella top-1m as never-trained benign | 48-family holdout CV; threshold selected on known corpus for benign FPR <= 0.5%; Umbrella FPR reported separately |
 | `ml.tls_ja3` | 97 abuse.ch SSLBL malicious JA3 hashes (watchlist) + generated benign-shaped workload | Synthetic-plant labelled eval (the evaluation is generated, not a Zeek/pcap capture); watchlist channel is fully real. JA4/JA4S are also computed from pcap handshakes, but they are evidence context only; no JA4 list or JA4 metric is claimed |
 
 ## Key design decisions (and why)
@@ -124,10 +124,11 @@ print('declared', len(FEATURES), '| active', len(a), '| model', len(MODEL_FEATUR
    quality, rather than a single global threshold that cannot serve very
    different scenarios.
 3. **DGA threshold is operational.** The decision threshold is picked on the
-   known corpus (argencon + tunnels) for precision >= 0.90; Umbrella top-1m
-   is a never-trained benign corpus whose FPR at that threshold is reported
-   separately (not mixed into the tuning objective). Benign training data is
-   augmented with realistic sub-label chains (`kv801.prod.do.dsp.mp.microsoft.com`
+   known corpus (argencon + tunnels) for benign FPR <= 0.5%, not for precision
+   alone: a 90%-precision cut still flagged roughly 11% of Umbrella. Umbrella
+   top-1m is a never-trained benign corpus whose FPR at that threshold is
+   reported separately (not mixed into the tuning objective). Benign training
+   data is augmented with realistic sub-label chains (`kv801.prod.do.dsp.mp.microsoft.com`
    shaped) because bare-registrable-domain benign lists under-represent real
    infra hostnames; SLD features let the model separate random sub-labels
    under word-like bases from random registrable domains.

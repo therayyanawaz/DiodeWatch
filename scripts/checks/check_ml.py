@@ -36,7 +36,7 @@ DAY_FEATURES = sorted(glob.glob(str(REPO / "data/slices/ml/features__*.parquet")
 GATES = {
     "windows": {"ddos_f1": 0.90, "scan_f1": 0.90},
     "beacon": {"roc_auc": 0.85},
-    "dga": {"precision": 0.90, "roc_auc": 0.90},  # 0.93 achieved under the hard 48-family holdout (no family leakage); 0.99+ numbers in the literature use random splits
+    "dga": {"precision": 0.90, "roc_auc": 0.90, "umbrella_fpr": 0.02},  # 0.93 achieved under the hard 48-family holdout (no family leakage); 0.99+ numbers in the literature use random splits
     "tls": {"plant_f1": 0.90},
 }
 
@@ -208,9 +208,11 @@ def gates() -> bool:
           f"(thr={dga_m.get('threshold')}, umbrella FPR="
           f"{dga_m.get('umbrella_fpr_at_threshold')})")
     check("dga umbrella FPR at threshold",
-          dga_m.get("umbrella_fpr_at_threshold", 1.0) <= 0.15,
-          f"{dga_m.get('umbrella_fpr_at_threshold')} <= 0.15 (independent "
-          f"benign corpus, never trained on)")
+          dga_m.get("umbrella_fpr_at_threshold", 1.0)
+          <= GATES["dga"]["umbrella_fpr"],
+          f"{dga_m.get('umbrella_fpr_at_threshold')} <= "
+          f"{GATES['dga']['umbrella_fpr']} (independent benign corpus, "
+          f"never trained on)")
     check("dga ROC-AUC (family holdout)",
           dga_m["roc_auc"] >= GATES["dga"]["roc_auc"],
           f"{dga_m['roc_auc']} >= {GATES['dga']['roc_auc']}")

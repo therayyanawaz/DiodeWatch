@@ -90,6 +90,11 @@ All notable changes to DiodeWatch are documented here.
   single slow window are exempt, so the demo pcap still alerts.
 
 ### Changed
+- The DGA threshold now targets a 0.5% benign false-positive rate on the
+  family-holdout OOF corpus instead of maximizing recall at 90% precision. On
+  the untouched Umbrella holdout this moves FPR from 0.1076 to 0.01864 at
+  threshold 0.9321; known-corpus recall falls from 0.7941 to 0.5955, and the
+  `check_ml` gate now fails above a 0.02 Umbrella FPR.
 - The README's CI badge is back. Its removal at 1.0.0 named the condition for
   restoring it (a public repository, and a signed-out fetch that answers) and
   publication met it.

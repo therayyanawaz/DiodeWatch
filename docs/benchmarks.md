@@ -64,9 +64,10 @@ the same table and catch.
 | window ensemble (ddos) | per-day holdout | F1 | **1.0** |
 | window ensemble (scan) | per-day holdout | F1 | **1.0** |
 | beacon (C2 periodicity) | leave-one-scenario-out, CTU-13 | ROC-AUC (macro) | **0.918** |
-| DGA / DNS-tunnel | family-holdout CV | precision (known corpus) | **0.90** |
+| DGA / DNS-tunnel | family-holdout CV | precision (known corpus) | **0.99** |
+| DGA / DNS-tunnel | family-holdout CV | recall (known corpus) | **0.596** |
 | DGA / DNS-tunnel | family-holdout CV | ROC-AUC | **0.933** |
-| DGA / DNS-tunnel | Umbrella top-1m (unseen benign) | FPR at threshold | **0.108** |
+| DGA / DNS-tunnel | Umbrella top-1m (unseen benign) | FPR at threshold | **0.019** |
 | TLS/JA3 channel (watchlist lookup) | synthetic-plant (labelled as such) | F1 | **1.0** |
 | TLS/JA3 novelty layer (IsolationForest) | same plant eval, novelty channel scored alone | F1 | **0.0** |
 | rule layer | CIC Wednesday 200k stratified slice | benign-window false positives | **0** of 100,000 benign flows |

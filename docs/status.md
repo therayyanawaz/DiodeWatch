@@ -35,6 +35,12 @@ each claim:
 
 ## Recently landed, after 1.0.0
 
+* **DGA false-positive budget.** The DGA cut now maximizes recall subject to a
+  0.5% benign FPR on family-holdout OOF, replacing the 90%-precision rule that
+  let roughly 11% of the independent Umbrella holdout through. At threshold
+  0.9321 the known-corpus figures are precision 0.9708 and recall 0.5955, while
+  Umbrella FPR falls from 0.1076 to 0.01864; the recall cost is explicit and the
+  `check_ml` gate fails above 0.02.
 * **TLS and QUIC metadata.** `src/ingest/tls_metadata.py` reads a pcap, reassembles
   a TLS handshake across TCP segments, and computes JA3, JA3S, JA4 and JA4S from
   the real ClientHello/ServerHello bytes. It also aggregates QUIC on UDP/443:
@@ -117,7 +123,6 @@ have, not a decision we have not made.
 | Item | Why it matters | State |
 |---|---|---|
 | Scan and slow-DoS recall on CIC-IDS2017 | slow-DoS is 28/46 after the 300 B and strong-window fixes; scan is 11/222 canonically, but 195 units are Patator/web attacks folded into scan and the port-sweep rule covers 11/27 PortScan units | **partly done** |
-| DGA false-positive work on Umbrella hard negatives | 0.1076 FPR at the operating threshold is not usable | **next** |
 | Packet-to-alert clock, bounded queue, backpressure at 5k/10k/50k flows/s | the 175 ms figure is window-evaluation p95, not end-to-end latency | planned |
 | Calibration and conformal abstention per channel | confidence is not calibrated and no alert can abstain | planned |
 | Drift alarm that makes a channel abstain, not just a chart | PSI is published as an explanation, not acted on | planned |

@@ -257,6 +257,8 @@ def test_dga_metrics_and_model(tmp_path, monkeypatch):
     model, metrics = dg.train_dga(model_dir=tmp_path / "m",
                                   results_dir=tmp_path / "r")
     assert metrics["f1"] > 0.5
+    assert (metrics["known_benign_fpr_at_threshold"]
+            <= dg.DGA_BENIGN_FPR_TARGET)
     assert model.booster is not None
     assert Path(tmp_path / "r" / "dga_metrics.json").exists()
     # umbrella domains must all get scores (holdout scored)

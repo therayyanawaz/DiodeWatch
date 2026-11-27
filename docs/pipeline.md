@@ -520,7 +520,8 @@ tunnel queries are split into two deterministic halves, each fold trains on one
 half and tests on the other. Pooled metrics therefore describe new-family
 generalisation. A separate holdout against Cisco Umbrella's top-1M list answers a
 different and equally important question: does it misfire on a million domains it
-has never seen?
+has never seen? The operating point is chosen on known-corpus benign FPR, not on
+Umbrella; Umbrella measures the result and never tunes it.
 
 #### 6d. Encrypted TLS and QUIC traffic ([src/detectors/ml/tls_ja3.py](../src/detectors/ml/tls_ja3.py), [src/ingest/tls_metadata.py](../src/ingest/tls_metadata.py))
 
@@ -1030,9 +1031,10 @@ Out-of-sample detection quality, checked against the artifacts by contract 2:
 | window ensemble (ddos) | per-day holdout | F1 | **1.0** |
 | window ensemble (scan) | per-day holdout | F1 | **1.0** |
 | beacon (C2 periodicity) | leave-one-scenario-out, CTU-13 | ROC-AUC (macro) | **0.918** |
-| DGA / DNS-tunnel | family-holdout CV | precision (known corpus) | **0.90** |
+| DGA / DNS-tunnel | family-holdout CV | precision (known corpus) | **0.99** |
+| DGA / DNS-tunnel | family-holdout CV | recall (known corpus) | **0.596** |
 | DGA / DNS-tunnel | family-holdout CV | ROC-AUC | **0.933** |
-| DGA / DNS-tunnel | Umbrella top-1m (unseen benign) | FPR at threshold | **0.108** |
+| DGA / DNS-tunnel | Umbrella top-1m (unseen benign) | FPR at threshold | **0.019** |
 | TLS/JA3 channel (watchlist lookup) | synthetic-plant | F1 | **1.0** |
 | TLS/JA3 novelty layer | same plant eval, novelty channel alone | F1 | **0.0** |
 

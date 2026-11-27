@@ -43,7 +43,8 @@ threshold.
 |---|---|
 | Estimator | LightGBM, 300 trees, 63 leaves, learning rate 0.1, `class_weight=balanced` |
 | Classes | binary, `0` benign, `1` generated or tunnel |
-| Decision threshold | `0.1572725714820621` (compared as `>=`) |
+| Decision threshold | `0.9321235933972679` (compared as `>=`) |
+| Threshold rule | most permissive cut whose known-corpus OOF benign FPR is at most 0.5%; Umbrella is holdout-only |
 | Imputation | median per feature, stored in the artifact |
 | Bigram prior | 676 entries, stored in the artifact |
 
@@ -75,7 +76,7 @@ The limits worth repeating next to an alert:
 |---|---|
 | File | `docs/evaluation/models/dga_lgbm.joblib` |
 | Bytes | 2,108,576 |
-| sha256 | `5662ee27802366ffbe0a368d8de1b4a5016f1f8cbd6b410131bf4c163357e7d0` |
+| sha256 | `e73713e26a46594592b8c45c24fba693873513466e81c5c1fe3deeb372e03616` |
 | Restored to | `models/dga_lgbm.joblib` |
 | Loader | `src/detectors/ml/dga.py` |
 

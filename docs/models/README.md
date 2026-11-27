@@ -12,7 +12,7 @@ describing the previous one.
 | Artifact | Bytes | sha256 (first 16) | Decides | Card |
 |---|---|---|---|---|
 | `beacon_lgbm.joblib` | 694,654 | `6ba89cc912c1caad` | C2 beaconing, per conversation pair | [beacon.md](beacon.md) |
-| `dga_lgbm.joblib` | 2,108,576 | `5662ee27802366ff` | DGA and DNS-tunnel domains, per name | [dga.md](dga.md) |
+| `dga_lgbm.joblib` | 2,108,576 | `e73713e26a465945` | DGA and DNS-tunnel domains, per name | [dga.md](dga.md) |
 | `flowctx_lgbm.joblib` | 2,326,265 | `01c72bbe06ed42ae` | attack classes from flow plus 10-second window context | [flowctx.md](flowctx.md) |
 | `tls_novelty.joblib` | 97,163 | `1ce23b359e446d16` | JA3 watchlist hits and TLS novelty | [tls.md](tls.md) |
 
