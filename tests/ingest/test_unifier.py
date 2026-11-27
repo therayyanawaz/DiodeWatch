@@ -393,6 +393,7 @@ def test_flow_export_timestamp_fraction_and_protocol_names():
     assert to_protocol("tcp") == 6
     assert to_protocol("UDP") == 17
     assert to_protocol("icmpv6") == 58
+    assert to_protocol("ICMP6") == 58
     assert to_protocol("0x11") == 17
     assert to_protocol("junk") is None
 

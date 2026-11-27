@@ -254,7 +254,8 @@ _IPV4_TEXT = re.compile(
 )
 
 _PROTOCOL_NAMES = {v: k for k, v in PROTO_NAMES.items()}
-_PROTOCOL_NAMES.update({"icmpv6": 58, "ipv6icmp": 58, "ipv6-icmp": 58})
+_PROTOCOL_NAMES.update({"icmp6": 58, "icmpv6": 58, "ipv6icmp": 58,
+                           "ipv6-icmp": 58})
 
 
 def to_protocol(v) -> int | None:
