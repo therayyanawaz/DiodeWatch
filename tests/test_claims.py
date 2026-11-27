@@ -76,7 +76,7 @@ def test_metrics_fall_back_to_the_pinned_copies(tmp_path):
     so the guardrail still reconciles numbers in a fresh clone that never ran
     a training job."""
     root = tree(tmp_path, {"README.md": ROW.format("0.918")}, {})
-    for name in ("beacon", "window", "dga", "tls", "supervised"):
+    for name in ("beacon", "window", "dga", "tls"):
         src = REPO / "docs" / "evaluation" / "runs" / f"{name}_metrics.json"
         dst = root / "docs" / "evaluation" / "runs" / f"{name}_metrics.json"
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -146,15 +146,11 @@ def test_number_drift_is_caught(tmp_path):
 
 
 def test_approximate_cell_gets_a_tolerance(tmp_path):
-    approx = tree(tmp_path, {"README.md":
-                             "| supervised reference | per-day holdout "
-                             "| macro-F1 | ~0.30 |\n"},
-                  {"supervised": {"macro_f1": 0.3401}})
+    approx = tree(tmp_path, {"README.md": ROW.format("~0.95")},
+                  {"beacon": BEACON})
     assert cc.scan(approx)["findings"] == []
-    exact = tree(tmp_path, {"README.md":
-                            "| supervised reference | per-day holdout "
-                            "| macro-F1 | **0.30** |\n"},
-                 {"supervised": {"macro_f1": 0.3401}})
+    exact = tree(tmp_path, {"README.md": ROW.format("0.95")},
+                 {"beacon": BEACON})
     assert {f["kind"] for f in cc.scan(exact)["findings"]} == {"number-drift"}
 
 

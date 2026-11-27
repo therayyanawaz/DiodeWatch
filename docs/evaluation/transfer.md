@@ -1,6 +1,6 @@
 # Transfer evaluation, consolidated cross-corpus summary (REAL corpora)
 
-**Date:** 2026-10-18 · **Harness:** `scripts/benchmarks/bench_transfer.py` · **Pre-committed gates:** rule DDoS F1 ≥ 0.95 on every evaluable corpus; benign FPR ≤ 0.02. Gates were fixed before any run and never tuned after seeing results.
+**Dates:** 2026-10-18 zero-shot phase; model pin and full-corpus pass 2026-11-27 · **Harness:** `scripts/benchmarks/bench_transfer.py` · **Pre-committed gates:** rule DDoS F1 ≥ 0.95 on every evaluable corpus; benign FPR ≤ 0.02. Gates were fixed before any run and never tuned after seeing results.
 
 ## Corpora actually evaluated (all real, never synthetic)
 
@@ -28,22 +28,8 @@ Archived at `results/archive/transfer_zeroshot_2017models/`.
 
 **ML recall 0.0 with the explanation published, not hidden:** top PSI drift on the new corpora is 1.0-14.4 (e.g. CIC-DDoS2019 `fwd_pkts` 14.4, IDS2018 `duration_us` 6.8-10.0). The flowctx channel never saw these labs' feature distributions; its quality gate correctly refuses to emit confident junk on drifted input. The archived phase-1 run reported zero false positives on 2.0M benign flows. That figure is withdrawn: the denominator included 249,873 LOIC attack flows that are now true positives. The corrected full pass reports 28/1,179,766 on CIC-IDS2017, 0/32,368 on CIC-DDoS2019, 32/973,140 on IDS2018 and 0/56,000 on UNSW-NB15. Fail-closed silence is real; a universal zero is not.
 
-## Phase 2, after retraining (archived 2026-10-18)
-
-Models retrained: `supervised` (all 13 days, 2.6M labelled flows incl. IDS2018 per-flow classes, macro F1 0.34 over **7** classes vs 0.299 over 4 previously) and `flowctx` windows (10 days with identity columns; the 4 IDS2018 days contribute 0 flowctx rows, no identity, so the ML cell below remains genuinely out-of-sample for IDS2018).
-
-| Corpus | Rule ddos F1 | Rule benign FPR | ML (flowctx) | ML benign FPR | Verdict |
-|---|---|---|---|---|---|
-| CIC-DDoS2019 Syn *(now in-sample for both channels)* | **1.0** | **0.0** | F1 1.0 | 0.0 | **GATES PASS** |
-| IDS2018 HOIC | n/a | n/a | R 0.0 | 0/360,833 = 0.0 | fail-closed |
-| IDS2018 Bot | n/a | n/a | R 0.0 | 0/762,384 = 0.0 | fail-closed |
-| IDS2018 BruteForce | n/a | n/a | R 0.0 | 0/667,626 = 0.0 | fail-closed |
-| IDS2018 Infil | n/a | n/a | R 0.0 | **5/238,037 = 2.1e-05** | fail-closed |
-
-Aggregate benign pressure across all ML cells this session: **2,029,036 benign flows → 5 false positives** (2.5e-06 aggregate FP rate).
-
-**2026-11-26 correction to the archived phase tables.** These two tables are
-left as the 2026-10-18 record. They were produced before two real label
+**2026-11-26 correction to the archived phase table.** The table above is left
+as the 2026-10-18 record. It was produced before two real label
 spellings were registered: `DDoS attacks-LOIC-HTTP` (249,873 CSE-CIC-IDS2018
 flows) and `UDP-lag` (366,461 CIC-DDoS2019 flows). Both were scored as
 unmapped and stayed inside the benign denominators above. The register now
@@ -55,7 +41,7 @@ and the corrected family FPR is 3.288e-05.
 
 ## Max scale, every pinned file (2026-11-27)
 
-The phases above scored five files chosen from what happened to be on disk. This pass scores the register: `scripts/benchmarks/bench_corpora.py` reads every pinned file of all five corpora, 50 files and 109,643,423 flows in 1,020.4 seconds, with the rule layer streamed in 250,000-flow chunks and the ML channel on the first 200,000 contiguous flows of each file. The ML scope is a deliberate limit, not a sample: the window model needs a feature frame, and a capture-wide pass is not what a deployment feeds it, so the artifact prints the prefix next to every ML number.
+The zero-shot phase above scored five files chosen from what happened to be on disk. This pass scores the register: `scripts/benchmarks/bench_corpora.py` reads every pinned file of all five corpora, 50 files and 109,643,423 flows in 732.3 seconds, with the rule layer streamed in 250,000-flow chunks and the ML channel on the first 200,000 contiguous flows of each file. The ML scope is a deliberate limit, not a sample: the window model needs a feature frame, and a capture-wide pass is not what a deployment feeds it, so the artifact prints the prefix next to every ML number.
 
 ```bash
 python -m scripts.benchmarks.bench_corpora --jobs 4 --model-dir <models>
@@ -69,7 +55,7 @@ python -m scripts.benchmarks.bench_corpora --jobs 4 --model-dir <models>
 | UNSW-NB15 | 1/1 | 175,341 | not evaluable, no identity | 0.278 |
 | CTU-13 | 13/13 | 19,976,700 | not evaluable, NetFlow | not evaluable, NetFlow |
 
-**Which artifact produced the ML cells.** The run loaded `flowctx_lgbm.joblib`, 2,322,045 bytes, sha256 `fcc1e635a4fe...`, whose own metadata records 2,264,599 training rows and a 2026-10-05 build date. That is the CIC-IDS2017 model. The Phase-2 retrained artifact behind the `*_retrained` records above was never pinned (`docs/models/README.md` says two artifacts are not distributed), so those numbers cannot be reproduced from this checkout and are not extended here. The consequence is useful rather than embarrassing: CIC-IDS2017 is in-sample for the ML channel, while CIC-DDoS2019, CSE-CIC-IDS2018 and UNSW-NB15 are genuinely unseen by it. The run records the byte count and SHA256 of every artifact it loads, so a cell can always be traced to the bytes that produced it.
+**Which artifact produced the ML cells.** The run loaded `flowctx_lgbm.joblib`, 2,326,265 bytes, sha256 `01c72bbe06ed...`, whose own metadata records 2,264,599 training rows and the 2026-11-27 rebuild. That is the CIC-IDS2017 model, pinned in `docs/evaluation/models/`. CIC-IDS2017 is therefore in-sample for the ML channel, while CIC-DDoS2019, CSE-CIC-IDS2018 and UNSW-NB15 are genuinely unseen by it. The run records the byte count and SHA256 of every artifact it loads, so a cell can always be traced to the bytes that produced it. The retrained phase records were withdrawn because their bytes were never preserved; no number above depends on them.
 
 **What the full pass adds.**
 
@@ -82,12 +68,12 @@ python -m scripts.benchmarks.bench_corpora --jobs 4 --model-dir <models>
 
 ## Gate verdicts
 
-Two scopes, because they answer different questions. The phase rows were scored before this pass; the full-corpus rows are the ones to quote.
+Two scopes, because they answer different questions. The zero-shot phase rows were scored before this pass; the full-corpus rows are the ones to quote.
 
-| Gate | Five-file phases (archived) | Full-corpus pass (current) |
+| Gate | Five-file zero-shot phase (archived) | Full-corpus pass (current) |
 |---|---|---|
 | rule DDoS F1 >= 0.95 | PASS, 1.0 on CIC-DDoS2019 | PASS both: 0.996426 on CIC-DDoS2019, 0.989026 on CIC-IDS2017 |
-| benign FPR <= 0.02 | PASS, worst 2.1e-05 | PASS both: 0.00044804 on CIC-DDoS2019 (113,828 benign), 0.00239892 on CIC-IDS2017 (2,273,108 benign) |
+| benign FPR <= 0.02 | n/a, archived denominators were withdrawn by the label correction | PASS both: 0.00044804 on CIC-DDoS2019 (113,828 benign), 0.00239892 on CIC-IDS2017 (2,273,108 benign) |
 
 The phase rows are kept as history and their FPR denominators are not current;
 the correction above explains why. The full pass scores every flow of every
@@ -100,11 +86,11 @@ windows or misses small incidents.
 
 ## Honest limitations
 
-1. **The shipped artifact set is the CIC-IDS2017 one.** The Phase-2 retrained flow-context model was never pinned, so its records above cannot be reproduced from this tree and the full-corpus pass measures the earlier, zero-shot artifact instead. Its 2,264,599 training rows are the 80% split of the 2,830,743-flow CIC-IDS2017 register, which is what makes that corpus in-sample and nothing else. That retires the earlier "CIC-DDoS2019 is in-sample after Phase 2" wording: with the bytes that exist, the whole corpus is unseen, and the channel calls none of its 3.36M attack flows DDoS.
-2. **IDS2018 ML DDoS recall is 0.34% at 3.288e-05 benign FPR** for the flowctx channel (no identity columns → 0 training windows), measured on 1.78M prefix flows. The old 0.56% at 17% figure is withdrawn with the label correction. The supervised channel learned IDS2018 per-flow classes (bot F1 0.30, bruteforce 0.49 in-sample) but those are in-sample numbers and not cross-corpus claims.
+1. **The shipped artifact set is the CIC-IDS2017 one, and it is pinned.** The flow-context model behind every ML cell is the 2,326,265-byte artifact in `docs/evaluation/models/`, rebuilt on scikit-learn 1.9.0 on 2026-11-27. Its 2,264,599 training rows are the 80% split of the 2,830,743-flow CIC-IDS2017 register, which is what makes that corpus in-sample and nothing else. The retrained phase was withdrawn with its unpinned bytes, so no published number now depends on a model that cannot be loaded.
+2. **IDS2018 ML DDoS recall is 0.34% at 3.288e-05 benign FPR** for the flowctx channel (no identity columns → 0 training windows), measured on 1.78M prefix flows. The old 0.56% at 17% figure is withdrawn with the label correction. The supervised reference was part of the withdrawn retrained phase; its in-sample table is not published here.
 3. **ML cells are prefix slices.** The full pass scores the first 200,000 contiguous flows per file because the window model needs a feature frame. A file's prefix is often a single class, so per-file macro F1 is a coverage fact, not a quality estimate; only the family aggregates are read here, and the artifact states the prefix next to each cell.
 4. **The CIC-IDS2017 benign denominator is real traffic.** The Thursday-Morning WebAttacks file carries 288,602 all-null padding rows (a doubled header in the original export). They are dropped and counted, so the 2,830,743-flow total and the 2,273,108 benign flows are real rows, not padding.
-5. **LOSO threshold-transfer gap, disclosed:** leave-one-day-out ddos folds show AUC 0.998 (2/3 folds) but the fixed train threshold yields R 0.0 on some held-out days (Friday-2017 fold AUC 0.584). The pooled in-sample F1 1.0 must never be quoted as cross-day generalization; the oracle-threshold numbers are in `window_metrics.json`.
+5. **LOSO threshold-transfer gap, disclosed:** the two leave-one-day-out ddos folds measure AUC 0.9205 (Friday) and 0.9971 (Wednesday), but the fixed training threshold yields recall 0.0 on both held-out days. The oracle operating points are F1 0.9024 and 0.9834. The pooled in-sample result must never be quoted as cross-day generalization; the fold counts are in `window_metrics.json`.
 6. Mirror row caps (2^20/day) and the Infilteration official misspelling are export artifacts, documented here.
 7. CTU-13 scenarios 45-50 were attempted for beacon expansion but the source server delivers ~100 KB/s (hours per file); the beacon model remains LOSO-validated on scenarios 42/43/51/52/53 and was **not retrained**, its metrics are unchanged and still honest.
 8. **Alert-level scoring exposes misses the flow gates hide.** On CIC-DDoS2019 flow recall is 0.99788 but incident recall is 0.1184, because a few large floods carry most of the volume. On CIC-IDS2017 exact alert precision is 0.941176 and 5 of 85 alerts are benign-only; slow-DoS recall is 28/46 and canonical scan recall is 11/222 (11/27 PortScan; 195 Patator/web units folded in). The pre-committed gates cover only DDoS and benign FPR; passing them is not evidence that the rule layer covers every class.

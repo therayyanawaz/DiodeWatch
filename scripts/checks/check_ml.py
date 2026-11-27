@@ -35,9 +35,6 @@ DAY_FEATURES = sorted(glob.glob(str(REPO / "data/slices/ml/features__*.parquet")
 # precision/F1 are still logged. TLS is the synthetic-plant experiment.
 GATES = {
     "windows": {"ddos_f1": 0.90, "scan_f1": 0.90},
-    # 0.299 measured (documented plateau; docs/ml.md "~0.30"), gate sits just
-    # below so a real regression fails while the plateau itself passes.
-    "supervised": {"macro_f1": 0.29},  # honest plateau, kept for reference
     "beacon": {"roc_auc": 0.85},
     "dga": {"precision": 0.90, "roc_auc": 0.90},  # 0.93 achieved under the hard 48-family holdout (no family leakage); 0.99+ numbers in the literature use random splits
     "tls": {"plant_f1": 0.90},
@@ -193,10 +190,6 @@ def gates() -> bool:
     check("windows scan F1", win["scan"]["f1"] >= GATES["windows"]["scan_f1"],
           f"{win['scan']['f1']} >= {GATES['windows']['scan_f1']} "
           f"(n={win['scan']['n']:,}, fp={win['scan']['fp']:,})")
-    sup = _load("supervised")
-    check("supervised macro_f1 (reference model)",
-          sup["macro_f1"] >= GATES["supervised"]["macro_f1"],
-          f"{sup['macro_f1']} >= {GATES['supervised']['macro_f1']}")
 
     bc_m = _load("beacon")
     auc = bc_m.get("roc_auc_macro", bc_m.get("roc_auc"))

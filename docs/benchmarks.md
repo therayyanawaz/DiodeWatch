@@ -70,7 +70,6 @@ the same table and catch.
 | TLS/JA3 channel (watchlist lookup) | synthetic-plant (labelled as such) | F1 | **1.0** |
 | TLS/JA3 novelty layer (IsolationForest) | same plant eval, novelty channel scored alone | F1 | **0.0** |
 | rule layer | CIC Wednesday 200k stratified slice | benign-window false positives | **0** of 100,000 benign flows |
-| supervised reference | per-day holdout | macro-F1 (documented plateau) | ~0.30 |
 
 The rule-layer row is the 50/50 acceptance slice. On the full pinned Wednesday
 table (692,703 flows, 440,031 benign) the same thresholds emit 50 alerts, none on
@@ -85,12 +84,11 @@ IsolationForest novelty layer scores 0.0 because the lab's generated baseline
 gives every client the same aggregate vector (zero fit spread), so it reports
 itself unavailable instead of alerting on noise, see [ml.md](ml.md).
 
-All 8 documented gates PASS (`scripts/benchmarks/bench_accuracy.py` exit 0). Honest
+All 7 documented gates PASS (`scripts/benchmarks/bench_accuracy.py` exit 0). Honest
 caveats carried over from the ML evaluation: the reference flow-level model
-plateaus at
-macro-F1 ≈ 0.30 (the flow+window ensemble is the production detector), and the
-TLS channel has no real TLS pcap in the lab, its baseline is synthetic and
-labelled as such.
+plateaus well below the production flow+window ensemble (it is a design
+reference, not a shipped artifact), and the TLS channel has no real TLS pcap in
+the lab, its baseline is synthetic and labelled as such.
 
 ## What the benchmark changed
 

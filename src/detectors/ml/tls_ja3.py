@@ -317,7 +317,8 @@ def train_tls(ssl_frames: list[pd.DataFrame],
     metrics = {
         "model": "JA3 watchlist (abuse.ch SSLBL) + IsolationForest novelty",
         "watchlist_size": len(watchlist),
-        "watchlist_source": ABUSECH_JA3.as_posix() + " (pinned, offline)",
+        "watchlist_source": (ABUSECH_JA3.relative_to(REPO_ROOT).as_posix()
+                             + " (pinned, offline)"),
         "n_fit_clients": len(agg_fit),
         "novelty_threshold": novelty_threshold,
         "novelty_scale": ("frozen fit-set percentiles: "

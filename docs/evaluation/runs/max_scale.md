@@ -1,6 +1,6 @@
 # Max-scale evaluation, every pinned flow corpus
 
-Every corpus file on disk scored at its full row count, with the rule layer streamed in 250,000-flow chunks and the ML channel on the first 200,000 contiguous flows of each file. Rules never train, but the CIC-IDS2017 thresholds are calibrated on its Wednesday table, the scan and slow-DoS bounds were checked against its PortScan and slowloris days, and the random-port DDoS branch against CIC-DDoS2019 Syn; every other rule cell is out-of-sample. The ML cells name their own status: in-sample where the corpus trained the shipped artifact, out-of-sample where it never did. Artifacts: `flowctx_lgbm.joblib` fcc1e635a4fe, `tls_novelty.joblib` 78e8d8f2335d, `beacon_lgbm.joblib` 6ba89cc912c1, `dga_lgbm.joblib` 5662ee278023.
+Every corpus file on disk scored at its full row count, with the rule layer streamed in 250,000-flow chunks and the ML channel on the first 200,000 contiguous flows of each file. Rules never train, but the CIC-IDS2017 thresholds are calibrated on its Wednesday table, the scan and slow-DoS bounds were checked against its PortScan and slowloris days, and the random-port DDoS branch against CIC-DDoS2019 Syn; every other rule cell is out-of-sample. The ML cells name their own status: in-sample where the corpus trained the shipped artifact, out-of-sample where it never did. Artifacts: `flowctx_lgbm.joblib` 01c72bbe06ed, `tls_novelty.joblib` 1ce23b359e44, `beacon_lgbm.joblib` 6ba89cc912c1, `dga_lgbm.joblib` 5662ee278023.
 
 ## cic-ids2017, 2,830,743 flows in 8 files
 - all 8 day-files (5 capture days), 85-column official schema; ML in-sample: these days trained the shipped artifact
@@ -21,7 +21,7 @@ Every corpus file on disk scored at its full row count, with the rule layer stre
     - ML prefix 1,561,399 flows (first 200,000 per file, 0 without a usable clock): a coverage slice, and a single file's prefix is often one class, so read the family line
 
 ## cic-ddos2019, 70,427,637 flows in 18 files
-- all 18 CSVs of the 01-12 and 03-11 collection days; ML out-of-sample: the shipped artifact predates the Phase 2 retraining and no published training claim covers this corpus
+- all 18 CSVs of the 01-12 and 03-11 collection days; ML out-of-sample: the shipped artifact trained on CIC-IDS2017 only and no published training claim covers this corpus
 - **rules** (window rules): macro F1 0.534562, micro F1 0.993692, scored 70,427,637 flows
     - benign: P 0.436104, R 0.999552, F1 0.607261, n 113,828
     - ddos: P 0.994977, R 0.99788, F1 0.996426, n 69,945,475

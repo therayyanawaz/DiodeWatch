@@ -1,7 +1,7 @@
 {
   "model": "JA3 watchlist (abuse.ch SSLBL) + IsolationForest novelty",
   "watchlist_size": 97,
-  "watchlist_source": "data/raw/tls/ja3_fingerprints.csv (pinned, offline)",
+  "watchlist_source": "docs/evaluation/tls/ja3_fingerprints.csv (pinned, offline)",
   "n_fit_clients": 5004,
   "novelty_threshold": 0.98,
   "novelty_scale": "frozen fit-set percentiles: decision p1=0.0 p99=0.0",

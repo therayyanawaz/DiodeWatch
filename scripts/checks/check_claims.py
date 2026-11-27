@@ -137,7 +137,6 @@ METRIC_CLAIMS = [
      "umbrella_fpr_at_threshold"),
     (("tls/ja3 channel", "f1"), "tls", "synthetic_plant_eval.f1"),
     (("novelty layer", "f1"), "tls", "synthetic_plant_eval.novelty_only.f1"),
-    (("supervised reference", "macro-f1"), "supervised", "macro_f1"),
 ]
 
 # Scope contract: denominator -> the two facts that make its file honest.

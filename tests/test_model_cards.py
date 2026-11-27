@@ -57,15 +57,26 @@ def test_the_card_records_the_digest_of_the_shipped_bytes(path):
 
 
 @pytest.mark.parametrize("path", _shipped(), ids=lambda p: p.name)
-def test_the_card_threshold_is_the_artifact_threshold(path):
+def test_the_card_operating_point_is_the_artifact_operating_point(path):
     """A card that quotes the operating point wrong is how an alert gets read as
-    a false positive when it was a true one."""
+    a false positive when it was a true one. A multiclass ensemble carries one
+    threshold per class; a disabled novelty channel carries its interval rather
+    than a threshold, and the card has to say so."""
     joblib = pytest.importorskip("joblib")
-    threshold = joblib.load(path)["threshold"]
+    artifact = joblib.load(path)
     stem = path.stem.split("_")[0]
     text = (CARDS / f"{stem}.md").read_text(encoding="utf-8")
-    assert repr(threshold) in text, (
-        f"{stem}.md does not quote the artifact threshold {threshold!r}")
+    if "threshold" in artifact:
+        markers = [repr(artifact["threshold"])]
+    elif "thresholds" in artifact:
+        markers = [repr(v) for v in artifact["thresholds"].values()]
+    else:
+        markers = [repr(artifact["nov_lo"]), repr(artifact["nov_hi"])]
+        assert "degenerate_baseline" in text
+        assert "disabled" in text
+    for marker in markers:
+        assert marker in text, (
+            f"{stem}.md does not quote the artifact operating point {marker}")
 
 
 @pytest.mark.parametrize("path", _shipped(), ids=lambda p: p.name)

@@ -1,27 +1,29 @@
 # Evaluation evidence, committed snapshot
 
-Snapshot committed 2026-10-24. Files were copied byte-for-byte from the
-generated outputs, **no metric was hand-edited.**
+Snapshot committed 2026-10-24; the model pin was re-established 2026-11-27.
+Metric values were copied from generated outputs; machine-specific path
+metadata was normalized; **no metric was hand-edited.**
 
 | File | Origin |
 |---|---|
 | `transfer.md` | `results/transfer/summary.md` (consolidated cross-corpus summary) |
-| `runs/<corpus>_<phase>.md` / `.json` | per-run `summary.md` / `transfer_results.json` from `scripts/benchmarks/bench_transfer.py --out results/transfer/<dir>` |
+| `runs/<corpus>_zeroshot_2017models.md` / `.json` | per-run `summary.md` / `transfer_results.json` from `scripts/benchmarks/bench_transfer.py --out results/transfer/<dir>` |
 | `runs/label_maps.json` | `results/transfer/label_maps.json` |
-| `runs/window_metrics.json` | `results/ml/window_metrics.json` (flowctx window ensemble, retrained) |
-| `runs/supervised_metrics.json` | `results/ml/supervised_metrics.json` (retrained reference model) |
+| `runs/window_metrics.json` | the metrics embedded in the pinned `flowctx_lgbm.joblib` at training time (CIC-IDS2017, rebuilt 2026-11-27) |
+| `runs/tls_metrics.json` | the metrics written by `scripts/checks/check_ml.py train-tls` beside the pinned TLS artifact |
 | `models/beacon_lgbm.joblib` | `models/beacon_lgbm.joblib`, pinned copy used by CI so the sidecar tests exercise the real trained model, not a fallback |
 | `models/dga_lgbm.joblib` | `models/dga_lgbm.joblib`, same for the DGA channel |
+| `models/flowctx_lgbm.joblib` | the CIC-IDS2017 flow-context ensemble, pinned so the full-corpus ML cells can be re-scored |
+| `models/tls_novelty.joblib` | the watchlist plus novelty artifact, pinned so the TLS channel is deterministic |
 | `runs/max_scale.md` / `.json` | `results/transfer/max/summary.md` / `max_results.json` from `scripts/benchmarks/bench_corpora.py --out results/transfer/max`, regenerated and committed 2026-11-27 |
 
 Corpora naming: `ddos2019` = CIC-DDoS2019 Syn day · `hoic` / `bot` /
 `bruteforce` / `infil` = the four CSE-CIC-IDS2018 attack days.
-Phases: `zeroshot_2017models` = evaluated with models trained only on
-CIC-IDS2017 (true zero-shot, the defensible cross-corpus claim);
-`retrained` = evaluated after the expanded 13-day retraining (CIC-DDoS2019
-is in-sample there, disclosed inside the files). The retrained flow-context
-artifact itself was never pinned, so those retrained records describe a model that is
-not in this tree; the full-corpus pass below measures the artifact that is.
+The archived phase is `zeroshot_2017models`: models trained only on
+CIC-IDS2017, evaluated on the other corpora. The retrained expansion was
+withdrawn on 2026-11-27 because its artifacts were never preserved; those
+records could not be re-scored from this tree. What remains is the zero-shot
+phase and the full-corpus pass, both tied to pinned bytes.
 
 One line in those archives no longer describes the pipeline: each run reports
 `feature families not computed`, and the `iat_*` / `pkt_len_*` entries in it
@@ -62,39 +64,39 @@ from precision. **Incident recall** counts truth `(window, entity, class)`
 units that received an alert of the same class. Raw counts, not rounded rates,
 are merged across chunks and files before any ratio is computed.
 
-## The ten run records
+## The five zero-shot run records
 
-Five corpora were evaluated, twice each: the zero-shot pass with the 2017 models, and the
-retrained pass. Both are kept so the gap between them stays visible.
+Five corpora were evaluated with the 2017-only models. Each record is one
+corpus and one phase; the matching JSON holds the per-class counts.
 
 | Run | Read it as |
 |---|---|
-| [`bot_retrained.md`](runs/bot_retrained.md) | bot (retrained) |
 | [`bot_zeroshot_2017models.md`](runs/bot_zeroshot_2017models.md) | bot (zero-shot, 2017 models) |
-| [`bruteforce_retrained.md`](runs/bruteforce_retrained.md) | bruteforce (retrained) |
 | [`bruteforce_zeroshot_2017models.md`](runs/bruteforce_zeroshot_2017models.md) | bruteforce (zero-shot, 2017 models) |
-| [`ddos2019_retrained.md`](runs/ddos2019_retrained.md) | ddos2019 (retrained) |
 | [`ddos2019_zeroshot_2017models.md`](runs/ddos2019_zeroshot_2017models.md) | ddos2019 (zero-shot, 2017 models) |
-| [`hoic_retrained.md`](runs/hoic_retrained.md) | hoic (retrained) |
 | [`hoic_zeroshot_2017models.md`](runs/hoic_zeroshot_2017models.md) | hoic (zero-shot, 2017 models) |
-| [`infil_retrained.md`](runs/infil_retrained.md) | infil (retrained) |
 | [`infil_zeroshot_2017models.md`](runs/infil_zeroshot_2017models.md) | infil (zero-shot, 2017 models) |
+
+The retrained phase records were withdrawn on 2026-11-27. Their model bytes
+were never preserved, so the numbers could not be re-scored, and publishing a
+number whose artifact cannot be loaded is the failure this directory exists to
+prevent. The artifact that the full-corpus pass actually uses is pinned and
+tested; nothing in this tree now depends on the withdrawn bytes.
 
 ## The full-corpus pass (2026-11-27)
 
 [`max_scale.md`](runs/max_scale.md) is a different kind of record: not a phase,
 but every pinned file of all five corpora scored at its full row count, 50 files
-and 109,643,423 flows in 1,020.4 seconds. The rule layer streams each file in
-250,000-flow chunks; the ML channel scores the first 200,000 contiguous flows of
-each file, because the window model needs a feature frame. Each family line says
-whether that corpus trained the artifact, so the ML column cannot be read as
-generalization by accident.
+and 109,643,423 flows. The rule layer streams each file in 250,000-flow chunks;
+the ML channel scores the first 200,000 contiguous flows of each file, because
+the window model needs a feature frame. Each family line says whether that
+corpus trained the artifact, so the ML column cannot be read as generalization
+by accident.
 
-The artifact identity is recorded in the JSON: `flowctx_lgbm.joblib`, 2,322,045
-bytes, sha256 `fcc1e635a4fe...`, 2,264,599 training rows, built 2026-10-05. That
-is the CIC-IDS2017 model, not the Phase-2 retrain, which is why CIC-IDS2017 is the
-only in-sample ML family here and why the retrained records cannot be reproduced
-from this checkout.
+The artifact identity is recorded in the JSON: `flowctx_lgbm.joblib`, 2,326,265
+bytes, sha256 `01c72bbe06ed...`, 2,264,599 training rows. That is the
+CIC-IDS2017 model, which is why CIC-IDS2017 is the only in-sample ML family
+here.
 
 Gate outcome, pre-committed and unmoved: **four PASS**. On CIC-IDS2017 the
 rule layer reaches DDoS F1 0.989026 and benign FPR 5,453/2,273,108 =

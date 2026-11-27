@@ -57,6 +57,12 @@ each claim:
   Suricata or Zeek on one capture beside our own pass, reporting volume and cost
   only, and exits with a distinct code when the tool is absent instead of printing
   a row for a run that never happened.
+* **Pinned flow-context and TLS artifacts.** The 2,326,265-byte CIC-IDS2017
+  flow-context ensemble and the 97,163-byte TLS watchlist/novelty model now
+  live in `docs/evaluation/models/`, rebuilt on scikit-learn 1.9.0, with cards
+  and card tests. The retrained phase records and the supervised reference were
+  withdrawn because their bytes were never preserved; the zero-shot phase and
+  the full-corpus pass remain, both tied to pinned artifacts.
 * **Full-scale evaluation.** All 50 pinned files of five corpora, 109,643,423
   flows, scored in one pass and published in
   [`evaluation/runs/max_scale.md`](evaluation/runs/max_scale.md). All four
@@ -83,7 +89,7 @@ each claim:
   100 held connections now survives corroboration. Slow-DoS truth recall rose
   from 18/46 to 28/46 with no new benign-only slow alert; the one remaining
   benign slow alert is the Thursday Infiltration 40-flow window.
-* **The suite** collects 511 tests. Three of them need corpora this repository
+* **The suite** collects 517 tests. Three of them need corpora this repository
   deliberately never commits, so they skip locally and run in
   `.github/workflows/integration.yml`, which fails if they skip there.
 
@@ -94,7 +100,6 @@ have, not a decision we have not made.
 
 | Item | Why it matters | State |
 |---|---|---|
-| Pin the two retrained channel artifacts, or delete the rows that depend on them | an unpinned artifact cannot be re-scored | **next** |
 | Flow-record ingest: Argus CSV, nfdump CSV, goflow2 JSON | the PS accepts NetFlow/IPFIX/sFlow and CTU-13, 19,976,700 flows, is unscored for rules and flow context | **next** |
 | JA4 and JA4S over TLS, QUIC observable metadata | PS clause (d) names JA4; only JA3 is shipped and QUIC has no reader | **next** |
 | Scan and slow-DoS recall on CIC-IDS2017 | slow-DoS is 28/46 after the 300 B and strong-window fixes; scan is 11/222 canonically, but 195 units are Patator/web attacks folded into scan and the port-sweep rule covers 11/27 PortScan units | **partly done** |

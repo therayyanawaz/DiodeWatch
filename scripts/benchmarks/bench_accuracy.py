@@ -8,7 +8,6 @@ recompute metrics, it gathers the already-measured values into one file
 benchmarks document can cite a single source of truth:
 
   * window ensemble (ddos/scan)     stratified per-day holdout
-  * supervised reference model      stratified per-day holdout
   * beacon pair model               leave-one-scenario-out (CTU-13)
   * DGA lexical model               family-holdout CV + Umbrella-1m holdout
   * TLS novelty channel             synthetic-plant (labelled as such)
@@ -48,7 +47,6 @@ def _load(name: str) -> dict:
 
 def gather() -> dict:
     win = _load("window")
-    sup = _load("supervised")
     bc = _load("beacon")
     dga = _load("dga")
     tls = _load("tls")
@@ -56,7 +54,6 @@ def gather() -> dict:
     out = {
         "methodology": {
             "windows": "stratified per-day holdout (out-of-sample)",
-            "supervised": "stratified per-day holdout (reference model)",
             "beacon": "leave-one-scenario-out over CTU-13 scenarios",
             "dga": "family-holdout CV; Umbrella top-1m as untouched benign holdout",
             "tls": "synthetic-plant experiment (labelled as such; no real TLS pcap)",
@@ -71,11 +68,6 @@ def gather() -> dict:
             "benign_false_positives_per_day": win.get(
                 "benign_false_positives_per_day", {}),
             "macro_f1": win.get("macro_f1"),
-        },
-        "supervised_reference": {
-            "macro_f1": sup["macro_f1"],
-            "accuracy": sup.get("accuracy"),
-            "note": "documented plateau (~0.30 macro-F1), see docs/ml.md",
         },
         "beacon": {
             "roc_auc_macro": bc.get("roc_auc_macro", bc.get("roc_auc")),

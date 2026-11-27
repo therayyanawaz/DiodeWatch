@@ -83,8 +83,8 @@ def _families() -> dict[str, dict]:
             "ml": True,
             "files": sorted((RAW / "ddos2019").glob("*/*.csv")),
             "note": "all 18 CSVs of the 01-12 and 03-11 collection days; ML "
-                    "out-of-sample: the shipped artifact predates the Phase 2 "
-                    "retraining and no published training claim covers this corpus",
+                    "out-of-sample: the shipped artifact trained on CIC-IDS2017 "
+                    "only and no published training claim covers this corpus",
         },
         "cic-ids2018": {
             "map_key": "cic-ids2018-nf-v2",

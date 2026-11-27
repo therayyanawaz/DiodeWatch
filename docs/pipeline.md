@@ -446,11 +446,11 @@ Current state of the channels, from `results/ml/window_metrics.json`:
 
 | Class | Tuned threshold | Test precision / recall | Alerts? |
 |---|---:|---|---|
-| ddos | 0.9721 | 1.0 / 1.0 | yes |
-| scan | 0.9999 | 1.0 / 1.0 | yes |
-| bruteforce | 1.0 | 1.0 / 0.9993 | yes |
-| bot | 1.0 | 0.9975 / 0.9975 | yes |
-| webattack | none | gate failed on the tuning slice | **disabled** |
+| ddos | 0.9999 | 1.0 / 1.0 | yes |
+| scan | 1.0 | 1.0 / 1.0 | yes |
+| bruteforce | 1.0 | 1.0 / 0.9989 | yes |
+| bot | 1.0 | 1.0 / 0.9975 | yes |
+| webattack | 1.0 | 1.0 / 1.0 | yes |
 | infiltration | not trained | 29 flows corpus-wide | excluded as untrainable |
 
 Note also that `score()` accepts **no operator threshold on purpose**. A hand-set
@@ -988,13 +988,12 @@ Out-of-sample detection quality, checked against the artifacts by contract 2:
 | DGA / DNS-tunnel | Umbrella top-1m (unseen benign) | FPR at threshold | **0.108** |
 | TLS/JA3 channel (watchlist lookup) | synthetic-plant | F1 | **1.0** |
 | TLS/JA3 novelty layer | same plant eval, novelty channel alone | F1 | **0.0** |
-| supervised reference | per-day holdout | macro-F1 | ~0.34 |
 
-Read those last four rows carefully, because they are why the table is trustworthy.
+Read those last three rows carefully, because they are why the table is trustworthy.
 The TLS watchlist row is a lookup scoring a synthetic plant, so 1.0 means "exact hash
 matching works", not "it finds real malware". The novelty channel genuinely scores
-0.0 and is reported as 0.0. The `~0.34` row is the flow-only model that the
-flow+context design replaced, kept as a reference to explain why context was needed.
+0.0 and is reported as 0.0. The flow-only reference model has no pinned artifact and
+no published metric; it is not quoted as a result.
 Full-day false-positive behaviour is scoped in [benchmarks.md](benchmarks.md) and
 [evaluation/transfer.md](evaluation/transfer.md), and the transfer ledger states
 plainly that the ML flow-context channel reports recall 0.0 on corpora it was not

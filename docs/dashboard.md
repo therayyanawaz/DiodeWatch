@@ -222,9 +222,9 @@ analyst would audit). Export buttons build, validate, and download:
 ### Tab 3, 📈 Metrics (static, from the evaluation runs)
 
 * Per-class **precision / recall / F1** read from `results/ml/*.json`
-  (out-of-sample evaluation: `ml.flowctx` production ensemble +
-  `ml.supervised` reference model with its documented ≈0.30 macro-F1
-  plateau).
+  (out-of-sample evaluation: `ml.flowctx` production ensemble; the
+  `ml.supervised` flow-level model is a design reference, not a shipped
+  artifact).
 * **False-positive rate on benign slices**: per-day benign rows flagged on
   the held-out corpus days (0 everywhere after the benign-budget
   fix).
