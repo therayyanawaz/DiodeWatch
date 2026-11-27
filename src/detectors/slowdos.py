@@ -13,16 +13,19 @@ Fires per (window, dst_ip) when the shape matches AND connections are held:
   pkts_ratio >= 2        (fwd packets >> bwd; server gets no chance to talk)
   mean_fwd_pkt >= 10 B   (a real request has a header; 3 B ACK-only windows
                           are noise, not slowloris)
-  mean_fwd_pkt <= 160 B  (small requests: headers-only / partial-header dribble)
+  mean_fwd_pkt <= 300 B  (small requests: headers-only / partial-header dribble)
   held_conns >= 5        (connections still open after the window ends)
 
-The 160 B cap is the CIC-IDS2017 slowloris range, not the 80 B used by the
-synthetic demo. On the Wednesday file 25 of 41 slow-labelled destination
-windows pass the rate, ratio, and 160 B cap; at 80 B only 5 do, which is why
-the stricter value missed the corpus. The 10 B floor rejects 14 Thursday
-benign windows of about 2,000 flows each whose mean forward packet is
-2.7-3.5 B; those are ACK-only bursts, not requests. CIC slowloris is 49-160 B and the demo is 15 B,
-so both clear the floor.
+The 300 B cap covers both CIC-IDS2017 slow families, not the 80 B used by
+the synthetic demo. Slowloris sits at 49-160 B; Slowhttptest requests reach
+169-296 B on the Wednesday file, so a 160 B cap missed most of that family.
+The 300 B ceiling still separates a header-only slow request from a normal
+HTTP body; the latter also fails the held-connection gate. At 80 B only 5
+slow-labelled destination windows pass the rate, ratio, and size gates; 160 B
+reaches the slowloris half and 300 B reaches both. The 10 B floor rejects 14
+Thursday benign windows of about 2,000 flows each whose mean forward packet
+is 2.7-3.5 B; those are ACK-only bursts, not requests. CIC slowloris is
+49-160 B and the demo is 15 B, so both clear the floor.
 """
 from __future__ import annotations
 
@@ -34,8 +37,14 @@ from .window import WindowFrames
 MIN_FLOWS = 30
 PKT_RATIO = 2.0
 MIN_MEAN_FWD_PKT = 10.0
-MAX_MEAN_FWD_PKT = 160.0
+MAX_MEAN_FWD_PKT = 300.0
 MIN_HELD_CONNS = 5
+# A single window this strong is not a benign poller or backup: 100 flows in
+# 10 s and 100 connections still open past the window is the starvation shape
+# itself. Corroboration keeps it even when no earlier slow window exists, so
+# the first window of a sustained run is no longer lost.
+STRONG_MIN_FLOWS = 100
+STRONG_HELD_CONNS = 100
 
 
 class SlowDoSRule(Rule):

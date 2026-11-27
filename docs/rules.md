@@ -26,7 +26,7 @@ alerts.schema.Alert  →  JSON / SQLite / STIX
 
 Thresholds are calibrated against the pinned CIC-IDS2017 Wednesday working-hours
 table (`data/raw/cic2017/Wednesday-workingHours.pcap_ISCX.csv.parquet`,
-692,703 flows / 440,031 BENIGN). The rule layer emits 40 alerts on this table,
+692,703 flows / 440,031 BENIGN). The rule layer emits 50 alerts on this table,
 none of them on benign windows; every threshold number below is re-derived by
 one command:
 
@@ -41,7 +41,7 @@ benchmark:
 
 | corpus | alerts | exact | benign-only | ddos P / R / F1 | benign FPR |
 |---|---|---|---|---|---|
-| CIC-IDS2017 | 75 | 70 (0.933) | 5 | 0.999 / 0.979 / 0.989 | 0.00236 |
+| CIC-IDS2017 | 85 | 80 (0.941) | 5 | 0.999 / 0.979 / 0.989 | 0.00240 |
 | CIC-DDoS2019 | 1,183 | 1,175 (0.993) | 0 | 0.995 / 0.998 / 0.996 | 0.00045 |
 
 Flow-level precision is higher than alert-level precision because one alert
@@ -70,7 +70,7 @@ own.
 
 | condition | threshold | rationale (measured on the pinned corpus) |
 |---|---|---|
-| `volumetric_rate` | ≥ 50 flows/s to one dst, plus the guards below | raw threshold alone is **not clean** (see above); the guards cut CIC-IDS2017 benign FPR to 0.00236 |
+| `volumetric_rate` | ≥ 50 flows/s to one dst, plus the guards below | raw threshold alone is **not clean** (see above); the guards cut CIC-IDS2017 benign FPR to 0.00240 |
 | `volumetric_rate` (persistence) | ≥ 250 flows/s one window; 200-250 two windows; 50-200 three windows | a one-window busy-server spike is not a flood; the baseline still applies, so this gate controls delay, not the rate floor |
 | `volumetric_rate` (byte floor) | ≥ 20 KB/s below 250 flows/s | 50-250 flows/s of 40-80 B requests is ordinary chatter; the last CIC-IDS2017 false burst in the 200-250 band carried 19.6 KB/s, while true low-rate floods carried 37-640 KB/s |
 | `volumetric_rate` (port gate) | ≤ 16 dst ports, or ≥ 500 KB/s plus 3 sources, 500 flows/s, or ≤ 1 reply/flow, or ≥ 5,000 ports at ≥ 500 flows/s | a low-bandwidth burst over hundreds of ports is a sweep; a multi-port burst is a reflection flood only when distributed, fast, or unanswered; a 1,200-port answered transfer is a sweep, while CIC-DDoS2019 single-source random-port floods still fire; 46k ports at 8k flows/s is a random-port SYN flood (the scan rule caps at 5,000) |
@@ -173,11 +173,13 @@ run_rules(flows, rules=make_rules({"ddos": {"flows_per_sec": 100.0}}))
   10 windows. A fresh call or a capture shorter than that relies on the
   absolute floor and persistence guards; the baseline does not model daily
   seasonality.
-* Slow-DoS corroboration drops the first window of a sustained run and any
-  isolated claim when the batch contains another slow window. A short capture
-  with only one slow window is exempt, so streaming chunks can differ from a
-  single full-file replay.
-* CIC-IDS2017 exact alert precision is 0.9333 (70/75) and DDoS flow
+* Slow-DoS corroboration drops the first window of a weak sustained run and
+  any isolated weak claim when the batch contains another slow window. A first
+  window with at least 100 flows and 100 connections held past the window is
+  the starvation shape itself and is kept. A short capture with only one slow
+  window is exempt, so streaming chunks can differ from a single full-file
+  replay.
+* CIC-IDS2017 exact alert precision is 0.9412 (80/85) and DDoS flow
   precision is 0.9989 (F1 0.9890). The 5 benign-only alerts are 2 scan,
   2 exfil and 1 slowdos; the 250/s byte floor and the reply-aware DDoS port
   gate removed all 27 DDoS false bursts, leaving only the large or high-port
@@ -187,6 +189,13 @@ run_rules(flows, rules=make_rules({"ddos": {"flows_per_sec": 100.0}}))
   29 benign windows and zero scan truth units across CIC-IDS2017, so the branch
   was removed rather than tuned; a targeted ping sweep is left to the behaviour
   layer and can be missed by the rule alone.
+* Canonical scan recall is 11/222, but 195 of those truth units are not port
+  sweeps: 127 Tuesday FTP/SSH-Patator units and 68 Thursday web-attack units
+  are mapped to `scan` by the shared label axis. The port-sweep shape covers
+  11/27 PortScan units; the remaining 16 are sub-threshold fragments (1-70
+  flows, at most 5 ports), either boundary slivers of a larger sweep or scans
+  too sparse for the 30-port gate. A dedicated brute-force/web-behaviour rule
+  is not shipped, so do not read 11/222 as a port-scan detector score.
 * Two benign bulk uploads still trigger exfil: 5.29 MB on Tuesday and
   12.9 MB in Thursday's Infiltration capture. Both are above the 5 MB bulk gate
   and are reported rather than filtered away; the largest Wednesday upload
@@ -194,9 +203,11 @@ run_rules(flows, rules=make_rules({"ddos": {"flows_per_sec": 100.0}}))
 * CIC-DDoS2019 DDoS incident recall is 1,175/9,927 (0.1184) even though flow
   recall is 0.9979. Incident units demand the exact `(window, destination,
   class)`; a scoped alert cannot cover every attack window in a long capture.
-* Slow-DoS truth recall is 18/46 on CIC-IDS2017 (all Wednesday) and 0/448 on
-  CIC-DDoS2019. The rule now emits `slowdos`; the pinned ML classifier still
-  folds the class into `ddos` because its artifacts were not retrained, so
-  rule-only cells carry the slow-DoS claim.
+* Slow-DoS truth recall is 28/46 on CIC-IDS2017 (all Wednesday) and 0/448 on
+  CIC-DDoS2019. The 300 B request ceiling covers Slowhttptest (169-296 B) as
+  well as slowloris, and a first window with 100 flows and 100 held
+  connections survives corroboration. The rule now emits `slowdos`; the
+  pinned ML classifier still folds the class into `ddos` because its
+  artifacts were not retrained, so rule-only cells carry the slow-DoS claim.
 * The cross-corpus transfer numbers in `docs/evaluation/transfer.md` are the
   source of truth for generalisation; this table is a calibration record.

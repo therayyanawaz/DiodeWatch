@@ -251,6 +251,28 @@ def test_slowdos_fires_on_slowloris_shape_only():
                if a.detector == "slowdos" and a.key == "10.7.7.8"]
     assert alerts3, "the CIC 140 B slowloris shape must alert"
 
+    # Slowhttptest requests reach 169-296 B, above the old 160 B cap. The
+    # shape is still tiny for a request, held, and one-sided.
+    slowhttptest = [rec(i, src="10.3.0.9", dst="10.7.7.9", sport=43000 + i,
+                        ts=BASE_TS + i * 0.15, dur=45.0, fwd_pkts=6,
+                        bwd_pkts=2, fwd_bytes=1440, bwd_bytes=120,
+                        label="DoS Slowhttptest")
+                    for i in range(120)]
+    alerts4 = [a for a in run_rules(pd.DataFrame(benign_mix() + slowhttptest))
+               if a.detector == "slowdos" and a.key == "10.7.7.9"]
+    assert alerts4, "the CIC 240 B Slowhttptest shape must alert"
+
+    # A normal 400 B body is outside the slow-request band even when the
+    # connection is held; the cap is what keeps ordinary HTTP out.
+    oversized = [rec(i, src="10.3.0.10", dst="10.7.7.10", sport=44000 + i,
+                     ts=BASE_TS + i * 0.15, dur=45.0, fwd_pkts=6,
+                     bwd_pkts=2, fwd_bytes=2400, bwd_bytes=120,
+                     label="BENIGN")
+                 for i in range(120)]
+    alerts5 = [a for a in run_rules(pd.DataFrame(benign_mix() + oversized))
+               if a.detector == "slowdos" and a.key == "10.7.7.10"]
+    assert alerts5 == []
+
 
 def test_low_rate_flood_needs_real_bytes():
     # 125 flows/s for three windows is a persistent rate, but 6 KB/s of tiny
@@ -418,6 +440,36 @@ def test_broad_host_and_port_enumeration_is_not_scan():
     raw2 = ScanRule().evaluate(build_windows(pd.DataFrame(host_sweep)))
     assert not any(a.key == "10.5.0.10" for a in raw2), (
         "many hosts on a handful of ports is host discovery, not a port scan")
+
+
+def test_slowdos_strong_first_window_survives_corroboration():
+    # Corroboration normally drops the first window of a run because a single
+    # held-connection window can be a backup. 100 flows plus 100 held
+    # connections is the starvation shape itself and keeps that window.
+    from src.detectors.rules import _corroborate_slowdos
+
+    def slow_alert(offset: int, flows: int, held: int) -> Alert:
+        ts = pd.Timestamp(BASE_TS + offset, unit="s", tz="UTC") \
+            .strftime("%Y-%m-%dT%H:%M:%S")
+        return Alert(
+            timestamp=ts, threat_class="slowdos", confidence=0.8,
+            evidence=[
+                EvidenceItem("flow_count", ">=", flows, 30, "", "flows"),
+                EvidenceItem("held_connections", ">=", held, 5, "",
+                             "connections"),
+            ],
+            flow_id="10.7.7.7/*", key="10.7.7.7", dst_ip="10.7.7.7",
+            window_start=ts, detector="slowdos")
+
+    flows = pd.DataFrame({"ts_epoch": [BASE_TS + 1, BASE_TS + 11]})
+    strong = [slow_alert(0, 150, 120), slow_alert(10, 50, 10)]
+    kept = _corroborate_slowdos(strong, flows, 10)
+    assert {a.window_start for a in kept} == {strong[0].window_start,
+                                             strong[1].window_start}
+
+    weak = [slow_alert(0, 50, 10), slow_alert(10, 50, 10)]
+    kept = _corroborate_slowdos(weak, flows, 10)
+    assert [a.window_start for a in kept] == [weak[1].window_start]
 
 
 def test_slowdos_yields_to_ddos_on_same_victim_window():

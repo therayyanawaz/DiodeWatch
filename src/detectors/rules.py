@@ -25,7 +25,7 @@ from .base import Rule
 from .ddos import DDoSRule
 from .exfil import ExfilRule
 from .scan import ScanRule
-from .slowdos import SlowDoSRule
+from .slowdos import STRONG_HELD_CONNS, STRONG_MIN_FLOWS, SlowDoSRule
 from .window import build_windows
 
 
@@ -129,15 +129,40 @@ def arbitrate_alerts(flows: pd.DataFrame, alerts: list[Alert],
     return [a for i, a in enumerate(alerts) if i not in dropped]
 
 
+def _strong_slow_window(alert: Alert) -> bool:
+    """True when one window alone carries the starvation-scale pressure.
+
+    The rule has already proved the tiny, one-sided packet shape. At 100
+    flows and 100 connections still open past the window, the remaining
+    benign explanation is a backup or poller with long-lived connections,
+    which would not keep a forward/reverse packet ratio above 2 with
+    header-sized requests. This threshold is used only to keep a strong
+    first window that corroboration would otherwise discard.
+    """
+    observed: dict[str, object] = {}
+    for item in getattr(alert, "evidence", ()) or ():
+        condition = getattr(item, "condition", None)
+        if condition:
+            observed[str(condition)] = getattr(item, "observed", None)
+    try:
+        flows = float(observed.get("flow_count", 0) or 0)
+        held = float(observed.get("held_connections", 0) or 0)
+    except (TypeError, ValueError):
+        return False
+    return flows >= STRONG_MIN_FLOWS and held >= STRONG_HELD_CONNS
+
+
 def _corroborate_slowdos(alerts: list[Alert], flows: pd.DataFrame,
                          window_s: int) -> list[Alert]:
     """Keep a slow-DoS claim only when it is sustained or rate-corroborated.
 
     A single window of held, tiny connections is also what a benign backup or
     polling client looks like. A slow-DoS incident lasts, so keep the claim
-    when the same destination has the shape in a prior window within 60 s, or
-    when a volumetric DDoS alert already owns that window. The first window of
-    a sustained run is dropped, every later window is kept.
+    when the same destination has the shape in a prior window within 60 s,
+    when a volumetric DDoS alert already owns that window, or when one window
+    alone shows at least 100 flows and 100 held connections. The last case
+    preserves the first window of a strong run; the first window of a weaker
+    run is still dropped, and every later window is kept.
 
     A batch that spans fewer than two windows cannot show persistence, so its
     claims are left alone rather than judged on missing context.
@@ -175,7 +200,7 @@ def _corroborate_slowdos(alerts: list[Alert], flows: pd.DataFrame,
             continue
         key = str(a.key)
         prior = previous.get(key)
-        if (win, key) in volume or (
+        if (win, key) in volume or _strong_slow_window(a) or (
                 prior is not None and 0 < win - prior <= max_gap):
             keep.add(i)
         previous[key] = win

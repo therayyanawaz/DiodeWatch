@@ -110,6 +110,12 @@ All notable changes to DiodeWatch are documented here.
   incident recall over `(window, entity, class)`. The corpus spellings for
   `DDoS attacks-LOIC-HTTP` and `UDP-lag` are mapped, so those attack flows are
   no longer counted on the benign side.
+- A second full-corpus pass after the slow-DoS changes supersedes the alert
+  counts and CIC-IDS2017 FPR in the entry below: 85 alerts with exact precision
+  80/85 = 0.941176, 5 benign-only, slow-DoS recall 28/46, and benign FPR
+  5,453/2,273,108 = 0.00239892. DDoS flow and CIC-DDoS2019 cells are unchanged.
+  The ten added slow windows paint 94 more benign flows but create no new
+  benign-only alert.
 - The full-corpus record is republished with the corrected denominators: all
   four pre-committed gates pass (CIC-IDS2017 F1 0.989026 / FPR 0.00235757,
   CIC-DDoS2019 F1 0.996426 / FPR 0.00044804), and the old 1.0 / 0-of-392 and
