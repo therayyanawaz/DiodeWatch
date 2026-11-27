@@ -322,7 +322,7 @@ def ratio_exfil_packets() -> list:
     One host pushes ~1.5 MB outward across 25 flows with ~28:1
     upload:download byte ratio (40 x 1.5 kB segments up, 4 small replies
     down per flow), the upload_ratio signature (>= 10x over >= 20 flows
-    with >= 10 kB volume, majority-external). Total stays well under the
+    with >= 500 kB volume, majority-external). Total stays well under the
     5 MB bulk threshold, so only the ratio branch fires. A live benign
     background runs underneath; it never touches the victim.
     """

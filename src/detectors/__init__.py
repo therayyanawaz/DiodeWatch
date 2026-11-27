@@ -4,7 +4,7 @@ Each module is one interpretable detector over time-window aggregates:
 
   ddos, volumetric flood / distributed fan-in / SYN flood (per dst window)
   slowdos, slow-rate asymmetric DoS, slowloris family (per dst window)
-  scan, port/host sweeps from one source (per src window)
+  scan, port sweeps from one source (per src window)
   exfil, bulk outbound transfer / asymmetric uploads (per src window)
 
 `rules.run_rules` evaluates the default set and returns evidence-rich Alert

@@ -311,16 +311,24 @@ def test_exfil_ratio_and_bulk_signatures_fire():
                  ts=BASE_TS + i * 0.1, dur=5.0, fwd_pkts=40, bwd_pkts=4,
                  fwd_bytes=60_000, bwd_bytes=2_000, label=None)
              for i in range(25)]
+    # below the 500 kB ratio floor: 25 x 12 kB = 300 kB, still 12:1 asymmetric
+    small = [rec(i, src="10.20.0.8", dst="93.184.200.8", sport=47000 + i,
+                 ts=BASE_TS + 120 + i * 0.1, dur=5.0, fwd_pkts=20, bwd_pkts=2,
+                 fwd_bytes=12_000, bwd_bytes=1_000, label=None)
+             for i in range(25)]
     # bulk signature: one window with 8 MB uploaded across 40 flows
     bulk = [rec(i, src="10.20.0.9", dst="93.184.200.9", sport=46000 + i,
                 ts=BASE_TS + 60 + i * 0.1, dur=8.0, fwd_pkts=300, bwd_pkts=300,
                 fwd_bytes=200_000, bwd_bytes=200_000, label=None)
             for i in range(40)]
-    alerts = [a for a in run_rules(pd.DataFrame(benign_mix() + ratio + bulk))
+    alerts = [a for a in run_rules(pd.DataFrame(benign_mix() + ratio + small
+                                                + bulk))
               if a.threat_class == "exfil"]
     by_key = {a.key: a for a in alerts}
     assert "10.20.0.7" in by_key and "10.20.0.9" in by_key, \
         "ratio and bulk exfil signatures must both fire"
+    assert "10.20.0.8" not in by_key, \
+        "a 300 kB window is below the ratio floor and must not alert"
     conds7 = {e.condition for e in by_key["10.20.0.7"].evidence}
     conds9 = {e.condition for e in by_key["10.20.0.9"].evidence}
     assert "upload_ratio" in conds7 and "bulk_upload_bytes" not in conds7
@@ -329,7 +337,8 @@ def test_exfil_ratio_and_bulk_signatures_fire():
 
 def test_broad_host_and_port_enumeration_is_not_scan():
     # 35 hosts x 30 ports is the diagonal benign internal enumerators occupy.
-    # A focused sweep is many ports on <=3 hosts, or many hosts on <=16 ports.
+    # A focused sweep is many ports on <=3 hosts; host cardinality alone is not
+    # enough, because ordinary discovery walks 30-43 hosts on 2-6 ports.
     broad = [rec(i, src="10.5.0.9", dst=f"10.63.{i % 35}.1",
                  sport=43000 + i, dport=100 + i % 30,
                  ts=BASE_TS + i * 0.01, dur=0.0, fwd_pkts=1, bwd_pkts=0,
@@ -338,6 +347,15 @@ def test_broad_host_and_port_enumeration_is_not_scan():
     raw = ScanRule().evaluate(build_windows(pd.DataFrame(broad)))
     assert not any(a.key == "10.5.0.9" for a in raw), (
         "broad host+port enumeration must not be called a scan")
+
+    host_sweep = [rec(i, src="10.5.0.10", dst=f"10.64.{i % 40}.1",
+                      sport=44000 + i, dport=100 + i % 4,
+                      ts=BASE_TS + i * 0.01, dur=0.0, fwd_pkts=1, bwd_pkts=0,
+                      fwd_bytes=60, bwd_bytes=0, label="BENIGN")
+                  for i in range(40 * 4)]
+    raw2 = ScanRule().evaluate(build_windows(pd.DataFrame(host_sweep)))
+    assert not any(a.key == "10.5.0.10" for a in raw2), (
+        "many hosts on a handful of ports is host discovery, not a port scan")
 
 
 def test_slowdos_yields_to_ddos_on_same_victim_window():
@@ -375,9 +393,9 @@ def test_scan_claim_inside_ddos_flood_is_suppressed():
     assert not any(a.threat_class == "scan" and a.key == "10.5.0.7"
                    for a in alerts), "scan inside a DDoS flood is double-counting"
 
-    # A sweep that never touches the flood victim is still a scan.
-    apart = [rec(i, src="10.5.0.8", dst=f"10.60.0.{i + 1}",
-                 sport=42000 + i, dport=80, ts=BASE_TS + i * 0.05,
+    # A port sweep that never touches the flood victim is still a scan.
+    apart = [rec(i, src="10.5.0.8", dst=f"10.60.0.{i % 3 + 1}",
+                 sport=42000 + i, dport=1000 + i, ts=BASE_TS + i * 0.05,
                  dur=0.0, fwd_pkts=1, bwd_pkts=0, fwd_bytes=60,
                  bwd_bytes=0, label="PortScan")
              for i in range(60)]

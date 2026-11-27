@@ -362,8 +362,8 @@ one of two firing modes:
 |---|---|---|---|
 | **DDoS** (`ddos`) | any | volumetric flood; distributed fan-in; SYN flood | ≥ 50 flows/s to one dst, **or** ≥ 2 MB/s upload with ≥ 3 sources; ≥ 50 distinct sources **and** `src_conc` ≤ 0.3 (many hosts, each sending several flows); SYN share ≥ 0.8 **and** ≥ 50 half-open SYNs |
 | **Slow-rate DoS** (`slowdos`) | all | sustained tiny held connections | ≥ 30 flows, forward/backward packet ratio ≥ 2, mean forward packet 10-160 B, ≥ 5 connections held past the window |
-| **Scan** (`scan`) | all | reconnaissance shape | server share ≤ 0.2, ≥ 8 flows, ≥ 30 ports **or** ≥ 30 hosts, ≤ 600 B/flow, response share ≤ 0.5 |
-| **Exfiltration** (`exfil`) | any | asymmetric or bulk upload | direction gate: ≥ 50% of flows leave the network. Then either upload ratio ≥ 10:1 over ≥ 20 flows with ≥ 10 kB, **or** ≥ 5 MB uploaded in one window |
+| **Scan** (`scan`) | all | reconnaissance shape | server share ≤ 0.2, ≥ 8 flows, 30-5,000 ports on ≤ 3 hosts, ≤ 600 B/flow, response share ≤ 0.5, or a reset-closed sweep (≥ 100 ports, ≤ 2 hosts, ≥ 0.9 replies) |
+| **Exfiltration** (`exfil`) | any | asymmetric or bulk upload | direction gate: ≥ 50% of flows leave the network. Then either upload ratio ≥ 10:1 over ≥ 20 flows with ≥ 500 kB, **or** ≥ 5 MB uploaded in one window |
 
 The two modes encode two different kinds of reasoning. **any** is for signatures
 that are independently meaningful, where a flood is a flood whichever way it shows

@@ -106,7 +106,7 @@ def measure(df: pd.DataFrame, window_s: int) -> tuple[dict[str, float], list]:
             (ben_s["server_share"] <= 0.2)
             & (ben_s["resp_share"] <= 0.5)
             & (ben_s["bytes_per_flow"] <= 600)
-            & ((ben_s["n_dports"] >= 30) | (ben_s["n_dips"] >= 30))).sum()),
+            & (ben_s["n_dports"] >= 30)).sum()),
         # exfil
         "exfil_benign_max_upload_kb": float(ben_s["fwd_bytes"].max() / 1000.0),
         "exfil_benign_windows_ge_5mb": float((ben_s["fwd_bytes"] >= 5_000_000).sum()),
@@ -161,9 +161,13 @@ def build_claims(m: dict[str, float]) -> list[Claim]:
               0.965, m["scan_benign_resp_share_p50"], tol=0.002,
               detail="scan.py resp_share rationale"),
         Claim("scan_conjunction_benign_survivors",
-              "benign source windows passing all four scan conditions",
-              3, m["scan_conjunction_benign_survivors"],
-              detail="the conjunction is not zero on this corpus"),
+              "benign source windows passing the four plain scan gates",
+              0, m["scan_conjunction_benign_survivors"],
+              detail="the host-sweep branch was removed 2026-11-27; on the "
+                     "Wednesday table the remaining port-scan conjunction is "
+                     "zero, and the two full-corpus benign alerts are Thursday "
+                     "sweeps (one reset-closed over 2 hosts, one no-reply "
+                     "sweep over 3 hosts)"),
         Claim("ddos_benign_max_n_src",
               "most distinct source IPs any benign destination saw",
               136, m["ddos_benign_max_n_src"],
@@ -179,9 +183,10 @@ def build_claims(m: dict[str, float]) -> list[Claim]:
                      "the worst benign window (4,369.8 kB)"),
         Claim("rule_alerts_on_benign",
               "rule alerts landing on benign-labelled windows",
-              15, m["rule_alerts_on_benign"],
-              detail="ddos 3 / exfil 9 / scan 3, these were documented as "
-                     "zero; see docs/rules.md 'Acceptance reality'"),
+              3, m["rule_alerts_on_benign"],
+              detail="ddos 3 on Wednesday; the old 15 was ddos 3 / exfil 9 / "
+                     "scan 3, and the 500 kB exfil floor plus host-sweep "
+                     "removal took the other 12; see docs/rules.md"),
     ]
 
 

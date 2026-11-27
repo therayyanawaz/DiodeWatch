@@ -20,8 +20,8 @@ Streamlit UI):
    denominator (440,031 flows, 2.03M flows) must, in the same file, name the
    layer that produced it and state that corpus's own benign-window reality.
    Those two numbers are what keep a per-flow ML precision figure from
-   reading as a system-wide FPR: the rule layer emits 15 alerts on
-   benign-labelled windows of the Wednesday table, and 122 on the full
+   reading as a system-wide FPR: the rule layer emits 3 alerts on
+   benign-labelled windows of the Wednesday table, and 32 on the full
    CIC-IDS2017 register (``docs/rules.md``).
 4. **Suite-size contract**, any documented "N collected" / "N passed" must
    equal what ``pytest --collect-only`` actually collects here. A hand-kept
@@ -146,11 +146,11 @@ LAYER_QUALIFIER = re.compile(
     r"\b(ml channel|ml flow-context|flow-context channel|rule layer|"
     r"rule engine|window ensemble|flow[- ]level model|supervised reference)\b",
     re.IGNORECASE)
-# "15 ... benign" or "benign ... 15" in the same file: the rule layer's own
-# count on the Wednesday table (122 on the full CIC2017 register), so the ML
+# "3 ... benign" or "benign ... 3" in the same file: the rule layer's own
+# count on the Wednesday table (32 on the full CIC2017 register), so the ML
 # number cannot stand in for the whole system.
-BENIGN_WINDOW_COUNT = re.compile(r"\b(?:15|122)\b.{0,80}\bbenign"
-                                 r"|\bbenign.{0,80}\b(?:15|122)\b",
+BENIGN_WINDOW_COUNT = re.compile(r"\b(?:3|32)\b.{0,80}\bbenign"
+                                 r"|\bbenign.{0,80}\b(?:3|32)\b",
                                  re.IGNORECASE)
 
 APPROX = re.compile(r"[~≈]")
@@ -381,11 +381,11 @@ def check_scope(texts: list[tuple[str, str]]) -> list[dict]:
         if not BENIGN_WINDOW_COUNT.search(flat):
             findings.append({
                 "kind": "missing-counter", "file": rel,
-                "phrase": "15 benign-window alerts",
+                "phrase": "3 benign-window alerts",
                 "detail": f"{rel} quotes a benign-flow denominator without "
-                          "the rule layer's 15 Wednesday alerts on "
+                          "the rule layer's 3 Wednesday alerts on "
                           "benign-labelled windows, or the full CIC2017 "
-                          "count of 122 (docs/rules.md)"})
+                          "count of 32 (docs/rules.md)"})
     return findings
 
 

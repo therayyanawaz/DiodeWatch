@@ -3,11 +3,11 @@
 Two orthogonal signatures, both about bytes LEAVING the monitored network
 (first-packet direction = outbound):  ratio   strongly asymmetric windows: upload/download bytes >= 10x sustained
           across >= 20 flows from one host, uploaded OUT of the monitored
-          network (majority-external destinations) AND a meaningful absolute
-          volume (>= 10 kB, a 600 B DNS burst with ratio 17:1 is not theft).
-          Internal LAN transfers are not exfiltration; on the slice the
-          asymmetric windows are client->gateway chatter and file copies,
-          never external.
+          network (majority-external destinations) AND an absolute volume that
+          makes the window a transfer rather than chatter (>= 500 kB, about
+          50 kB/s over a 10 s window). Internal LAN transfers are not
+          exfiltration; on the slice the asymmetric windows are
+          client->gateway chatter and file copies, never external.
 
   bulk    large absolute upload: >= 5 MB forwarded in one window (>= 500 kB/s)
           from a single host to external destinations, regardless of ratio.
@@ -16,11 +16,24 @@ Two orthogonal signatures, both about bytes LEAVING the monitored network
 
 Calibration re-derived 2026-08-30 from the pinned CIC-IDS2017 Wednesday table
 (39,213 benign source windows); reproduce with
-`python scripts/checks/check_thresholds.py`. Benign windows top out at
-4,369.8 kB uploaded per 10 s window (p95 18.2 kB), and NO benign window
-reaches the 5 MB bulk threshold, so `bulk_upload_bytes` keeps ~0.6 MB of
-headroom over the worst benign window. An earlier revision quoted "968 kB",
-which did not reproduce.
+`python scripts/checks/check_thresholds.py`. On that table benign uploads top
+out at 4,369.8 kB per 10 s window (p95 18.2 kB); that worst window is
+download-heavy (4.37 MB up, 13.7 MB down), so it is not a ratio claim, and it
+sits below the 5 MB bulk gate.
+
+The 500 kB ratio floor was re-derived 2026-11-27 from all eight CIC-IDS2017
+files. The old 10 kB floor (1 kB/s) produced 63 benign-only exfil alerts, 61 of
+them below 200 kB; the largest benign ratio window is 141,375 B. A 500 kB floor
+keeps 3.5x headroom over that window and still fires the 1.5 MB synthetic ratio
+case. Two benign-labelled bulk windows remain: 5,293,070 B on Tuesday and
+12,917,328 B in Thursday's Infiltration capture; both are real large uploads,
+scored as benign by the corpus truth and reported rather than filtered away.
+
+The 5 MB bulk gate was calibrated on Wednesday, where no benign window reaches
+it. The full eight-day pass contains the 5.29 MB Tuesday and 12.9 MB Thursday
+windows above, so do not claim that no benign window anywhere exceeds 5 MB.
+An earlier revision quoted "968 kB" for the Wednesday maximum; it did not
+reproduce.
 
 The slice contains no exfil-labelled traffic, so these rules are also
 unit-tested against synthetic scenarios (tests/detectors/test_detectors.py)."""
@@ -34,7 +47,7 @@ from .window import WindowFrames
 
 MIN_UPLOAD_RATIO = 10.0
 RATIO_MIN_FLOWS = 20
-MIN_RATIO_UPLOAD_BYTES = 10_000.0   # ratio needs absolute volume to matter
+MIN_RATIO_UPLOAD_BYTES = 500_000.0  # ratio needs a transfer, not 1 kB/s chatter
 BULK_UPLOAD_BYTES = 5_000_000.0
 MIN_EXTERNAL_SHARE = 0.5        # most flows must LEAVE the monitored network
 
