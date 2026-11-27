@@ -18,9 +18,9 @@ The diode makes return traffic **physically impossible**, and the problem statem
 PROTECTED NETWORK → DATA DIODE → [ INGEST → FEATURES → DETECTORS → ALERTS ] ENCLAVE → dashboards
 ```
 
-- **Ingest (read-only)**: pcap replay or mirrored port → canonical bidirectional flows; no handshakes, no probes, no decryption
-- **Features**: frozen 73-feature active registry, vectorised (flow rates, entropy, byte asymmetry, port-cardinality context, per-packet timing and size statistics). DNS and TLS/JA3 fields are populated only by the optional Zeek sidecar, not decoded from raw pcaps; active/idle families are declared-future.
-- **Detectors**: instant auditable **rules** (DDoS, slow-DoS, scan, exfiltration) + gated **LightGBM ML** (C2 beaconing on CTU-13 leave-one-scenario-out, DGA/tunnel, TLS/JA3, flow+window context). Any channel that fails its quality gate is excluded, **never junk-scored**
+- **Ingest (read-only)**: pcap replay or mirrored port → canonical bidirectional flows; no probes, no decryption. A separate metadata pass reads only plaintext TLS handshake records and QUIC headers; QUIC Initial payloads stay encrypted.
+- **Features**: frozen 73-feature active registry, vectorised (flow rates, entropy, byte asymmetry, port-cardinality context, per-packet timing and size statistics). DNS and TLS/JA3 registry fields are populated only by the optional Zeek sidecar; active/idle families are declared-future. The TLS detector can also consume JA4/JA4S context from raw handshakes, outside that registry.
+- **Detectors**: instant auditable **rules** (DDoS, slow-DoS, scan, exfiltration) + gated **LightGBM ML** (C2 beaconing on CTU-13 leave-one-scenario-out, DGA/tunnel, TLS/JA3 watchlist with JA4 context, flow+window context). Any channel that fails its quality gate is excluded, **never junk-scored**
 - **Alerts**: ATT&CK-tagged envelope, observed-vs-threshold evidence + top-feature attribution (top-N model features with observed values), STIX 2.1 bundle + one-click HTML incident report
 - **Proof**: kernel-level egress denial where privileges allow; live **Diode Proof panel** with outbound bytes, violations and kernel drop counters, mode-aware (enforced / monitor-only), **never a faked zero**
 

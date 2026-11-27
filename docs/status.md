@@ -23,8 +23,8 @@ each claim:
 * **Ingest and features:** capture, flow-table and flow-export readers, one
   frozen 73-feature registry, parity-checked against the CICFlowMeter schema.
 * **Detection:** rule, window-ensemble, flow-context, DGA/tunnel, beacon,
-  TLS/JA3 novelty and triage channels, each with a run record under
-  `docs/evaluation/runs/`.
+  TLS/JA3 novelty (with JA4 context) and triage channels, each with a run record
+  under `docs/evaluation/runs/`.
 * **Evidence:** a hash chain over every alert row, an append-only ledger, incident
   packs, STIX 2.1 and report export, and an off-box digest that a third party can
   verify without this repository.
@@ -35,6 +35,14 @@ each claim:
 
 ## Recently landed, after 1.0.0
 
+* **TLS and QUIC metadata.** `src/ingest/tls_metadata.py` reads a pcap, reassembles
+  a TLS handshake across TCP segments, and computes JA3, JA3S, JA4 and JA4S from
+  the real ClientHello/ServerHello bytes. It also aggregates QUIC on UDP/443:
+  version, connection IDs, long-header packet type, packet sizes and
+  inter-arrival gaps per flow. QUIC Initial payloads are never decrypted, so no
+  QUIC JA4 is claimed. JA4/JA4S reach the TLS alert evidence as context; the
+  pinned abuse.ch list is still a JA3 list and the evaluated channels are
+  unchanged.
 * **Flow-export ingest.** `src/ingest/flow_reader.py` reads Argus CSV (including
   CTU-13 `.binetflow`), nfdump CSV (header or headerless) and goflow2 JSON/NDJSON
   into the same 47-field records as the capture and CIC readers. `unify.py` sniffs
@@ -97,7 +105,7 @@ each claim:
   100 held connections now survives corroboration. Slow-DoS truth recall rose
   from 18/46 to 28/46 with no new benign-only slow alert; the one remaining
   benign slow alert is the Thursday Infiltration 40-flow window.
-* **The suite** collects 526 tests. Three of them need corpora this repository
+* **The suite** collects 538 tests. Three of them need corpora this repository
   deliberately never commits, so they skip locally and run in
   `.github/workflows/integration.yml`, which fails if they skip there.
 
@@ -108,7 +116,6 @@ have, not a decision we have not made.
 
 | Item | Why it matters | State |
 |---|---|---|
-| JA4 and JA4S over TLS, QUIC observable metadata | PS clause (d) names JA4; only JA3 is shipped and QUIC has no reader | **next** |
 | Scan and slow-DoS recall on CIC-IDS2017 | slow-DoS is 28/46 after the 300 B and strong-window fixes; scan is 11/222 canonically, but 195 units are Patator/web attacks folded into scan and the port-sweep rule covers 11/27 PortScan units | **partly done** |
 | DGA false-positive work on Umbrella hard negatives | 0.1076 FPR at the operating threshold is not usable | **next** |
 | Packet-to-alert clock, bounded queue, backpressure at 5k/10k/50k flows/s | the 175 ms figure is window-evaluation p95, not end-to-end latency | planned |

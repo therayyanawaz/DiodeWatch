@@ -187,7 +187,7 @@ def _endpoint_key(src_ip, src_port, dst_ip, dst_port, protocol):
     return (lo[0], lo[1], hi[0], hi[1], protocol)
 
 
-def _iter_packets(path: Path):
+def iter_packets(path: Path):
     """Yield scapy packets from .pcap or .pcapng without loading the capture."""
     import scapy.all  # noqa: F401 - loads the layer registry; without it a
 
@@ -265,7 +265,7 @@ def stream_flows(path: Path, *, flow_timeout: float = 120.0,
             first_ts=meta["ts"], last_ts=meta["ts"], prev_ts=meta["ts"],
         )
 
-    for pkt in _iter_packets(path):
+    for pkt in iter_packets(path):
         stats["pkts"] += 1
         meta = _packet_meta(pkt)
         if meta is None:

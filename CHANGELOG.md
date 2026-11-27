@@ -5,6 +5,13 @@ All notable changes to DiodeWatch are documented here.
 ## [Unreleased]
 
 ### Added
+- TLS and QUIC metadata: `src/ingest/tls_metadata.py` reassembles a TLS
+  handshake from a pcap and computes JA3, JA3S, JA4 and JA4S from the real
+  ClientHello/ServerHello bytes, including optional `ja4`/`ja4s` columns in the
+  Zeek-style loader. It also aggregates QUIC version, connection IDs, long-header
+  packet type, packet sizes and inter-arrival gaps per flow. QUIC Initial
+  payloads are never decrypted, so no QUIC JA4 is claimed; JA4/JA4S are evidence
+  context beside the pinned JA3 watchlist, not a new detection channel.
 - Flow-export ingest: `src/ingest/flow_reader.py` reads Argus CSV (`ra -c ,`,
   including CTU-13 `.binetflow`), nfdump CSV (with or without a header row) and
   goflow2 JSON/NDJSON into the canonical 47-field schema. `unify.py` sniffs a

@@ -23,10 +23,12 @@ Missing values use the ordered median mapping stored in the artifact.
 ## What it decides
 
 A client is flagged when its JA3 hash is on the pinned watchlist, or when its
-novelty score falls outside the stored baseline interval. On this artifact the
-novelty interval is empty (`nov_lo` and `nov_hi` are both `0.0`) and
-`degenerate_baseline` is `true`, so the novelty branch is disabled and the
-watchlist lookup is the only alert source. The generated baseline gives every
+novelty score falls outside the stored baseline interval. JA4 and JA4S are
+carried into the alert evidence as context; they do not add a feature or a
+watchlist hit. On this artifact the novelty interval is empty (`nov_lo` and
+`nov_hi` are both `0.0`) and `degenerate_baseline` is `true`, so the novelty
+branch is disabled and the watchlist lookup is the only alert source. The
+generated baseline gives every
 client the same aggregate vector, which is not enough spread to fit a novelty
 boundary. A real Zeek `ssl.log` baseline is what makes that branch usable.
 
@@ -52,8 +54,10 @@ workload, with the SSLBL watchlist loaded from
 * **The novelty branch needs a real baseline.** With one aggregate vector per
   client the fit set has no spread, so the channel correctly disables itself
   instead of scoring noise.
-* **No server-side TLS metadata.** The channel sees what the flow export
-  carries, not certificate chains or full handshake contents.
+* **Server-side fingerprinting is context, not a decision.** The pcap metadata
+  reader computes JA3S and JA4S from the ServerHello, but the model features and
+  the watchlist are client-side JA3 only. Certificate chains and application data
+  are still never read.
 
 ## Integrity
 

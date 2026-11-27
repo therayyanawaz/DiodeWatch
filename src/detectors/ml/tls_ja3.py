@@ -1,7 +1,9 @@
 """Encrypted-traffic (TLS) detector: JA3/JA3S watchlist + novelty.
 
 Reads Zeek-style SSL session records (ssl.log in TSV or JSON, or equivalent
-dicts) and flags suspicious TLS clients on two channels:
+dicts) and flags suspicious TLS clients on two channels. Optional JA4/JA4S
+columns from a pcap handshake parser ride along as evidence context; they do not
+change the features or the decision.
 
   1. Watchlist, exact JA3 hash match against the pinned abuse.ch SSLBL
      malicious-JA3 blacklist. Deterministic, auditable, and the "known
@@ -18,8 +20,8 @@ dicts) and flags suspicious TLS clients on two channels:
      layer reports `novelty_available: false` rather than a number when the
      baseline it was fitted on cannot discriminate (degenerate aggregates).
 
-JA3/JA3S are metadata-only (ClientHello/ServerHello parameters), so this
-respects the no-decryption constraint. Evaluation is a synthetic-plant
+JA3/JA3S and JA4/JA4S are metadata-only (ClientHello/ServerHello parameters),
+so this respects the no-decryption constraint. Evaluation is a synthetic-plant
 experiment (malicious-shaped clients injected into a benign mix) and is
 labelled as such in the metrics file, no real-data claims we cannot back.
 """
@@ -56,11 +58,19 @@ NOVELTY_THRESHOLD = 0.98
 
 
 # --------------------------------------------------------------------- ingest
+def _text_column(df: pd.DataFrame, name: str) -> pd.Series:
+    """Return an optional text column as an object Series, or a null column."""
+    if name in df.columns:
+        return df[name]
+    return pd.Series([None] * len(df), index=df.index, dtype=object)
+
+
 def load_ssl_log(path: str | Path) -> pd.DataFrame:
     """Parse a Zeek ssl.log (TSV with #fields header, or JSON lines).
 
-    Returns columns: ts, src_ip, src_port, dst_ip, dst_port, ja3, ja3s, sni.
-    Rows without a ja3 hash are dropped (they carry no fingerprint signal).
+    Returns columns: ts, src_ip, src_port, dst_ip, dst_port, ja3, ja3s, sni,
+    ja4, ja4s. Rows without a ja3 hash are dropped (they carry no fingerprint
+    signal). The JA4 fields are optional context written by the pcap reader.
     """
     path = Path(path)
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -84,7 +94,8 @@ def load_ssl_log(path: str | Path) -> pd.DataFrame:
                 continue
     if not recs:
         return pd.DataFrame(columns=["ts", "src_ip", "src_port", "dst_ip",
-                                     "dst_port", "ja3", "ja3s", "sni"])
+                                     "dst_port", "ja3", "ja3s", "sni",
+                                     "ja4", "ja4s"])
 
     df = pd.DataFrame(recs)
     out = pd.DataFrame({
@@ -97,11 +108,16 @@ def load_ssl_log(path: str | Path) -> pd.DataFrame:
         "ja3": df.get("ja3", df.get("client_hash", df.get("ja3_hash"))),
         "ja3s": df.get("ja3s", df.get("server_hash", df.get("ja3s_hash"))),
         "sni": df.get("server_name", df.get("sni")),
+        "ja4": _text_column(df, "ja4"),
+        "ja4s": _text_column(df, "ja4s"),
     })
     out["ts"] = pd.to_numeric(df.get("ts", out.index), errors="coerce")
     out["ja3"] = out["ja3"].astype(str).str.strip().replace({"": None, "-": None,
                                                              "nan": None})
     out["sni"] = out["sni"].astype(str).str.strip().replace({"": None, "-": None})
+    for col in ("ja4", "ja4s"):
+        out[col] = out[col].astype(str).str.strip().replace(
+            {"": None, "-": None, "nan": None, "None": None})
     out = out.dropna(subset=["ja3"]).reset_index(drop=True)
     return out
 
@@ -126,9 +142,11 @@ def load_watchlist(path: Path = ABUSECH_JA3) -> dict[str, str]:
 # --------------------------------------------------------------------- novelty
 def client_aggregates(df: pd.DataFrame) -> pd.DataFrame:
     """One row per (src_ip, ja3): behavioural TLS profile of that client."""
-    if "label" not in df.columns:
+    missing = [c for c in ("label", "ja4", "ja4s") if c not in df.columns]
+    if missing:
         df = df.copy()
-        df["label"] = None
+        for col in missing:
+            df[col] = None
     g = df.groupby(["src_ip", "ja3"], sort=False)
     agg = g.agg(
         n_conns=("dst_ip", "size"),
@@ -138,6 +156,8 @@ def client_aggregates(df: pd.DataFrame) -> pd.DataFrame:
         ts_first=("ts", "min"),
         ts_last=("ts", "max"),
         ja3s=("ja3s", "first"),
+        ja4=("ja4", "first"),
+        ja4s=("ja4s", "first"),
         label=("label", "first"),
     ).reset_index()
     agg["conns_per_dst"] = agg["n_conns"] / agg["n_dst"].replace(0, np.nan)
@@ -367,6 +387,14 @@ def emit_alerts(agg: pd.DataFrame, detector: str = "ml.tls") -> list[Alert]:
                                       "malicious-JA3 watchlist" if wl else
                                       f"TLS client behaviour novelty {nov:.2f}")),
         ]
+        for col, label in (("ja4", "JA4"), ("ja4s", "JA4S")):
+            value = row.get(col)
+            if pd.notna(value) and str(value).strip():
+                ev.append(EvidenceItem(
+                    condition=col, operator="fingerprint", observed=str(value),
+                    threshold="context", unit="hash",
+                    description=f"{label} {value}",
+                ))
         for c in ("n_conns", "n_dst", "sni_rate", "n_dst_ports", "conns_per_dst"):
             v = row.get(c)
             try:

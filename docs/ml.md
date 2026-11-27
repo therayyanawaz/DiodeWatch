@@ -70,7 +70,7 @@ print('declared', len(FEATURES), '| active', len(a), '| model', len(MODEL_FEATUR
 | `ml.supervised` (reference, flow-level only) | same CIC-IDS2017 days, five one-vs-rest classes | Training diagnostic only. No artifact is pinned and no cross-corpus metric is published; the old retrained table was withdrawn with its unpinned bytes |
 | `ml.beacon` | CTU-13 scenarios 42/43/51/52/53 (labeled NetFlows) | Leave-one-scenario-out; ROC-AUC macro over scenarios with >=30 positive candidate pairs |
 | `ml.dga` | argencon corpus (1.0M benign incl. Bambenek + 1.9M DGA, 51 families) + Umbrella top-1m as never-trained benign | 48-family holdout CV; threshold selected on known corpus at precision >= 0.90; Umbrella FPR reported separately |
-| `ml.tls_ja3` | 97 abuse.ch SSLBL malicious JA3 hashes (watchlist) + generated benign-shaped workload | Synthetic-plant labelled eval (honest: no Zeek/pcap in this lab); watchlist channel is fully real |
+| `ml.tls_ja3` | 97 abuse.ch SSLBL malicious JA3 hashes (watchlist) + generated benign-shaped workload | Synthetic-plant labelled eval (the evaluation is generated, not a Zeek/pcap capture); watchlist channel is fully real. JA4/JA4S are also computed from pcap handshakes, but they are evidence context only; no JA4 list or JA4 metric is claimed |
 
 ## Key design decisions (and why)
 

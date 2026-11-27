@@ -183,7 +183,9 @@ a null there, which quietly disqualified it from every time-ordered path downstr
 The consequence worth remembering: this stage keeps **no payload bytes at all**.
 Only sizes, counts, timings, ports, protocol numbers and TCP flag counts survive.
 That is not a shortcut, it is the design. If a threat is encrypted, DiodeWatch
-never needs the key, because it was never planning to read the body.
+never needs the key, because it was never planning to read the body. The separate
+TLS/QUIC metadata pass in `src/ingest/tls_metadata.py` reads only plaintext
+handshake records and QUIC headers; it never writes application payload bytes.
 
 ---
 
@@ -305,9 +307,10 @@ has low port entropy. A scanner hitting 300 random ports has high port entropy. 
 human-readable domain like `github.com` has low character entropy; a
 machine-generated one like `x7kq2pw9z.net` has high.
 
-The declared-future entries are honest placeholders in the schema, not code. The
-four DNS and TLS ones name what the pipeline *would* consume if it had Zeek `dns.log`
-and `ssl.log` (domain length and entropy, NXDOMAIN rate, JA3/JA3S fingerprints), and
+The declared-future entries are honest placeholders in the feature registry, not
+columns emitted by the 73-feature builder. The four DNS and TLS ones name what
+the 73-feature registry *would* consume if it had Zeek `dns.log` and `ssl.log`
+(domain length and entropy, NXDOMAIN rate, JA3/JA3S fingerprints), and
 `active_idle_*` stayed future on evidence: measured against the pinned CIC slice,
 the burst floor that separates an active period from an idle one is 5,000,002 µs,
 but the aggregation on top of it reproduces only 98.13% of the published columns,
@@ -519,21 +522,27 @@ generalisation. A separate holdout against Cisco Umbrella's top-1M list answers 
 different and equally important question: does it misfire on a million domains it
 has never seen?
 
-#### 6d. Encrypted TLS traffic ([src/detectors/ml/tls_ja3.py](../src/detectors/ml/tls_ja3.py))
+#### 6d. Encrypted TLS and QUIC traffic ([src/detectors/ml/tls_ja3.py](../src/detectors/ml/tls_ja3.py), [src/ingest/tls_metadata.py](../src/ingest/tls_metadata.py))
 
-Encrypted traffic cannot be opened, so this channel reads only the
-**ClientHello and ServerHello parameters**, the part of a TLS handshake that is
-plaintext by design. Those parameters hash to a **JA3** fingerprint (and JA3S for
-the server side), which identifies the *client software* without touching content.
+Encrypted traffic cannot be opened, so this channel reads only fields the
+protocols expose in the clear. A TLS **ClientHello and ServerHello** are
+plaintext by design. Their parameters hash to **JA3/JA3S** and **JA4/JA4S**
+fingerprints that identify the client and server software without touching
+content. `src/ingest/tls_metadata.py` parses those handshakes from a pcap,
+reassembles a handshake split across TCP segments (including out-of-order
+arrival), and computes all four fingerprints from the wire bytes. The older
+Zeek-style `ssl.log` path in `load_ssl_log` remains, and it accepts optional
+`ja4`/`ja4s` columns from an upstream Zeek build instead of fabricating them.
 
-Two channels, kept clearly separate in the output:
+Two detection channels, kept clearly separate in the output:
 
 1. **Watchlist lookup.** Exact JA3 hash match against the pinned abuse.ch malicious
    JA3 list. This is deterministic and auditable, and the code labels it as a
    lookup rather than pretending it is ML. The list is committed at
    `docs/evaluation/tls/ja3_fingerprints.csv` instead of being fetched, because
    `data/` is gitignored and a watchlist that exists only there is silently empty on
-   a fresh clone.
+   a fresh clone. No JA4 watchlist is pinned, so JA4/JA4S are **not** used as a
+   second lookup and no detection claim is attached to them.
 2. **Behavioural novelty.** A sklearn `IsolationForest` fitted over per-client
    aggregates (connection count, distinct destinations, SNI presence rate, distinct
    destination ports, connections per destination). It catches anomalous *behaviour*
@@ -542,7 +551,27 @@ Two channels, kept clearly separate in the output:
    batch. If the fitted baseline cannot discriminate (degenerate aggregates), the
    layer reports `novelty_available: false` rather than publishing a number.
 
-The evaluation for this channel is a synthetic-plant experiment, malicious-shaped
+JA4 and JA4S ride along as evidence context on a flagged client, so an analyst
+sees the modern fingerprint beside the JA3 that fired. They do not change the
+model features or the decision, and the evaluation still measures the watchlist
+and novelty channels only. The TLS output is a JSON-lines file in the same shape
+`load_ssl_log` already accepts, so an existing `ml_engine.py` run can add it with
+`--tls-ssl-log tls.ndjson`:
+
+```bash
+python -m src.ingest.tls_metadata --pcap capture.pcap \
+    --tls-out tls.ndjson --quic-out quic.ndjson
+```
+
+For QUIC on UDP/443, only the unprotected header metadata is observable: version,
+destination and source connection IDs, long-header packet type, packet sizes and
+inter-arrival gaps, aggregated per 5-tuple. Initial payloads are encrypted; this
+reader does not decrypt them and therefore does not claim a QUIC JA4. A
+short-header packet is counted as 1-RTT only when a long header has already
+established the flow. The `bytes` and `packet_size_*` fields count UDP payload
+bytes, not captured frame bytes.
+
+The evaluation for the TLS channel is a synthetic-plant experiment, malicious-shaped
 clients injected into a benign mix, and it is labelled as synthetic in the metrics
 file. No real-data claim is made that the corpus cannot back.
 
@@ -1122,7 +1151,8 @@ headless pre-flight that prints "demo is GO".
 | **PSI** | Population Stability Index. A drift measure comparing a feature's distribution now to its distribution at training time |
 | **fan-in** | Many distinct sources converging on one destination |
 | **half-open SYN** | A SYN packet with no matching ACK: a handshake started and never completed |
-| **JA3 / JA3S** | Hashes of the TLS client and hello parameters. They fingerprint the software without decrypting anything |
+| **JA3 / JA3S** | Hashes of the TLS client and server hello parameters. They fingerprint the software without decrypting anything. JA4/JA4S are the newer fingerprint family over the same bytes |
+| **QUIC** | The UDP-based encrypted transport used by HTTP/3. Version, connection IDs, packet type and packet sizes are visible in the header; Initial payloads are encrypted |
 | **DGA** | Domain Generation Algorithm. Malware invents new throwaway domains instead of using fixed ones |
 | **beaconing** | Malware calling home on a regular schedule. Detected from interval regularity, not content |
 | **CIC / CICFlowMeter** | The Canadian Institute for Cybersecurity and its flow-statistics tool, which produce the labelled corpora this project evaluates on |
@@ -1153,9 +1183,11 @@ Stated plainly, because the boundary is part of the design:
 * It does not probe. There is no active scanning of sources, no re-reading, no
   enrichment from a live external feed at runtime.
 * It does not ship features it cannot source. Domain length, domain entropy,
-  NXDOMAIN rate and the JA3/JA3S columns are declared in the schema as *future* and
-  are not fed to any model, because they need Zeek `dns.log` and `ssl.log` and this
-  build reads packets and published flow tables. Per-packet timing and size
+  NXDOMAIN rate and the JA3/JA3S columns are declared in the 73-feature registry as
+  *future* and are not fed to any model, because they need Zeek `dns.log` and
+  `ssl.log`. The separate TLS/QUIC metadata reader does extract JA3/JA3S/JA4/JA4S
+  and QUIC header fields for the TLS detector, but that is not the frozen feature
+  registry. Per-packet timing and size
   statistics *are* shipped, but not the active/idle split CIC publishes on top of
   them: that one reproduces only 98.13% against the pinned slice, so the columns
   stay future rather than carrying two meanings under one name. The DNS and TLS

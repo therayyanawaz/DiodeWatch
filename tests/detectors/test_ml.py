@@ -278,6 +278,8 @@ def _ssl_frame(n_clients=12, per=6, seed=11) -> pd.DataFrame:
                 "dst_ip": f"151.101.{rng.integers(0, 255)}.{rng.integers(0, 255)}",
                 "dst_port": int(rng.choice([443, 443, 8443])),
                 "ja3": f"aa{c:030d}", "ja3s": f"bb{c:030d}",
+                "ja4": f"t13d1516h2_{c:012x}_b186095e22b6",
+                "ja4s": f"t1303h2_1301_{c:012x}",
                 "sni": f"site{c}.example.com",
             })
     return pd.DataFrame(rows)
@@ -286,10 +288,14 @@ def _ssl_frame(n_clients=12, per=6, seed=11) -> pd.DataFrame:
 def test_load_ssl_log_tsv_and_json(tmp_path):
     tsv = tmp_path / "ssl.log"
     tsv.write_text(
-        "#fields\tts\tid.orig_h\tid.orig_p\tid.resp_h\tid.resp_p\tja3\tja3s\tserver_name\n"
-        "1500000000.0\t10.0.0.5\t4433\t93.1.2.3\t443\taa33\taa44\twww.x.com\n")
+        "#fields\tts\tid.orig_h\tid.orig_p\tid.resp_h\tid.resp_p\tja3\tja3s\t"
+        "server_name\tja4\tja4s\n"
+        "1500000000.0\t10.0.0.5\t4433\t93.1.2.3\t443\taa33\taa44\twww.x.com\t"
+        "t13d1516h2_8daaf6152771_e5627efa2ab1\tt1303h2_1301_4e8089b08790\n")
     df = tls.load_ssl_log(tsv)
     assert len(df) == 1 and df["ja3"].iloc[0] == "aa33"
+    assert df["ja4"].iloc[0] == "t13d1516h2_8daaf6152771_e5627efa2ab1"
+    assert df["ja4s"].iloc[0] == "t1303h2_1301_4e8089b08790"
     js = tmp_path / "ssl.json"
     js.write_text(json.dumps({"ts": 1500000000.0, "id.orig_h": "10.0.0.6",
                               "id.orig_p": 4434, "id.resp_h": "93.1.2.4",
@@ -297,6 +303,7 @@ def test_load_ssl_log_tsv_and_json(tmp_path):
                               "server_name": "-"}) + "\n")
     df2 = tls.load_ssl_log(js)
     assert len(df2) == 1 and df2["sni"].iloc[0] is None
+    assert df2["ja4"].isna().iloc[0] and df2["ja4s"].isna().iloc[0]
 
 
 def test_watchlist_loading(tmp_path):
@@ -313,6 +320,7 @@ def test_tls_watchlist_and_novelty(tmp_path):
     m = tls.TlsModel(watchlist={client0_ja3: "test"})
     agg = m.score_clients(df)
     assert agg["watchlisted"].any()
+    assert agg["ja4"].iloc[0].startswith("t13d1516h2_")
     # novelty model trained on this same benign set; planted rogue shape
     model, metrics = tls.train_tls([_ssl_frame(n_clients=30, per=10)],
                                    model_dir=tmp_path / "m",
@@ -321,6 +329,9 @@ def test_tls_watchlist_and_novelty(tmp_path):
     assert Path(tmp_path / "m" / "tls_novelty.joblib").exists()
     flagged = model.flag(_ssl_frame(n_clients=8, per=4))
     assert "watchlisted" in flagged.columns
+    alerts = tls.emit_alerts(m.flag(_ssl_frame(n_clients=2, per=1)))
+    assert alerts and any(e.condition == "ja4" for e in alerts[0].evidence)
+    assert any(e.condition == "ja4s" for e in alerts[0].evidence)
 
 
 def test_tls_metrics_artifact_is_reproducible_from_code(tmp_path):

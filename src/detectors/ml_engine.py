@@ -70,7 +70,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dga-domains",
                     help="text file with one queried domain per line")
     ap.add_argument("--tls-ssl-log",
-                    help="Zeek ssl.log (TSV or JSON) for the JA3/TLS detector")
+                    help="Zeek ssl.log or tls_metadata JSON-lines for the "
+                         "JA3/JA4 detector")
     args = ap.parse_args(argv)
 
     df = load_features(args.input)

@@ -35,7 +35,8 @@ DiodeWatch is built for that constraint from the ground up:
 
 - **One-way-native detection.** Rules and ML that never assume they can talk
   back, no active probing, no handshake participation, no payload decryption
-  (encrypted threats are classified from JA3/JA3S metadata, sizes, timing).
+  (TLS threats are flagged from JA3/JA3S metadata and client behavior; JA4/JA4S
+  and QUIC headers add context, and packet sizes and timing stay observable).
 - **The diode itself is audited.** DiodeWatch verifies its own unidirectionality
   live: an egress sentinel + kernel rules keep outbound bytes at **zero**, and
   the dashboard's Diode Proof panel shows the counters in real time. If
@@ -77,8 +78,8 @@ flowchart LR
     D --> INGEST
 
     subgraph ENCLAVE["ANALYTICS ENCLAVE, no return path"]
-        INGEST["1 · INGEST & DIODE GUARD<br/>PCAP replay / mirrored port<br/>read-only · egress sentinel"] --> FEAT["2 · FEATURE ENGINE<br/>pandas · windowed stats · entropy<br/>periodicity · JA3/JA3S · frozen schema"]
-        FEAT --> DET["3 · DETECTION ENGINES<br/>deterministic rules · LightGBM multi-class<br/>TLS/JA3 watchlist channel"]
+        INGEST["1 · INGEST & DIODE GUARD<br/>PCAP replay / mirrored port<br/>TLS/QUIC metadata · egress sentinel"] --> FEAT["2 · FEATURE ENGINE<br/>pandas · windowed stats · entropy<br/>periodicity · frozen schema"]
+        FEAT --> DET["3 · DETECTION ENGINES<br/>deterministic rules · LightGBM multi-class<br/>TLS JA3 watchlist + JA4 context"]
         DET --> ALERT["4 · ALERTS & EVIDENCE<br/>SQLite · Parquet lake<br/>ATT&CK tags · STIX 2.1 · HTML report"]
         ALERT --> UI["5 · ANALYST DASHBOARD<br/>live feed · evidence drill-down<br/>metrics · Diode Proof panel"]
     end
@@ -254,6 +255,7 @@ benchmarking.
 | Shannon entropy (domain, packet-size and port-distribution features) | Shannon, *A Mathematical Theory of Communication*, Bell System Technical Journal 27:379-423 & 623-656, 1948 | [doi:10.1002/j.1538-7305.1948.tb01338.x](https://doi.org/10.1002/j.1538-7305.1948.tb01338.x) | [`src/features/`](src/features/specs.py) |
 | PSI drift reporting (why a channel fails closed on a new lab) | Yurdakul & Naranjo, *Statistical properties of the population stability index*, The Journal of Risk Model Validation 14(4):89-100, 2020 | [doi:10.21314/JRMV.2020.227](https://doi.org/10.21314/JRMV.2020.227) | `psi()` in [`scripts/benchmarks/bench_transfer.py`](scripts/benchmarks/bench_transfer.py) |
 | JA3 / JA3S TLS fingerprinting (metadata only, so the no-decryption rule holds) | Althouse, Atkinson & Atkins, 2017. The original SANS whitepaper URL is now dead, so the primary live sources are the open-sourcing post and the reference implementation | [Open Sourcing JA3](https://engineering.salesforce.com/open-sourcing-ja3-92c9e53c3c41/) · [salesforce/ja3](https://github.com/salesforce/ja3) | [`src/detectors/ml/tls_ja3.py`](src/detectors/ml/tls_ja3.py) |
+| JA4 / JA4S TLS fingerprinting (same metadata-only rule) | FoxIO, *JA4+ Network Fingerprinting*, 2024 | [FoxIO-LLC/ja4](https://github.com/FoxIO-LLC/ja4) | [`src/ingest/tls_metadata.py`](src/ingest/tls_metadata.py) |
 | ModernBERT encoder inside the Laya triage model | Warner, Chaffin, Clavié et al., *Smarter, Better, Faster, Longer: A Modern Bidirectional Encoder for Fast, Memory Efficient, and Long Context Finetuning and Inference*, arXiv:2412.13663, 2024 | [arxiv.org/abs/2412.13663](https://arxiv.org/abs/2412.13663) | [`src/triage/laya_runtime.py`](src/triage/laya_runtime.py) |
 | RLCD, the calibration objective Laya was trained with | Guo et al., *Just Ask Jev: Reinforcement Learning for Calibrated Decisions as a Zero-Shot Detector of AI Alignment Failures*, arXiv:2609.29429, 2026. Open reimplementation: Gao & Wang, *OpenJev-RLCD: A Working RLCD Implementation*, arXiv:2609.38850, 2026 | [arxiv.org/abs/2609.29429](https://arxiv.org/abs/2609.29429) · [arxiv.org/abs/2609.38850](https://arxiv.org/abs/2609.38850) | [`docs/laya.md`](docs/laya.md) |
 | Laya itself (Convai Innovations, Apache-2.0 weights) | **No paper or technical report exists** for Laya; the model card is the primary source, alongside the TypeScript port our Python port follows | [convaiinnovations/laya](https://huggingface.co/convaiinnovations/laya) · [receptron/laya](https://github.com/receptron/laya) | [`src/triage/`](src/triage/laya_runtime.py) |
@@ -266,6 +268,7 @@ against them, so they belong in the same list.
 | Spec | Published by | Link | Where |
 |---|---|---|---|
 | STIX 2.1 (Structured Threat Information eXpression) | OASIS Cyber Threat Intelligence Technical Committee | [stix-v2.1-os](https://docs.oasis-open.org/cti/stix/v2.1/os/stix-v2.1-os.html) | hand-built bundle in [`src/alerts/export_stix.py`](src/alerts/export_stix.py) |
+| QUIC v1 and v2 (RFC 9000, RFC 9369), header fields only | IETF QUIC Working Group | [RFC 9000](https://www.rfc-editor.org/rfc/rfc9000) · [RFC 9369](https://www.rfc-editor.org/rfc/rfc9369) | [`src/ingest/tls_metadata.py`](src/ingest/tls_metadata.py) |
 | MITRE ATT&CK technique/tactic model | Strom, Applebaum, Miller, Nickels, Pennington & Thomas, *MITRE ATT&CK: Design and Philosophy*, The MITRE Corporation, revised March 2020 | [PDF](https://attack.mitre.org/docs/ATTACK_Design_and_Philosophy_March_2020.pdf) · [matrix](https://attack.mitre.org/) | ATT&CK tags on every alert, [`src/alerts/schema.py`](src/alerts/schema.py) |
 | ModSecurity v3 rule language | OWASP / Trustwave | [modsecurity.org](https://www.modsecurity.org/) | [`waf/modsecurity.conf`](waf/modsecurity.conf) |
 | OWASP Top 10 categories used as WAF rule tags | OWASP Foundation | [top10.owasp.org](https://top10.owasp.org/) | rule tags in `waf/modsecurity.conf` |
