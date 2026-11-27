@@ -95,23 +95,32 @@ each claim:
   reports exact precision, any-attack precision and incident recall `(window,
   entity, class)`. The full pass gives CIC-DDoS2019 exact precision 0.993 with no
   benign-only alert but incident recall 0.118, and CIC-IDS2017 exact precision
-  0.941 with 5 of 85 alerts benign-only. The old 0.845 and 0.797 flow FPRs
+  0.927 with 5 of 96 alerts benign-only. The old 0.845 and 0.797 flow FPRs
   were attribution and label artifacts; they are withdrawn.
 * **Rule precision on CIC-IDS2017.** A 500 kB exfil ratio floor removed 61 small
   benign uploads (the old floor was 10 kB), and dropping the scan host-sweep
   branch removed 29 benign windows and zero scan truth units. A 20 KB/s byte
   floor below 250 flows/s then removed the last busy-server DDoS claim, and a reply-aware
   multi-port gate removed 26 fan-in or high-port sweeps. Benign-only alerts
-  fell from 122 of 192 to 5 of 85, exact precision rose from 0.365 to 0.941,
+  fell from 122 of 192 to 5 of 96, exact precision rose from 0.365 to 0.927,
   and DDoS flow recall stayed at 0.979 with precision rising from 0.947 to
   0.999. The 5 remaining are 2 scan, 2 exfil and 1 slowdos; the scan and exfil
   shapes still present are large or high-port sessions that satisfy every gate.
 * **Slow-DoS recall.** Raising the request ceiling from 160 B to 300 B covers
   CIC-IDS2017 Slowhttptest (169-296 B), and a first window with 100 flows and
   100 held connections now survives corroboration. Slow-DoS truth recall rose
-  from 18/46 to 28/46 with no new benign-only slow alert; the one remaining
-  benign slow alert is the Thursday Infiltration 40-flow window.
-* **The suite** collects 538 tests. Three of them need corpora this repository
+  from 18/46 to 28/46 with no new benign-only slow alert; a held-dominant
+  profile (15 connections held and a 1.6 packet ratio) then raised it to 33/46.
+  The profile also claims two Wednesday DDoS Hulk windows, so slow-DoS exact
+  alert precision is 33/36; that is class confusion on attack traffic. The one
+  benign slow alert remains the Thursday Infiltration 40-flow window.
+* **Scan boundary fragments.** A narrow branch requires 5-10 ports on at most
+  2 hosts, at least 30 probes, at most 50 B per flow and at least 90% answered
+  flows. It adds four PortScan truth windows and no benign window across the
+  eight-day CIC-IDS2017 corpus, raising PortScan recall from 11/27 to 15/27.
+  The remaining 12 PortScan units are 1-29 flow fragments, too small to
+  separate safely from client traffic.
+* **The suite** collects 540 tests. Three of them need corpora this repository
   deliberately never commits, so they skip locally and run in
   `.github/workflows/integration.yml`, which fails if they skip there.
 
@@ -122,7 +131,7 @@ have, not a decision we have not made.
 
 | Item | Why it matters | State |
 |---|---|---|
-| Scan and slow-DoS recall on CIC-IDS2017 | slow-DoS is 28/46 after the 300 B and strong-window fixes; scan is 11/222 canonically, but 195 units are Patator/web attacks folded into scan and the port-sweep rule covers 11/27 PortScan units | **partly done** |
+| Scan and slow-DoS recall on CIC-IDS2017 | slow-DoS is 33/46 after the 300 B, strong-window and held-dominant fixes; scan is 15/222 canonically, but 195 units are Patator/web attacks folded into scan and the port-sweep rule covers 15/27 PortScan units. The 13 slow misses are 5 windows below 30 flows, 6 larger windows below 15 held or 1.6 ratio, one isolated 88-flow window, and one 338.9 B window above the 300 B cap; the 12 PortScan misses are 1-29 flow fragments | **done** |
 | Packet-to-alert clock, bounded queue, backpressure at 5k/10k/50k flows/s | the 175 ms figure is window-evaluation p95, not end-to-end latency | planned |
 | Calibration and conformal abstention per channel | confidence is not calibrated and no alert can abstain | planned |
 | Drift alarm that makes a channel abstain, not just a chart | PSI is published as an explanation, not acted on | planned |

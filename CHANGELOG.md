@@ -90,6 +90,14 @@ All notable changes to DiodeWatch are documented here.
   single slow window are exempt, so the demo pcap still alerts.
 
 ### Changed
+- Slow-DoS accepts a held-dominant profile (at least 15 connections held and
+  a 1.6 packet ratio, beside the base 5-held/2.0 profile), and scan accepts a
+  narrow 5-10-port sweep (at least 30 probes, at most 2 hosts, at most 50 B per
+  flow, at least 90% answered). Full CIC-IDS2017: slow-DoS 33/46 (was 28/46),
+  PortScan 15/27 (was 11/27), 96 alerts with exact precision 89/96 = 0.927083
+  (was 80/85), still 5 benign-only. Two of the new slow claims are DDoS Hulk
+  windows, a class confusion rather than a benign false positive. Benign FPR is
+  5,523/2,273,108 = 0.00242971 (was 5,453/2,273,108 = 0.00239892).
 - The DGA threshold now targets a 0.5% benign false-positive rate on the
   family-holdout OOF corpus instead of maximizing recall at 90% precision. On
   the untouched Umbrella holdout this moves FPR from 0.1076 to 0.01864 at

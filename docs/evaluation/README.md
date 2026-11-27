@@ -99,8 +99,8 @@ CIC-IDS2017 model, which is why CIC-IDS2017 is the only in-sample ML family
 here.
 
 Gate outcome, pre-committed and unmoved: **four PASS**. On CIC-IDS2017 the
-rule layer reaches DDoS F1 0.989026 and benign FPR 5,453/2,273,108 =
-0.00239892. On CIC-DDoS2019 it reaches F1 0.996426 and FPR 51/113,828 =
+rule layer reaches DDoS F1 0.989026 and benign FPR 5,523/2,273,108 =
+0.00242971. On CIC-DDoS2019 it reaches F1 0.996426 and FPR 51/113,828 =
 0.00044804. The CIC-IDS2017 F1 is 0.039 above its gate and its FPR is 0.0176
 below its ceiling; it is the stronger of the two passes but still a measured
 one.
@@ -120,14 +120,18 @@ false bursts are gone; DDoS flow recall is unchanged at 0.979339 and precision
 rose from 0.94683 to 0.998907.
 Raising the slow-request ceiling and keeping strong first windows then added ten
 attack-side slow alerts, taking the pass from 75 to 85 without a new benign-only
-alert.
+alert. The held-dominant slow profile then added seven alerts (five truth
+windows and two DDoS Hulk class-confusion windows), and the narrow scan branch
+added four PortScan truth windows, taking the pass from 85 to 96 without a new
+benign-only alert.
 
-Alert-level scoring still shows the remaining weak side. On CIC-IDS2017, 85
-alerts are all scorable: exact precision is 80/85 = 0.941176, any-attack
-precision is also 80/85, and 5 alerts contain no attack truth (2 scan, 2 exfil,
-1 slow DoS). DDoS incident recall is 41/51; slow-DoS is 28/46. Canonical scan
-recall is 11/222, but 195 of those units are 127 Patator and 68 web-attack
-units mapped to `scan`, and the port-sweep rule covers 11/27 PortScan units.
+Alert-level scoring still shows the remaining weak side. On CIC-IDS2017, 96
+alerts are all scorable: exact precision is 89/96 = 0.927083, any-attack
+precision is 91/96 = 0.947917, and 5 alerts contain no attack truth (2 scan,
+2 exfil, 1 slow DoS). DDoS incident recall is 41/51; slow-DoS is 33/46.
+Canonical scan recall is 15/222, but 195 of those units are 127 Patator and 68
+web-attack units mapped to `scan`, and the port-sweep rule covers 15/27
+PortScan units.
 On CIC-DDoS2019, 1,183 alerts give exact precision 1,175/1,183 =
 0.993238, any-attack precision 1,183/1,183 = 1.0, and none are benign-only.
 DDoS incident recall is 1,175/9,927 = 0.1184 even though flow recall is
@@ -137,7 +141,7 @@ artifact prints both.
 
 The corrected CIC-DDoS2019 benign denominator is 113,828, not 480,289,
 because 366,461 `UDP-lag` flows are slow-DoS truth. Its FPR gate passes on
-that smaller denominator. The slow-DoS rule finds 28/46 CIC-IDS2017 units but
+that smaller denominator. The slow-DoS rule finds 33/46 CIC-IDS2017 units but
 0/448 here, because UDPLag is a low-rate flood without the held-connection
 shape. This is a narrow rule-layer pass, not a cross-corpus victory, and the
 ML column is unchanged by these rules.

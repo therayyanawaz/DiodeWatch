@@ -274,6 +274,56 @@ def test_slowdos_fires_on_slowloris_shape_only():
     assert alerts5 == []
 
 
+def test_slowdos_held_dominant_profile_accepts_a_lower_ratio():
+    # Mixed windows dilute the all-flow ratio below 2.0 while the victim still
+    # has 50+ connections open; held connections are direct starvation evidence.
+    held = [rec(i, src="10.3.0.11", dst="10.7.7.11", sport=45000 + i,
+                ts=BASE_TS + i * 0.15, dur=45.0, fwd_pkts=17, bwd_pkts=10,
+                fwd_bytes=1700, bwd_bytes=1200, label="DoS slowloris")
+            for i in range(120)]
+    alerts = [a for a in run_rules(pd.DataFrame(held))
+              if a.detector == "slowdos" and a.key == "10.7.7.11"]
+    assert alerts, "1.7 ratio with 15+ held connections must alert"
+    evidence = {e.condition: e for e in alerts[0].evidence}
+    assert evidence["fwd_bwd_pkt_ratio"].threshold == 1.6
+    assert evidence["held_connections"].threshold == 15
+
+    # The same ratio with no held connections is a fast poller, not slow DoS.
+    fast = [rec(i, src="10.3.0.12", dst="10.7.7.12", sport=46000 + i,
+                ts=BASE_TS + i * 0.15, dur=0.05, fwd_pkts=17, bwd_pkts=10,
+                fwd_bytes=1700, bwd_bytes=1200, label="BENIGN")
+            for i in range(120)]
+    assert not [a for a in run_rules(pd.DataFrame(fast))
+                if a.detector == "slowdos" and a.key == "10.7.7.12"]
+
+
+def test_narrow_five_port_sweep_is_scan():
+    # A short boundary fragment of a port sweep: 35 answered probes over five
+    # ports, 18 B per flow, all in one window. Cardinality alone is small, but
+    # the probe shape and volume are not a page load.
+    sweep = [rec(i, src="10.5.0.8", dst="10.9.9.7", sport=50000 + i,
+                 dport=1000 + i % 5, ts=BASE_TS + i * 0.1, dur=0.05,
+                 fwd_pkts=2, bwd_pkts=1, fwd_bytes=12, bwd_bytes=6,
+                 label="PortScan")
+             for i in range(35)]
+    alerts = [a for a in run_rules(pd.DataFrame(sweep))
+              if a.threat_class == "scan" and a.key == "10.5.0.8"]
+    assert alerts, "a 5-port, 30+ probe answered sweep must alert"
+    evidence = {e.condition: e for e in alerts[0].evidence}
+    assert evidence["cardinality"].observed == "ports=5/hosts=1"
+    assert evidence["bytes_per_flow"].threshold == 50.0
+
+    # No reply at all is the incomplete-handshake branch, not this one; with
+    # only five ports it stays below the broad cardinality floor.
+    unanswered = [rec(i, src="10.5.0.9", dst="10.9.9.7", sport=51000 + i,
+                      dport=1000 + i % 5, ts=BASE_TS + i * 0.1, dur=0.05,
+                      fwd_pkts=2, bwd_pkts=0, fwd_bytes=12, bwd_bytes=0,
+                      label="BENIGN")
+                  for i in range(35)]
+    assert not [a for a in run_rules(pd.DataFrame(unanswered))
+                if a.threat_class == "scan" and a.key == "10.5.0.9"]
+
+
 def test_low_rate_flood_needs_real_bytes():
     # 125 flows/s for three windows is a persistent rate, but 6 KB/s of tiny
     # polls is normal chatter. The same rate carrying 50 KB/s is a flood.

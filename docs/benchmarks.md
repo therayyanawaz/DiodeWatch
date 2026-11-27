@@ -73,8 +73,8 @@ the same table and catch.
 | rule layer | CIC Wednesday 200k stratified slice | benign-window false positives | **0** of 100,000 benign flows |
 
 The rule-layer row is the 50/50 acceptance slice. On the full pinned Wednesday
-table (692,703 flows, 440,031 benign) the same thresholds emit 50 alerts, none on
-benign windows; on the full CIC-IDS2017 register they emit 85 alerts, 5 benign-only
+table (692,703 flows, 440,031 benign) the same thresholds emit 57 alerts, none on
+benign windows; on the full CIC-IDS2017 register they emit 96 alerts, 5 benign-only
 (2 scan, 2 exfil, 1 slow DoS). All 27 DDoS false bursts are gone from the
 full register. See [rules.md](rules.md#acceptance-reality). All numbers are
 measured, not estimated.
