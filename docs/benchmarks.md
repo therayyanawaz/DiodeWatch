@@ -84,7 +84,7 @@ IsolationForest novelty layer scores 0.0 because the lab's generated baseline
 gives every client the same aggregate vector (zero fit spread), so it reports
 itself unavailable instead of alerting on noise, see [ml.md](ml.md).
 
-All 7 documented gates PASS (`scripts/benchmarks/bench_accuracy.py` exit 0). Honest
+All documented gates PASS (`scripts/benchmarks/bench_accuracy.py` exit 0). Honest
 caveats carried over from the ML evaluation: the reference flow-level model
 plateaus well below the production flow+window ensemble (it is a design
 reference, not a shipped artifact), and the TLS channel has no real TLS pcap in
