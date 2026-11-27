@@ -86,7 +86,7 @@ flowchart LR
 
 | Layer | What it does |
 |---|---|
-| **1 · Ingest & Diode Guard** | PCAP replay or mirrored port → canonical bidirectional flows; kernel egress-deny + egress monitor prove one-way operation |
+| **1 · Ingest & Diode Guard** | PCAP replay or mirrored port, CIC tables, Argus/nfdump/goflow2 exports → canonical flows; kernel egress-deny + egress monitor prove one-way operation |
 | **2 · Feature Engine** | Frozen 73-feature registry, pandas-vectorised, rates, entropy, periodicity, byte asymmetry, port-cardinality context, per-packet timing and size |
 | **3 · Detection Engines** | Instant auditable rules (DDoS, slow-DoS, scan, exfil) + gated LightGBM channels; any channel failing its quality gate is disabled, never junk-scored |
 | **4 · Alerts & Evidence** | ATT&CK-tagged envelope with observed-vs-threshold evidence, SQLite store, STIX 2.1 bundles, one-click HTML report |

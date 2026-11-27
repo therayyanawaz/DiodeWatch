@@ -186,12 +186,22 @@ PROTO_NAMES: dict[int, str] = {
 
 _ISO_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
+# The export formats dominate large runs; parse their fixed-width shape without
+# the per-call strptime regex compilation. Anything unusual still falls through
+# to the format list below.
+_TS_FAST = re.compile(
+    r"^(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2}):(\d{2})"
+    r"(?:\.(\d{1,6}))?$"
+)
+
 _TS_FORMATS = (
     "%d/%m/%Y %I:%M:%S %p",   # CIC-IDS2017 official ("7/7/2017 9:20:00 AM")
     "%m/%d/%Y %I:%M:%S %p",
+    "%Y-%m-%d %H:%M:%S.%f",   # nfdump CSV
     "%Y-%m-%d %H:%M:%S",
-    "%Y-%m-%d %H:%M:%S.%f",
+    "%Y-%m-%dT%H:%M:%S.%f",
     "%Y-%m-%dT%H:%M:%S",
+    "%Y/%m/%d %H:%M:%S.%f",   # Argus / CTU-13 binetflow
     "%Y/%m/%d %H:%M:%S",
     "%Y-%m-%d %H:%M",
 )
@@ -236,10 +246,33 @@ def to_float(v) -> float | None:
     return f if math.isfinite(f) else None
 
 
+# Fast path for the dotted-quad strings the corpora actually contain; the
+# ipaddress fallback still validates and normalizes everything else.
+_IPV4_TEXT = re.compile(
+    r"^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}"
+    r"(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$"
+)
+
+_PROTOCOL_NAMES = {v: k for k, v in PROTO_NAMES.items()}
+_PROTOCOL_NAMES.update({"icmpv6": 58, "ipv6icmp": 58, "ipv6-icmp": 58})
+
+
 def to_protocol(v) -> int | None:
-    """IANA protocol number as an int (parquet/CSV store it as 6.0 / 6 / '6')."""
-    p = to_int(v)
-    return None if p is None else p
+    """IANA protocol number from a number or a common name.
+
+    Flow exports disagree on this column: CIC and IPFIX carry 6, nfdump and
+    Argus carry TCP/tcp, and a few use 0x06. All three resolve here.
+    """
+    if isinstance(v, str):
+        s = v.strip().lower()
+        if s in _PROTOCOL_NAMES:
+            return _PROTOCOL_NAMES[s]
+        if s.startswith("0x"):
+            try:
+                return int(s, 16)
+            except ValueError:
+                return None
+    return to_int(v)
 
 
 def proto_name(proto: int | None) -> str | None:
@@ -261,6 +294,8 @@ def to_ip(v) -> str | None:
             return str(ipaddress.IPv4Address(int(float(s))))
         except (ValueError, TypeError):
             return None
+    if _IPV4_TEXT.fullmatch(s):
+        return s
     try:
         return str(ipaddress.IPv4Address(s))
     except ValueError:
@@ -282,14 +317,30 @@ def to_timestamp(v) -> tuple[str | None, float | None]:
             dt = None
     else:
         s = str(v).strip()
-        for fmt in _TS_FORMATS:
+        m = _TS_FAST.match(s)
+        if m:
+            y, mo, d, h, mi, se = map(int, m.groups()[:6])
+            us = int((m.group(7) or "").ljust(6, "0") or 0)
             try:
-                # The formats carry no zone; we assume the source clock and tag
-                # UTC immediately so ordering/epochs stay consistent.
-                dt = datetime.strptime(s, fmt).replace(tzinfo=timezone.utc)
-                break
+                dt = datetime(y, mo, d, h, mi, se, us, tzinfo=timezone.utc)
             except ValueError:
-                continue
+                dt = None
+        if dt is None:
+            for fmt in _TS_FORMATS:
+                try:
+                    # These formats carry no zone; assume the source clock and
+                    # tag UTC immediately so ordering/epochs stay consistent.
+                    dt = datetime.strptime(s, fmt).replace(tzinfo=timezone.utc)
+                    break
+                except ValueError:
+                    continue
+        if dt is None:
+            try:
+                # ISO-8601 with an offset or a trailing Z; Python 3.10's
+                # fromisoformat needs the Z normalized first.
+                dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+            except ValueError:
+                dt = None
     if dt is None:
         return None, None
     if dt.tzinfo is None:

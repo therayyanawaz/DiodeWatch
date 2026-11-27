@@ -20,8 +20,8 @@ Two rules govern it:
 The 1.0.0 release is the detection stack, end to end, with the evidence to back
 each claim:
 
-* **Ingest and features:** capture and flow-table readers, one frozen 73-feature
-  registry, parity-checked against the CICFlowMeter schema.
+* **Ingest and features:** capture, flow-table and flow-export readers, one
+  frozen 73-feature registry, parity-checked against the CICFlowMeter schema.
 * **Detection:** rule, window-ensemble, flow-context, DGA/tunnel, beacon,
   TLS/JA3 novelty and triage channels, each with a run record under
   `docs/evaluation/runs/`.
@@ -35,6 +35,14 @@ each claim:
 
 ## Recently landed, after 1.0.0
 
+* **Flow-export ingest.** `src/ingest/flow_reader.py` reads Argus CSV (including
+  CTU-13 `.binetflow`), nfdump CSV (header or headerless) and goflow2 JSON/NDJSON
+  into the same 47-field records as the capture and CIC readers. `unify.py` sniffs
+  a `.csv` header for the format and accepts `--format argus|nfdump|goflow2` when
+  it is ambiguous. A flow export publishes a final flag set, not per-packet
+  counts, and nfdump/goflow2 publish one counter pair, so absent flags and timing
+  fields stay null instead of becoming zeros; CTU-13 therefore remains not
+  evaluable for rules and flow context.
 * **Wall hardening.** Every response carries a strict policy (`frame-ancestors
   'none'`, `script-src 'self'`, `connect-src 'self'`), a configured
   `DIODE_WALL_TOKEN` protects `/api` **and** the `/ws/live` alert stream, and a
@@ -89,7 +97,7 @@ each claim:
   100 held connections now survives corroboration. Slow-DoS truth recall rose
   from 18/46 to 28/46 with no new benign-only slow alert; the one remaining
   benign slow alert is the Thursday Infiltration 40-flow window.
-* **The suite** collects 517 tests. Three of them need corpora this repository
+* **The suite** collects 526 tests. Three of them need corpora this repository
   deliberately never commits, so they skip locally and run in
   `.github/workflows/integration.yml`, which fails if they skip there.
 
@@ -100,7 +108,6 @@ have, not a decision we have not made.
 
 | Item | Why it matters | State |
 |---|---|---|
-| Flow-record ingest: Argus CSV, nfdump CSV, goflow2 JSON | the PS accepts NetFlow/IPFIX/sFlow and CTU-13, 19,976,700 flows, is unscored for rules and flow context | **next** |
 | JA4 and JA4S over TLS, QUIC observable metadata | PS clause (d) names JA4; only JA3 is shipped and QUIC has no reader | **next** |
 | Scan and slow-DoS recall on CIC-IDS2017 | slow-DoS is 28/46 after the 300 B and strong-window fixes; scan is 11/222 canonically, but 195 units are Patator/web attacks folded into scan and the port-sweep rule covers 11/27 PortScan units | **partly done** |
 | DGA false-positive work on Umbrella hard negatives | 0.1076 FPR at the operating threshold is not usable | **next** |

@@ -1,4 +1,4 @@
-"""Ingest-layer tests: schema normalization, table + pcap readers, unify CLI."""
+"""Ingest-layer tests: schema normalization, table + pcap + export readers, unify CLI."""
 from __future__ import annotations
 
 import io
@@ -7,6 +7,12 @@ from pathlib import Path
 
 import pytest
 
+from src.ingest.flow_reader import (
+    detect_format,
+    stream_argus,
+    stream_goflow2,
+    stream_nfdump,
+)
 from src.ingest.pcap_reader import stream_flows
 from src.ingest.schema import (
     COLUMN_ALIASES,
@@ -369,3 +375,201 @@ def test_unify_cli_rejects_unknown_format(tmp_path):
     p.write_text("hello", encoding="utf-8")
     with pytest.raises(SystemExit):
         unify_main(["--input", str(p), "--out", str(tmp_path / "o.ndjson")])
+
+# --------------------------------------------------------------------------- #
+# flow exports (Argus CSV, nfdump CSV, goflow2 JSON)
+# --------------------------------------------------------------------------- #
+
+ARGUS_HEADER = ("StartTime,Dur,Proto,SrcAddr,Sport,Dir,DstAddr,Dport,State,"
+                "sTos,dTos,TotPkts,TotBytes,SrcBytes,Label")
+
+
+def test_flow_export_timestamp_fraction_and_protocol_names():
+    iso, epoch = to_timestamp("2011/08/10 09:46:53.047277")
+    assert iso == "2011-08-10T09:46:53"
+    assert epoch == pytest.approx(1312969613.047277)
+    iso2, _ = to_timestamp("2011-08-10 09:46:53.047")
+    assert iso2 == "2011-08-10T09:46:53"
+    assert to_protocol("tcp") == 6
+    assert to_protocol("UDP") == 17
+    assert to_protocol("icmpv6") == 58
+    assert to_protocol("0x11") == 17
+    assert to_protocol("junk") is None
+
+
+def test_argus_reader_ctu_dialect(tmp_path):
+    p = tmp_path / "ctu.binetflow"
+    p.write_text(
+        ARGUS_HEADER + "\n"
+        + "2011/08/10 09:46:53.047277,3550.182373,udp,212.50.71.179,39678,"
+        + "  <->,147.32.84.229,13363,CON,0,0,12,875,413,"
+        + "flow=Background-UDP-Established\n"
+        + "2011/08/10 09:46:53.049895,0.000326,tcp,217.163.21.35,80,"
+        + "  <?>,147.32.86.194,2063,FA_A,0,0,2,120,60,flow=Background\n"
+        + "2011/08/10 09:46:54.000,0.1,tcp,,,  <->,,,,0,0,0,0,\n",
+        encoding="utf-8",
+    )
+    assert list(stream_argus(p, limit=0)) == []
+    stats: dict = {}
+    recs = list(stream_argus(p, stats=stats))
+    assert stats == {"rows": 3, "skipped": 1}, stats
+    assert len(recs) == 2
+    first = recs[0]
+    assert first["src_ip"] == "212.50.71.179"
+    assert first["dst_ip"] == "147.32.84.229"
+    assert first["src_port"] == 39678 and first["dst_port"] == 13363
+    assert first["protocol"] == 17 and first["proto"] == "udp"
+    assert first["timestamp"] == "2011-08-10T09:46:53"
+    assert first["ts_epoch"] == pytest.approx(1312969613.047277)
+    assert first["duration_us"] == 3_550_182_373
+    # Argus publishes no directional packet split; bytes do split.
+    assert (first["fwd_pkts"], first["bwd_pkts"]) == (12, 0)
+    assert (first["fwd_bytes"], first["bwd_bytes"]) == (413, 462)
+    assert first["label"] == "flow=Background-UDP-Established"
+    assert first["syn_flags"] is None and first["iat_us_mean"] is None
+    assert set(first) == set(FLOW_FIELDS)
+    assert detect_format(p) == "argus"
+
+
+def test_argus_reader_uses_published_directional_split(tmp_path):
+    p = tmp_path / "argus.csv"
+    p.write_text(
+        "StartTime,FlId,Seq,Dur,Proto,SrcAddr,Sport,Dir,DstAddr,Dport,State,"
+        "SrcPkts,DstPkts,SrcBytes,DstBytes,TotPkts,TotBytes,Label\n"
+        "2011/08/10 09:46:53.047277,1,0,3.55,tcp,10.0.0.1,50000,->,"
+        "10.0.0.2,80,CON,4,6,400,600,10,1000,flow=Background\n",
+        encoding="utf-8",
+    )
+    rec = next(stream_argus(p))
+    assert (rec["fwd_pkts"], rec["bwd_pkts"]) == (4, 6)
+    assert (rec["fwd_bytes"], rec["bwd_bytes"]) == (400, 600)
+    assert rec["duration_us"] == 3_550_000
+
+
+def test_nfdump_reader_header_and_headerless(tmp_path):
+    row = ("2011-08-10 09:46:53.047,2011-08-10 09:46:56.597,3.550,udp,"
+           "10.0.0.1,10.0.0.2,50000,53,0,12,875,72,...S...")
+    header = "ts,te,td,pr,sa,da,sp,dp,op,packets,bytes,pkt_size,flg"
+    headered = tmp_path / "headered.csv"
+    headered.write_text(header + "\n" + row, encoding="utf-8")
+    bare = tmp_path / "bare.csv"
+    bare.write_text(row + "\n", encoding="utf-8")
+
+    for path in (headered, bare):
+        rec = next(stream_nfdump(path))
+        assert rec["src_ip"] == "10.0.0.1" and rec["dst_ip"] == "10.0.0.2"
+        assert rec["protocol"] == 17 and rec["proto"] == "udp"
+        assert rec["timestamp"] == "2011-08-10T09:46:53"
+        assert rec["duration_us"] == 3_550_000
+        assert (rec["fwd_pkts"], rec["bwd_pkts"]) == (12, 0)
+        assert (rec["fwd_bytes"], rec["bwd_bytes"]) == (875, 0)
+        assert rec["syn_flags"] is None
+        assert detect_format(path) == "nfdump"
+
+
+def test_nfdump_reader_derives_start_from_end(tmp_path):
+    p = tmp_path / "end.csv"
+    p.write_text(
+        "te,td,pr,sa,da,sp,dp,packets,bytes\n"
+        "2011-08-10 09:46:56.597,3.550,tcp,10.0.0.1,10.0.0.2,1,2,1,60\n",
+        encoding="utf-8",
+    )
+    rec = next(stream_nfdump(p))
+    assert rec["timestamp"] == "2011-08-10T09:46:53"
+    assert rec["ts_epoch"] == pytest.approx(1312969613.047)
+
+
+def test_goflow2_reader_ndjson_and_array(tmp_path):
+    good = (
+        '{"time_flow_start_ns":1312969613047000000,'
+        '"time_flow_end_ns":1312969616597000000,"bytes":875,"packets":12,'
+        '"src_addr":"10.0.0.1","dst_addr":"10.0.0.2","src_port":50000,'
+        '"dst_port":53,"proto":"UDP"}'
+    )
+    received = (
+        '{"time_received_ns":1312969617000000000,"bytes":"120","packets":"2",'
+        '"src_addr":"10.0.0.3","dst_addr":"10.0.0.4","src_port":"1234",'
+        '"dst_port":"443","proto":6}'
+    )
+    p = tmp_path / "flows.jsonl"
+    p.write_text(good + "\n" + received + "\n{bad\n" + '{"bytes":1}',
+                 encoding="utf-8")
+    stats: dict = {}
+    recs = list(stream_goflow2(p, stats=stats))
+    assert stats == {"rows": 4, "skipped": 2}, stats
+    assert len(recs) == 2
+    first = recs[0]
+    assert first["proto"] == "udp" and first["protocol"] == 17
+    assert first["duration_us"] == 3_550_000
+    assert first["timestamp"] == "2011-08-10T09:46:53"
+    assert (first["fwd_pkts"], first["fwd_bytes"]) == (12, 875)
+    second = recs[1]
+    assert second["duration_us"] is None
+    assert second["timestamp"] == "2011-08-10T09:46:57"
+    assert detect_format(p) == "goflow2"
+
+    arr = tmp_path / "flows.json"
+    arr.write_text("[" + good + "," + received + ",7]", encoding="utf-8")
+    stats = {}
+    assert len(list(stream_goflow2(arr, stats=stats))) == 2
+    assert stats == {"rows": 3, "skipped": 1}, stats
+
+
+def test_csv_detection_disambiguates_table_argus_and_nfdump(tmp_path, official_csv):
+    assert detect_format(official_csv) == "table"
+    assert detect_format(tmp_path / "x.binetflow") == "argus"
+    argus = tmp_path / "argus.csv"
+    argus.write_text(ARGUS_HEADER + "\n", encoding="utf-8")
+    assert detect_format(argus) == "argus"
+    nfdump = tmp_path / "nfdump.csv"
+    nfdump.write_text("ts,te,td,pr,sa,da,sp,dp\n", encoding="utf-8")
+    assert detect_format(nfdump) == "nfdump"
+    cic = tmp_path / "cic.csv"
+    cic.write_text("Start Time,Source IP,Destination IP,Source Port,Destination Port\n",
+                   encoding="utf-8")
+    assert detect_format(cic) == "table"
+    meta = tmp_path / "meta.json"
+    meta.write_text('{"files": 3}', encoding="utf-8")
+    assert detect_format(meta) is None
+
+
+def test_unify_cli_directory_mixes_flow_exports(tmp_path):
+    (tmp_path / "a.csv").write_text(
+        ARGUS_HEADER + "\n"
+        "2011/08/10 09:46:53.047277,3.55,tcp,10.0.0.1,1,->,10.0.0.2,2,"
+        "CON,0,0,3,180,120,flow=Background\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "b.csv").write_text(
+        "ts,te,td,pr,sa,da,sp,dp,op,packets,bytes,pkt_size,flg\n"
+        "2011-08-10 09:46:53.047,2011-08-10 09:46:56.597,3.550,udp,"
+        "10.0.0.3,10.0.0.4,50000,53,0,12,875,72,...S...\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "c.jsonl").write_text(
+        '{"time_received_ns":1312969617000000000,"bytes":120,"packets":2,'
+        '"src_addr":"10.0.0.5","dst_addr":"10.0.0.6","src_port":1234,'
+        '"dst_port":443,"proto":"TCP"}\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "meta.json").write_text('{"files": 3}', encoding="utf-8")
+    out = tmp_path / "flows.ndjson"
+    assert unify_main(["--input", str(tmp_path), "--out", str(out)]) == 0
+    recs = [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines()]
+    assert len(recs) == 3
+    assert {r["src_ip"] for r in recs} == {"10.0.0.1", "10.0.0.3", "10.0.0.5"}
+    assert all(set(r) == set(FLOW_FIELDS) for r in recs)
+
+
+def test_unify_cli_flow_limit_and_forced_format(tmp_path):
+    p = tmp_path / "flows.jsonl"
+    p.write_text(
+        '{"time_received_ns":1312969617000000000,"bytes":120,"packets":2,'
+        '"src_addr":"10.0.0.5","dst_addr":"10.0.0.6","src_port":1234,'
+        '"dst_port":443,"proto":"TCP"}\n' * 2,
+        encoding="utf-8",
+    )
+    out = tmp_path / "one.ndjson"
+    assert unify_main(["--input", str(p), "--out", str(out),
+                       "--format", "goflow2", "--limit", "1"]) == 0
+    assert len(out.read_text(encoding="utf-8").splitlines()) == 1

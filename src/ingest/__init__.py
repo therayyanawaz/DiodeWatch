@@ -1,13 +1,15 @@
 """Ingest layer: raw traffic in, canonical flow records out.
 
-Two front-ends, one schema (see .schema):
+Five front-ends, one schema (see .schema):
 
     table_reader   CICFlowMeter-style .csv / .parquet  (one row = one flow)
     pcap_reader    .pcap / .pcapng captures (packets aggregated to flows)
+    flow_reader    Argus CSV, nfdump CSV, goflow2 JSON (one row = one flow)
 
-Drive both from the CLI:
+Drive them from the CLI:
 
-    python -m src.ingest.unify --input <file-or-dir> --format csv|pcap --out flows.ndjson
+    python -m src.ingest.unify --input <file-or-dir> \
+        --format auto|table|pcap|argus|nfdump|goflow2 --out flows.ndjson
 """
 
 __version__ = "1.0.0"

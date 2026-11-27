@@ -5,6 +5,12 @@ All notable changes to DiodeWatch are documented here.
 ## [Unreleased]
 
 ### Added
+- Flow-export ingest: `src/ingest/flow_reader.py` reads Argus CSV (`ra -c ,`,
+  including CTU-13 `.binetflow`), nfdump CSV (with or without a header row) and
+  goflow2 JSON/NDJSON into the canonical 47-field schema. `unify.py` sniffs a
+  `.csv` header and gains `--format argus|nfdump|goflow2`; the readers keep absent
+  per-packet flags and timing statistics null, never invent a directional split
+  or a zero, and skip malformed rows with a count.
 - `scripts/benchmarks/bench_corpora.py` scores every pinned flow corpus at its
   full row count, not only the five files the transfer summary quoted:
   CIC-IDS2017 (8/8), CIC-DDoS2019 (18/18), CSE-CIC-IDS2018 (10/10), UNSW-NB15

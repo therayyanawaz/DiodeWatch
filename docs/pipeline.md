@@ -189,38 +189,56 @@ never needs the key, because it was never planning to read the body.
 
 ### Stage 2. Every source becomes the same 47 fields
 
-**In:** packets, or a table with any column dialect. **Out:** NDJSON, one flow per
-line, with exactly the same keys every time.
+**In:** packets, a table with any column dialect, or a flow export. **Out:**
+NDJSON, one flow per line, with exactly the same keys every time.
 **Code:** [src/ingest/schema.py](../src/ingest/schema.py),
+[src/ingest/flow_reader.py](../src/ingest/flow_reader.py),
 [src/ingest/unify.py](../src/ingest/unify.py)
 
 Real published captures are messy in a specific way: the same field appears as
 `Destination Port`, `" Destination Port"` (leading space), `Dst Port`, or
 `Total Length of Fwd Packets` versus `Total Length of Fwd Packet`. Some mirrors
-store an IP address as a giant decimal integer. Timestamps appear in at least
-seven different formats.
+store an IP address as a giant decimal integer. Timestamps appear in several
+different formats.
 
 `normalize_column()` strips a header cell to lowercase alphanumerics and looks it
 up in `COLUMN_ALIASES`; anything unmatched is ignored rather than guessed at.
 `to_ip()` accepts dotted-quad, IPv6, and the decimal form (so `3232238089`
-becomes `192.168.1.9`). `to_timestamp()` tries seven formats and returns both an
-ISO-8601 string and an epoch float. Naive timestamps are treated as the source
-clock and tagged UTC so ordering stays consistent.
+becomes `192.168.1.9`). `to_timestamp()` tries nine explicit formats plus
+ISO-8601 and returns both an ISO-8601 string and an epoch float. Naive
+timestamps are treated as the source clock and tagged UTC so ordering stays
+consistent.
+
+The flow-export readers cover the formats a NetFlow/IPFIX/sFlow deployment hands
+over when there is no capture to re-read: Argus CSV (`ra -c ,`, including the
+CTU-13 `.binetflow` exports), nfdump CSV (with or without its header row), and
+goflow2 JSON/NDJSON. A flow export is not a packet capture, so the readers keep
+the difference explicit instead of manufacturing values. Argus `State`,
+nfdump `flg` and goflow2 `tcp_flags` describe connection state or a final flag
+set, not per-packet counts, so the six flag fields stay null. nfdump and
+goflow2 publish one counter pair for the whole flow, so those totals land on the
+forward side and backward
+stays zero; Argus `SrcPkts`/`DstPkts` and `SrcBytes`/`DstBytes` split the sides
+when the publisher supplies them. Start time plus duration is not a packet
+clock, so the 26 per-packet timing and size statistics stay null.
 
 The null discipline is deliberate: `to_int()` returns `None` for blanks, NaN,
 infinities and junk instead of inventing a zero. `FLOW_FIELDS` has 47 keys and
-both readers emit exactly them, which is why nothing downstream ever contains a
+all readers emit exactly them, which is why nothing downstream ever contains a
 branch about where the data came from. The 47 are 21 identity-and-count fields plus
 26 per-packet timing and size statistics: a PCAP flow gets them because the reader
-measures them from the packets it saw, a flow-table record gets them because the
-publisher already measured them, either way the same keys, and a statistic no
-source supplied stays NaN rather than becoming a suspicious-looking zero.
+measures them from the packets it saw, a CIC table record gets them because the
+publisher already measured them, and a flow export leaves the 26 null because it
+carries only start time and duration. Either way the same keys, and a statistic
+no source supplied stays null rather than becoming a suspicious-looking zero.
 
 `unify.py` is the CLI. `--input` may be a single file or a directory, processed in
-sorted order and concatenated. `--format` forces a reader instead of inferring
-from the suffix. `python -m src.ingest.unify --input data/raw/ --out
-data/slices/flows.ndjson` is Stage 1 and 2 in one command, and it prints the label
-tally at the end.
+sorted order and concatenated. It infers the reader from the suffix, and for a
+`.csv` it sniffs the header (Argus starts with `StartTime`/`SrcAddr`, nfdump with
+`ts`/`te`/`td`, anything else is a CICFlowMeter table). `--format` forces a reader
+when a producer emits an ambiguous header. `python -m src.ingest.unify --input
+data/raw/ --out data/slices/flows.ndjson` is Stage 1 and 2 in one command, and it
+prints the label tally at the end.
 
 ---
 
@@ -1069,7 +1087,7 @@ headless pre-flight that prints "demo is GO".
 
 | Path | Owns |
 |---|---|
-| [src/ingest/](../src/ingest) | packets and tables to canonical flow records; the 21-field schema |
+| [src/ingest/](../src/ingest) | packets, tables and flow exports to canonical flow records; the 21-field schema |
 | [src/features/](../src/features) | the frozen 73-feature registry and the vectorized builder |
 | [src/detectors/window.py](../src/detectors/window.py) | 10-second tumbling windows, per-source and per-destination aggregates |
 | [src/detectors/rules.py](../src/detectors/rules.py) | the rule set and `run_rules()` |

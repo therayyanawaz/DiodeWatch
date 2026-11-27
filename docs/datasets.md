@@ -23,6 +23,15 @@ Notes:
 - `data/slices/flows.ndjson` (unifier output, 200,000 canonical records) is derived
   and git-ignored; regenerate with
   `python -m src.ingest.unify --input data/slices/baseline_slice.parquet --out data/slices/flows.ndjson`.
+- Flow exports use the same 47-field schema through `src/ingest/flow_reader.py`:
+  Argus CSV (including CTU-13 `.binetflow`), nfdump CSV (header or headerless) and
+  goflow2 JSON/NDJSON. `unify.py` sniffs a `.csv` header, so
+  `python -m src.ingest.unify --input data/raw/ctu13/ --out data/slices/ctu13.ndjson`
+  works without a forced format. The CTU-13 export still has no per-packet TCP
+  flag counts and no directional packet-counter split, so the six flag fields
+  stay null and the packet totals land on the forward side; the corpus remains
+  not evaluable for rules and flow context, and ingest support does not change
+  that verdict.
 - Known source quirks (passed through faithfully, do not "fix"):
   - 330 BENIGN flows have `Protocol=0` and `Source/Destination Port=0` (CICFlowMeter could
     not resolve their protocol; packet counts are non-zero).
