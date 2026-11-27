@@ -183,10 +183,10 @@ def build_claims(m: dict[str, float]) -> list[Claim]:
                      "the worst benign window (4,369.8 kB)"),
         Claim("rule_alerts_on_benign",
               "rule alerts landing on benign-labelled windows",
-              3, m["rule_alerts_on_benign"],
-              detail="ddos 3 on Wednesday; the old 15 was ddos 3 / exfil 9 / "
-                     "scan 3, and the 500 kB exfil floor plus host-sweep "
-                     "removal took the other 12; see docs/rules.md"),
+              0, m["rule_alerts_on_benign"],
+              detail="zero: the 250/s byte and reply-aware multi-port gates "
+                     "took the last 3 Wednesday DDoS windows; the old 15 was "
+                     "ddos 3 / exfil 9 / scan 3; see docs/rules.md"),
     ]
 
 

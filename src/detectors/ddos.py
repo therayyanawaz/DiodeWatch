@@ -11,11 +11,14 @@ every number quoted below with:
 HONEST STATE ON THIS CORPUS, read before re-tuning. The raw 50 flows/s rate is
 NOT clean: benign traffic reaches 210.9 flows/s and 77 benign windows cross
 that line, 74 of them against 192.168.10.3 (median 66.9 flows/s). Fan-in
-separates better: 73 benign windows reach 50 distinct sources, but only 2 are
-also concentrated (src_conc <= 0.3). The volume branch therefore adds four
-guards before it claims a flood: an online rate baseline, persistence, a
-minimum byte rate below 200 flows/s, and a destination-port cardinality check.
-Those guards are what make the branch usable; the raw threshold alone is not.
+separates better: 73 benign windows reach 50 distinct sources; 19 are also
+concentrated (src_conc <= 0.3), but all fan in over 102-1,025 ports, so the
+branch requires a service shape too. The volume branch adds four guards before
+it claims a flood: an online rate baseline, persistence, a minimum byte rate
+below 250 flows/s, and a destination-port cardinality check. Those guards cut
+the full rule-layer benign FPR from 0.0111 to 0.00236; the branch now
+contributes no benign-only CIC-IDS2017 alert, so do not quote the raw
+threshold as a detector on its own.
 
 Three interpretable signatures (any combination fires; each contributes an
 evidence item):
@@ -24,15 +27,18 @@ evidence item):
                  - rate at or above max(50, 3x its online baseline) once 10 windows
                    have been seen
                  - persistence: >= 250 flows/s needs one window; 200-250 needs
-                   two; 50-200 needs three and 20 KB/s (the baseline still
-                   applies to every rate)
-                 - a multi-port burst needs 500 KB/s to count as a flood,
-                   unless it spreads over >= 5000 ports at >= 500 flows/s:
-                   46k ports at 8k flows/s is a random-port SYN flood, not
-                   a sweep (the scan rule caps at 5000 ports)
+                   two; 50-200 needs three. Every volume claim below 250
+                   flows/s must also carry 20 KB/s; only 250+ is self-credible
+                 - a multi-port burst needs 500 KB/s plus either 3 sources,
+                   500 flows/s, or at most one reply per flow; a >= 5000-port
+                   burst at >= 500 flows/s is also a flood: 46k ports at 8k
+                   flows/s is a random-port SYN flood, not a sweep (the scan
+                   rule caps at 5000 ports)
                OR fwd_bytes_per_sec >= 2 MB/s when n_src >= 3 (bandwidth flood)
-  fan_in       n_src >= 50 AND src_conc <= 0.3 (many distinct hosts, each
-               sending several flows, onto one target)
+  fan_in       n_src >= 50 AND src_conc <= 0.3 AND the destination looks
+               like a service: <= 16 ports, or a high-rate random-port burst.
+               19 benign CIC-IDS2017 windows fan in over 102-1,025 ports, so
+               a distributed port sweep is not a DDoS claim
   syn_flood    syn_share >= 0.8 AND half_open >= 50 (fwd pkts ≫ bwd, unacked SYNs)
 
 Slow-rate asymmetric DoS (slowloris-style: many small held connections) is
@@ -72,8 +78,9 @@ BASELINE_RESET_WINDOWS = 360     # one hour at 10 s windows
 VOLUME_PERSISTENCE_GAP_S = 60.0  # CIC-IDS2017 timestamps are minute-granular
 DPORT_FLOOD_MAX = 16            # a flood targets a service, not a port sweep
 DPORT_SWEEP_BPS = 500_000.0     # a multi-port burst this large is still a flood
-DPORT_RANDOM_MIN = 5000         # beyond the scan rule's port cap
+DPORT_SWEEP_MIN_SRC = 3         # ... if it is distributed or fast enough
 DPORT_RANDOM_RATE = 500.0       # a random-port burst this fast is a flood
+DPORT_RANDOM_MIN = 5000         # beyond the scan rule's port cap
 
 
 class DDoSRule(Rule):
@@ -138,16 +145,24 @@ class DDoSRule(Rule):
             n_dports = float(getattr(tup, "n_dports", 0.0) or 0.0)
             # A flood against a service touches a handful of destination
             # ports. A low-bandwidth burst spread over hundreds of ports is
-            # a port sweep and belongs to the scan class. A high-bandwidth
-            # multi-port burst is a reflection flood, not a sweep.
+            # a port sweep and belongs to the scan class. A multi-port burst
+            # at 500 kB/s is a reflection flood when it has several sources,
+            # or a single-source random-port flood when it is fast or
+            # unanswered; a 1,200-port transfer with 6 replies per flow is
+            # a sweep, not a DDoS.
+            low_reply = bool(tup.bwd_pkts <= tup.flows)
             service = bool(n_dports == 0 or n_dports <= dport_max
-                            or fwd_bps >= DPORT_SWEEP_BPS
+                            or (fwd_bps >= DPORT_SWEEP_BPS
+                                and (n_src >= DPORT_SWEEP_MIN_SRC
+                                     or fps >= dport_random_rate
+                                     or low_reply))
                             or (n_dports >= dport_random_min
                                 and fps >= dport_random_rate))
-            # Tiny request traffic at 50-200 flows/s is ordinary server
-            # chatter. A low-rate volume claim must also carry real bytes;
-            # high-rate floods do not need this second check.
-            credible = bool(fps >= HIGH_RATE or fwd_bps >= MIN_FLOOD_BPS)
+            # Tiny request traffic below 250 flows/s is ordinary server
+            # chatter. A 200-250 claim is still in that band and must carry
+            # real bytes; only a 250+ flood is self-credible.
+            credible = bool(fps >= IMMEDIATE_RATE
+                            or fwd_bps >= MIN_FLOOD_BPS)
             flood = bool(raw_vol and novelty_ok and service and credible)
             # CIC-IDS2017 exports only whole minutes, so occupied 10 s buckets
             # are 60 s apart. Treat any gap up to one minute as consecutive;
@@ -177,7 +192,8 @@ class DDoSRule(Rule):
             # NaN-safe by IEEE semantics: NaN comparisons are always False,
             # identical to the old explicit (x if x==x else fallback) guards
             # (NaN src_conc/syn_share never fired before, never fires now).
-            fan = bool(n_src >= fanin_n and tup.src_conc <= fanin_c)
+            fan = bool(n_src >= fanin_n and tup.src_conc <= fanin_c
+                       and service)
             syn = bool(tup.syn_share >= syn_sh
                        and tup.half_open >= half_open_th)
 

@@ -26,9 +26,9 @@ alerts.schema.Alert  →  JSON / SQLite / STIX
 
 Thresholds are calibrated against the pinned CIC-IDS2017 Wednesday working-hours
 table (`data/raw/cic2017/Wednesday-workingHours.pcap_ISCX.csv.parquet`,
-692,703 flows / 440,031 BENIGN). The rule layer emits 43 alerts on this table,
-3 of them on benign windows (all ddos); every threshold number below is
-re-derived by one command:
+692,703 flows / 440,031 BENIGN). The rule layer emits 40 alerts on this table,
+none of them on benign windows; every threshold number below is re-derived by
+one command:
 
 ```bash
 python scripts/checks/check_thresholds.py    # exit 1 on drift, 2 if no corpus
@@ -41,17 +41,19 @@ benchmark:
 
 | corpus | alerts | exact | benign-only | ddos P / R / F1 | benign FPR |
 |---|---|---|---|---|---|
-| CIC-IDS2017 | 102 | 70 (0.686) | 32 | 0.947 / 0.979 / 0.963 | 0.0111 |
+| CIC-IDS2017 | 75 | 70 (0.933) | 5 | 0.999 / 0.979 / 0.989 | 0.00236 |
 | CIC-DDoS2019 | 1,183 | 1,175 (0.993) | 0 | 0.995 / 0.998 / 0.996 | 0.00045 |
 
 Flow-level precision is higher than alert-level precision because one alert
 paints its whole `(window, destination)` scope, and a CIC-IDS2017 benign
 window can contain thousands of flows. The residual CIC-IDS2017 alerts are
-2 scan, 2 exfil, 27 ddos-class and 1 slowdos claim, not one volumetric source:
-on the Wednesday table the old `192.168.10.3` rate spike is now one alert. The
-500 kB exfil ratio floor and the removal of the scan host-sweep branch cut
-benign-only alerts from 122 to 32 without dropping a CIC-IDS2017 truth unit. The
-2 remaining exfil alerts are 5.29 MB and 12.9 MB bulk uploads, not small
+2 scan, 2 exfil and 1 slowdos claim; no DDoS-class alert lands on a benign
+window. The old Wednesday `192.168.10.3` rate spike now fails the 250/s byte
+floor at 210.9 flows/s and 19.6 KB/s. The 500 kB exfil ratio floor and the
+removal of the scan host-sweep branch cut benign-only alerts from 122 to 32
+without dropping a CIC-IDS2017 truth unit. The 20 KB/s floor below 250 flows/s
+and the reply-aware port gate then cut 32 to 5, again with no truth loss. The 2
+remaining exfil alerts are 5.29 MB and 12.9 MB bulk uploads, not small
 chatter; the 2 scan alerts are high-port sweeps from one source over 2-3
 destinations that satisfy every gate. On CIC-DDoS2019 the host-sweep removal
 dropped 9 benign-only scan alerts and the exfil floor dropped 3, leaving 8
@@ -68,17 +70,18 @@ own.
 
 | condition | threshold | rationale (measured on the pinned corpus) |
 |---|---|---|
-| `volumetric_rate` | ≥ 50 flows/s to one dst, plus the guards below | raw threshold alone is **not clean** (see above); the guards cut CIC-IDS2017 benign FPR to 0.0111 |
+| `volumetric_rate` | ≥ 50 flows/s to one dst, plus the guards below | raw threshold alone is **not clean** (see above); the guards cut CIC-IDS2017 benign FPR to 0.00236 |
 | `volumetric_rate` (persistence) | ≥ 250 flows/s one window; 200-250 two windows; 50-200 three windows | a one-window busy-server spike is not a flood; the baseline still applies, so this gate controls delay, not the rate floor |
-| `volumetric_rate` (byte floor) | ≥ 20 KB/s below 200 flows/s | 50-200 flows/s of 40-80 B requests is ordinary chatter; CIC-IDS2017 false bursts carried 4-21 KB/s while true low-rate floods carried 37-640 KB/s |
-| `volumetric_rate` (port gate) | ≤ 16 dst ports, ≥ 500 KB/s, or ≥ 5,000 ports at ≥ 500 flows/s | a low-bandwidth burst over hundreds of ports is a sweep; a high-bandwidth multi-port burst is a reflection flood; a 46k-port burst at 8k flows/s is a random-port SYN flood, not a sweep (the scan rule caps at 5,000 ports) |
+| `volumetric_rate` (byte floor) | ≥ 20 KB/s below 250 flows/s | 50-250 flows/s of 40-80 B requests is ordinary chatter; the last CIC-IDS2017 false burst in the 200-250 band carried 19.6 KB/s, while true low-rate floods carried 37-640 KB/s |
+| `volumetric_rate` (port gate) | ≤ 16 dst ports, or ≥ 500 KB/s plus 3 sources, 500 flows/s, or ≤ 1 reply/flow, or ≥ 5,000 ports at ≥ 500 flows/s | a low-bandwidth burst over hundreds of ports is a sweep; a multi-port burst is a reflection flood only when distributed, fast, or unanswered; a 1,200-port answered transfer is a sweep, while CIC-DDoS2019 single-source random-port floods still fire; 46k ports at 8k flows/s is a random-port SYN flood (the scan rule caps at 5,000) |
 | `volumetric_rate` (baseline) | rate >= max(50, 3× online baseline) after 10 windows | tracks each destination's own normal rate; EWMA α 0.2, 60 s gap tolerance for minute-granular exports |
 | `volumetric_rate` (bandwidth branch) | ≥ 2 MB/s fwd with ≥ 3 srcs | bandwidth floods that shard across many ports |
-| `fan_in_distinct_sources` | ≥ 50 distinct srcs AND src_conc ≤ 0.3 | **near-clean**: benign max 136 srcs/window and 73 benign windows reach 50 srcs, but only 2 are also concentrated |
+| `fan_in_distinct_sources` | ≥ 50 distinct srcs AND src_conc ≤ 0.3 AND the destination looks like a service (≤ 16 ports, or a high-rate random-port burst) | clean on both pinned corpora: 19 benign CIC-IDS2017 windows fan in over 102-1,025 ports and are rejected by the service shape; the old 2-concentrated-windows caveat is gone |
 | `syn_flood_half_open` | SYN share ≥ 0.8 of fwd pkts AND ≥ 50 unacked SYNs | classic fwd ≫ bwd half-open signature |
 
-The fan-in branch is still the cleanest single separator. The volume branch is
-now a gated rate claim, not a bare constant.
+The fan-in branch remains a strong separator, but it is service-gated:
+distributed background traffic onto hundreds of ports is a sweep, not a DDoS.
+The volume branch is a gated rate claim, not a bare constant.
 
 ### slowdos, slow-rate asymmetric DoS, slowloris family  (mode="all")
 
@@ -174,11 +177,12 @@ run_rules(flows, rules=make_rules({"ddos": {"flows_per_sec": 100.0}}))
   isolated claim when the batch contains another slow window. A short capture
   with only one slow window is exempt, so streaming chunks can differ from a
   single full-file replay.
-* CIC-IDS2017 exact alert precision is 0.6863 (70/102) even though DDoS flow
-  precision is 0.9468. The 32 benign-only alerts are 27 ddos-class, 2 scan,
-  2 exfil and 1 slowdos; the exfil floor and host-sweep removal cut the small
-  shapes, but DDoS false bursts on busy benign windows still dominate. Report
-  alert precision, not only flow F1.
+* CIC-IDS2017 exact alert precision is 0.9333 (70/75) and DDoS flow
+  precision is 0.9989 (F1 0.9890). The 5 benign-only alerts are 2 scan,
+  2 exfil and 1 slowdos; the 250/s byte floor and the reply-aware DDoS port
+  gate removed all 27 DDoS false bursts, leaving only the large or high-port
+  scan and exfil sessions that satisfy every gate. Report alert precision,
+  not only flow F1.
 * The scan rule no longer claims host sweeps (many hosts, few ports). They were
   29 benign windows and zero scan truth units across CIC-IDS2017, so the branch
   was removed rather than tuned; a targeted ping sweep is left to the behaviour

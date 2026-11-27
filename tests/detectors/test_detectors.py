@@ -269,6 +269,68 @@ def test_low_rate_flood_needs_real_bytes():
     assert thick, "a persistent rate carrying real bytes must alert"
 
 
+def test_fanin_over_many_ports_is_not_ddos():
+    # 60 sources fan in over 100 ports at 50 flows/s. This is distributed
+    # background scanning, not a service flood; the fan-in branch must
+    # require the destination to look like a service.
+    scan = [rec(i, src=f"10.13.0.{i % 60}", dst="10.8.8.10",
+                sport=30000 + i, dport=1000 + i % 100,
+                ts=BASE_TS + i * 0.02, dur=0.02, fwd_pkts=2, bwd_pkts=1,
+                fwd_bytes=60, bwd_bytes=40, label="DoS Hulk")
+            for i in range(240)]
+    alerts = [a for a in run_rules(pd.DataFrame(benign_mix() + scan))
+              if a.threat_class == "ddos" and a.key == "10.8.8.10"]
+    assert not alerts, "a distributed port sweep is not a DDoS claim"
+
+
+def test_answered_single_source_high_port_burst_is_not_ddos():
+    # One source sends 5 KB to 1,100 destination ports for three windows
+    # at 555 KB/s, and every flow gets four replies. That is a high-port
+    # transfer, not a random-port flood: the single-source carve-out also
+    # needs the traffic to be unanswered.
+    burst = [rec(i, src="10.14.0.7", dst="10.9.9.10", sport=20000 + i,
+                 dport=1000 + i % 1100, ts=BASE_TS + i * 0.009, dur=0.0,
+                 fwd_pkts=5, bwd_pkts=4, fwd_bytes=5000, bwd_bytes=800,
+                 label="BENIGN")
+             for i in range(3300)]
+    alerts = [a for a in run_rules(pd.DataFrame(benign_mix() + burst))
+              if a.threat_class == "ddos" and a.key == "10.9.9.10"]
+    assert not alerts, "an answered multi-port transfer is not a flood"
+
+
+def test_unanswered_single_source_random_port_flood_is_ddos():
+    # Same shape with no replies: 555 KB/s across 1,100 ports for three
+    # windows is the single-source random-port flood CIC-DDoS2019 shows.
+    flood = [rec(i, src="10.14.0.8", dst="10.9.9.13", sport=20000 + i,
+                  dport=1000 + i % 1100, ts=BASE_TS + i * 0.009, dur=0.0,
+                  fwd_pkts=5, bwd_pkts=0, fwd_bytes=5000, bwd_bytes=0,
+                  label="DoS Hulk")
+              for i in range(3300)]
+    alerts = [a for a in run_rules(pd.DataFrame(benign_mix() + flood))
+              if a.threat_class == "ddos" and a.key == "10.9.9.13"]
+    assert alerts, "an unanswered random-port flood must still alert"
+
+
+def test_rate_200_to_250_needs_real_bytes():
+    # 210 flows/s across two windows is below the 250/s immediate rate,
+    # so it is still server-chatter territory: 10.5 KB/s must stay quiet
+    # while the same rate carrying 21 KB/s is a flood.
+    def burst(src, dst, fwd_bytes):
+        return [rec(i, src=f"{src}.{i % 3}", dst=dst, sport=20000 + i,
+                    ts=BASE_TS + i * 0.0048, dur=0.05, fwd_pkts=3,
+                    bwd_pkts=1, fwd_bytes=fwd_bytes, bwd_bytes=60,
+                    label="DoS Hulk") for i in range(4200)]
+
+    thin = [a for a in run_rules(pd.DataFrame(
+        benign_mix() + burst("10.15.0", "10.9.9.11", 50)))
+        if a.threat_class == "ddos" and a.key == "10.9.9.11"]
+    assert thin == []
+    thick = [a for a in run_rules(pd.DataFrame(
+        benign_mix() + burst("10.16.0", "10.9.9.12", 100)))
+        if a.threat_class == "ddos" and a.key == "10.9.9.12"]
+    assert thick, "a 200-250/s rate carrying real bytes must alert"
+
+
 def test_scan_fires_on_port_sweep_only():
     # 60 probe flows from one source to 60 distinct ports, mostly unanswered
     atk = [rec(i, src="10.5.0.7", dst=f"10.60.0.{i % 3}", sport=35000 + i,
@@ -375,9 +437,12 @@ def test_slowdos_yields_to_ddos_on_same_victim_window():
 def test_scan_claim_inside_ddos_flood_is_suppressed():
     # A SYN flood and a port sweep look identical from one source: tiny flows
     # to many ports, no replies. The victim's DDoS alert owns that traffic.
+    # 833 KB/s from 100 sources also satisfies the multi-port carve-out
+    # once the victim is swept, so the DDoS claim is independent of the
+    # fan-in shape being tested.
     flood = [rec(i, src=f"10.1.0.{i % 100}", dst="10.9.9.9", sport=20000 + i,
-                 ts=BASE_TS + i * 0.006, dur=0.05, fwd_pkts=3, bwd_pkts=1,
-                 fwd_bytes=120, bwd_bytes=60, label="DoS Hulk")
+                 ts=BASE_TS + i * 0.006, dur=0.05, fwd_pkts=5, bwd_pkts=1,
+                 fwd_bytes=5000, bwd_bytes=60, label="DoS Hulk")
              for i in range(1500)]
     sweep = [rec(i, src="10.5.0.7", dst="10.9.9.9", sport=41000 + i,
                  dport=1000 + i, ts=BASE_TS + i * 0.05, dur=0.0,

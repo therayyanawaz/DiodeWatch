@@ -5,7 +5,7 @@
     "chunk": 250000,
     "ml_rows": 200000,
     "jobs": 4,
-    "elapsed_s": 898.3,
+    "elapsed_s": 757.1,
     "model_dir": "C:\\Users\\tariqul\\Documents\\copy\\models",
     "models": {
       "flowctx_lgbm.joblib": {
@@ -36,13 +36,13 @@
     {
       "gate": "rule ddos F1 >= 0.95",
       "corpus": "cic-ids2017",
-      "value": 0.96281,
+      "value": 0.989026,
       "passes": true
     },
     {
       "gate": "benign FPR <= 0.02",
       "corpus": "cic-ids2017",
-      "value": 0.01112046,
+      "value": 0.00235757,
       "passes": true
     },
     {
@@ -65,8 +65,8 @@
       "note": "all 8 day-files (5 capture days), 85-column official schema; ML in-sample: these days trained the shipped artifact",
       "unmapped_labels": {},
       "rule_alerts": {
+        "ddos": 41,
         "scan": 13,
-        "ddos": 68,
         "exfil": 2,
         "slowdos": 19
       },
@@ -75,15 +75,15 @@
       "rules": {
         "per_class": {
           "benign": {
-            "precision": 0.986473,
-            "recall": 0.98888,
-            "f1": 0.987675,
+            "precision": 0.98659,
+            "recall": 0.997642,
+            "f1": 0.992085,
             "support": 2273108
           },
           "ddos": {
-            "precision": 0.94683,
+            "precision": 0.998907,
             "recall": 0.979339,
-            "f1": 0.96281,
+            "f1": 0.989026,
             "support": 369393
           },
           "exfil": {
@@ -105,36 +105,36 @@
             "support": 11295
           }
         },
-        "macro_f1": 0.863843,
-        "micro_f1": 0.949262,
+        "macro_f1": 0.871499,
+        "micro_f1": 0.966676,
         "fpr": {
           "benign_flows": 2273108,
-          "false_positives": 25278,
-          "fpr": 0.01112046,
+          "false_positives": 5359,
+          "fpr": 0.00235757,
           "passes_gate": true
         },
         "n": 2828741,
         "files": 8,
         "alert_metrics": {
-          "alerts": 102,
-          "scored": 102,
+          "alerts": 75,
+          "scored": 75,
           "unlabeled": 0,
           "unattributed": 0,
           "exact_tp": 70,
-          "exact_fp": 32,
-          "precision_exact": 0.686275,
+          "exact_fp": 5,
+          "precision_exact": 0.933333,
           "any_attack_tp": 70,
-          "precision_any_attack": 0.686275,
-          "benign_alerts": 32,
+          "precision_any_attack": 0.933333,
+          "benign_alerts": 5,
           "by_class": {
             "ddos": {
-              "alerts": 68,
-              "scored": 68,
+              "alerts": 41,
+              "scored": 41,
               "unlabeled": 0,
               "exact_tp": 41,
-              "exact_fp": 27,
-              "precision_exact": 0.602941,
-              "precision_any_attack": 0.602941
+              "exact_fp": 0,
+              "precision_exact": 1.0,
+              "precision_any_attack": 1.0
             },
             "exfil": {
               "alerts": 2,
@@ -495,7 +495,7 @@
       "rule_alerts": {},
       "excluded_unmapped_flows": 1966,
       "blank_rows": 0,
-      "elapsed_s": 27.5,
+      "elapsed_s": 53.2,
       "rules": {
         "per_class": {
           "benign": {
@@ -639,6 +639,207 @@
         "duration_us": 1.325215
       }
     },
+    "cic2017/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv.parquet|cic-ids2017": {
+      "family": "cic-ids2017",
+      "n_flows": 225745,
+      "unmapped_labels": {},
+      "rule_alerts": {
+        "ddos": 19
+      },
+      "excluded_unmapped_flows": 0,
+      "blank_rows": 0,
+      "elapsed_s": 55.6,
+      "rules": {
+        "per_class": {
+          "benign": {
+            "precision": 0.962596,
+            "recall": 0.997871,
+            "f1": 0.979916,
+            "support": 97718
+          },
+          "ddos": {
+            "precision": 0.998329,
+            "recall": 0.970405,
+            "f1": 0.984169,
+            "support": 128027
+          }
+        },
+        "macro_f1": 0.982042,
+        "micro_f1": 0.984169,
+        "fpr": {
+          "benign_flows": 97718,
+          "false_positives": 208,
+          "fpr": 0.00212857,
+          "passes_gate": true
+        },
+        "n": 225745,
+        "alert_metrics": {
+          "alerts": 19,
+          "scored": 19,
+          "unlabeled": 0,
+          "unattributed": 0,
+          "exact_tp": 19,
+          "exact_fp": 0,
+          "precision_exact": 1.0,
+          "any_attack_tp": 19,
+          "precision_any_attack": 1.0,
+          "benign_alerts": 0,
+          "by_class": {
+            "ddos": {
+              "alerts": 19,
+              "scored": 19,
+              "unlabeled": 0,
+              "exact_tp": 19,
+              "exact_fp": 0,
+              "precision_exact": 1.0,
+              "precision_any_attack": 1.0
+            }
+          },
+          "unit_recall": {
+            "ddos": {
+              "covered": 19,
+              "total": 22,
+              "recall": 0.863636
+            },
+            "slowdos": {
+              "covered": 0,
+              "total": 0,
+              "recall": null
+            },
+            "scan": {
+              "covered": 0,
+              "total": 0,
+              "recall": null
+            },
+            "exfil": {
+              "covered": 0,
+              "total": 0,
+              "recall": null
+            }
+          }
+        }
+      },
+      "alert_counts": {
+        "alerts": 19,
+        "scored": 19,
+        "unlabeled": 0,
+        "unattributed": 0,
+        "exact_tp": 19,
+        "any_attack_tp": 19,
+        "benign_alerts": 0,
+        "by_class": {
+          "ddos": {
+            "alerts": 19,
+            "scored": 19,
+            "exact_tp": 19,
+            "any_attack_tp": 19,
+            "unlabeled": 0
+          }
+        },
+        "truth_units": {
+          "ddos": 22,
+          "slowdos": 0,
+          "scan": 0,
+          "exfil": 0
+        },
+        "covered_units": {
+          "ddos": 19,
+          "slowdos": 0,
+          "scan": 0,
+          "exfil": 0
+        }
+      },
+      "rule_counts": {
+        "tp": {
+          "ddos": 124238,
+          "benign": 97510
+        },
+        "fp": {
+          "ddos": 208,
+          "benign": 3789
+        },
+        "fn": {
+          "ddos": 3789,
+          "benign": 208
+        },
+        "support": {
+          "ddos": 128027,
+          "benign": 97718
+        },
+        "n": 225745
+      },
+      "ts_dropped": 0,
+      "ml": {
+        "channel": "ml.flowctx (flow + window context)",
+        "n": 200000,
+        "prefix_flows": 200000,
+        "dropped_no_clock": 0,
+        "counts": {
+          "tp": {
+            "ddos": 128024,
+            "scan": 0,
+            "benign": 71963
+          },
+          "fp": {
+            "ddos": 0,
+            "scan": 10,
+            "benign": 3
+          },
+          "fn": {
+            "ddos": 3,
+            "scan": 0,
+            "benign": 10
+          },
+          "support": {
+            "ddos": 128027,
+            "scan": 0,
+            "benign": 71973
+          },
+          "n": 200000
+        },
+        "features_not_computed": [
+          "active_idle_*",
+          "dns_domain_length",
+          "dns_domain_entropy",
+          "dns_nxdomain_rate",
+          "tls_ja3",
+          "tls_ja3s"
+        ],
+        "per_class": {
+          "benign": {
+            "precision": 0.999958,
+            "recall": 0.999861,
+            "f1": 0.99991,
+            "support": 71973
+          },
+          "ddos": {
+            "precision": 1.0,
+            "recall": 0.999977,
+            "f1": 0.999988,
+            "support": 128027
+          },
+          "scan": {
+            "precision": 0.0,
+            "recall": null,
+            "f1": 0.0,
+            "support": 0
+          }
+        },
+        "macro_f1": 0.999949,
+        "micro_f1": 0.999949,
+        "fpr": {
+          "benign_flows": 71973,
+          "false_positives": 10,
+          "fpr": 0.00013894,
+          "passes_gate": true
+        }
+      },
+      "psi": {
+        "fwd_pkts": 1.047452,
+        "fwd_bytes": 2.957138,
+        "duration_us": 1.632562
+      }
+    },
     "cic2017/Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv.parquet|cic-ids2017": {
       "family": "cic-ids2017",
       "n_flows": 286467,
@@ -648,7 +849,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 28.6,
+      "elapsed_s": 55.6,
       "rules": {
         "per_class": {
           "benign": {
@@ -830,263 +1031,44 @@
         "duration_us": 2.320147
       }
     },
-    "cic2017/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv.parquet|cic-ids2017": {
-      "family": "cic-ids2017",
-      "n_flows": 225745,
-      "unmapped_labels": {},
-      "rule_alerts": {
-        "ddos": 26
-      },
-      "excluded_unmapped_flows": 0,
-      "blank_rows": 0,
-      "elapsed_s": 29.3,
-      "rules": {
-        "per_class": {
-          "benign": {
-            "precision": 0.958678,
-            "recall": 0.899589,
-            "f1": 0.928194,
-            "support": 97718
-          },
-          "ddos": {
-            "precision": 0.926803,
-            "recall": 0.970405,
-            "f1": 0.948103,
-            "support": 128027
-          }
-        },
-        "macro_f1": 0.938149,
-        "micro_f1": 0.948103,
-        "fpr": {
-          "benign_flows": 97718,
-          "false_positives": 9812,
-          "fpr": 0.10041139,
-          "passes_gate": false
-        },
-        "n": 225745,
-        "alert_metrics": {
-          "alerts": 26,
-          "scored": 26,
-          "unlabeled": 0,
-          "unattributed": 0,
-          "exact_tp": 19,
-          "exact_fp": 7,
-          "precision_exact": 0.730769,
-          "any_attack_tp": 19,
-          "precision_any_attack": 0.730769,
-          "benign_alerts": 7,
-          "by_class": {
-            "ddos": {
-              "alerts": 26,
-              "scored": 26,
-              "unlabeled": 0,
-              "exact_tp": 19,
-              "exact_fp": 7,
-              "precision_exact": 0.730769,
-              "precision_any_attack": 0.730769
-            }
-          },
-          "unit_recall": {
-            "ddos": {
-              "covered": 19,
-              "total": 22,
-              "recall": 0.863636
-            },
-            "slowdos": {
-              "covered": 0,
-              "total": 0,
-              "recall": null
-            },
-            "scan": {
-              "covered": 0,
-              "total": 0,
-              "recall": null
-            },
-            "exfil": {
-              "covered": 0,
-              "total": 0,
-              "recall": null
-            }
-          }
-        }
-      },
-      "alert_counts": {
-        "alerts": 26,
-        "scored": 26,
-        "unlabeled": 0,
-        "unattributed": 0,
-        "exact_tp": 19,
-        "any_attack_tp": 19,
-        "benign_alerts": 7,
-        "by_class": {
-          "ddos": {
-            "alerts": 26,
-            "scored": 26,
-            "exact_tp": 19,
-            "any_attack_tp": 19,
-            "unlabeled": 0
-          }
-        },
-        "truth_units": {
-          "ddos": 22,
-          "slowdos": 0,
-          "scan": 0,
-          "exfil": 0
-        },
-        "covered_units": {
-          "ddos": 19,
-          "slowdos": 0,
-          "scan": 0,
-          "exfil": 0
-        }
-      },
-      "rule_counts": {
-        "tp": {
-          "ddos": 124238,
-          "benign": 87906
-        },
-        "fp": {
-          "ddos": 9812,
-          "benign": 3789
-        },
-        "fn": {
-          "ddos": 3789,
-          "benign": 9812
-        },
-        "support": {
-          "ddos": 128027,
-          "benign": 97718
-        },
-        "n": 225745
-      },
-      "ts_dropped": 0,
-      "ml": {
-        "channel": "ml.flowctx (flow + window context)",
-        "n": 200000,
-        "prefix_flows": 200000,
-        "dropped_no_clock": 0,
-        "counts": {
-          "tp": {
-            "ddos": 128024,
-            "scan": 0,
-            "benign": 71963
-          },
-          "fp": {
-            "ddos": 0,
-            "scan": 10,
-            "benign": 3
-          },
-          "fn": {
-            "ddos": 3,
-            "scan": 0,
-            "benign": 10
-          },
-          "support": {
-            "ddos": 128027,
-            "scan": 0,
-            "benign": 71973
-          },
-          "n": 200000
-        },
-        "features_not_computed": [
-          "active_idle_*",
-          "dns_domain_length",
-          "dns_domain_entropy",
-          "dns_nxdomain_rate",
-          "tls_ja3",
-          "tls_ja3s"
-        ],
-        "per_class": {
-          "benign": {
-            "precision": 0.999958,
-            "recall": 0.999861,
-            "f1": 0.99991,
-            "support": 71973
-          },
-          "ddos": {
-            "precision": 1.0,
-            "recall": 0.999977,
-            "f1": 0.999988,
-            "support": 128027
-          },
-          "scan": {
-            "precision": 0.0,
-            "recall": null,
-            "f1": 0.0,
-            "support": 0
-          }
-        },
-        "macro_f1": 0.999949,
-        "micro_f1": 0.999949,
-        "fpr": {
-          "benign_flows": 71973,
-          "false_positives": 10,
-          "fpr": 0.00013894,
-          "passes_gate": true
-        }
-      },
-      "psi": {
-        "fwd_pkts": 1.047452,
-        "fwd_bytes": 2.957138,
-        "duration_us": 1.632562
-      }
-    },
     "cic2017/Monday-WorkingHours.pcap_ISCX.csv.parquet|cic-ids2017": {
       "family": "cic-ids2017",
       "n_flows": 529918,
       "unmapped_labels": {},
-      "rule_alerts": {
-        "ddos": 2
-      },
+      "rule_alerts": {},
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 31.9,
+      "elapsed_s": 63.2,
       "rules": {
         "per_class": {
           "benign": {
             "precision": 1.0,
-            "recall": 0.998939,
-            "f1": 0.999469,
+            "recall": 1.0,
+            "f1": 1.0,
             "support": 529918
-          },
-          "ddos": {
-            "precision": 0.0,
-            "recall": null,
-            "f1": 0.0,
-            "support": 0
           }
         },
-        "macro_f1": 0.999469,
-        "micro_f1": 0.0,
+        "macro_f1": 1.0,
+        "micro_f1": null,
         "fpr": {
           "benign_flows": 529918,
-          "false_positives": 562,
-          "fpr": 0.00106054,
+          "false_positives": 0,
+          "fpr": 0.0,
           "passes_gate": true
         },
         "n": 529918,
         "alert_metrics": {
-          "alerts": 2,
-          "scored": 2,
+          "alerts": 0,
+          "scored": 0,
           "unlabeled": 0,
           "unattributed": 0,
           "exact_tp": 0,
-          "exact_fp": 2,
-          "precision_exact": 0.0,
+          "exact_fp": 0,
+          "precision_exact": null,
           "any_attack_tp": 0,
-          "precision_any_attack": 0.0,
-          "benign_alerts": 2,
-          "by_class": {
-            "ddos": {
-              "alerts": 2,
-              "scored": 2,
-              "unlabeled": 0,
-              "exact_tp": 0,
-              "exact_fp": 2,
-              "precision_exact": 0.0,
-              "precision_any_attack": 0.0
-            }
-          },
+          "precision_any_attack": null,
+          "benign_alerts": 0,
+          "by_class": {},
           "unit_recall": {
             "ddos": {
               "covered": 0,
@@ -1112,22 +1094,14 @@
         }
       },
       "alert_counts": {
-        "alerts": 2,
-        "scored": 2,
+        "alerts": 0,
+        "scored": 0,
         "unlabeled": 0,
         "unattributed": 0,
         "exact_tp": 0,
         "any_attack_tp": 0,
-        "benign_alerts": 2,
-        "by_class": {
-          "ddos": {
-            "alerts": 2,
-            "scored": 2,
-            "exact_tp": 0,
-            "any_attack_tp": 0,
-            "unlabeled": 0
-          }
-        },
+        "benign_alerts": 0,
+        "by_class": {},
         "truth_units": {
           "ddos": 0,
           "slowdos": 0,
@@ -1143,19 +1117,15 @@
       },
       "rule_counts": {
         "tp": {
-          "ddos": 0,
-          "benign": 529356
+          "benign": 529918
         },
         "fp": {
-          "ddos": 562,
           "benign": 0
         },
         "fn": {
-          "ddos": 0,
-          "benign": 562
+          "benign": 0
         },
         "support": {
-          "ddos": 0,
           "benign": 529918
         },
         "n": 529918
@@ -1219,7 +1189,7 @@
       "rule_alerts": {},
       "excluded_unmapped_flows": 0,
       "blank_rows": 288602,
-      "elapsed_s": 8.2,
+      "elapsed_s": 18.0,
       "rules": {
         "per_class": {
           "benign": {
@@ -1390,25 +1360,18 @@
       "rule_alerts": {
         "scan": 2,
         "exfil": 1,
-        "slowdos": 1,
-        "ddos": 3
+        "slowdos": 1
       },
       "excluded_unmapped_flows": 36,
       "blank_rows": 0,
-      "elapsed_s": 12.1,
+      "elapsed_s": 24.3,
       "rules": {
         "per_class": {
           "benign": {
             "precision": 1.0,
-            "recall": 0.983626,
-            "f1": 0.991745,
+            "recall": 0.98862,
+            "f1": 0.994277,
             "support": 288566
-          },
-          "ddos": {
-            "precision": 0.0,
-            "recall": null,
-            "f1": 0.0,
-            "support": 0
           },
           "exfil": {
             "precision": 0.0,
@@ -1429,36 +1392,27 @@
             "support": 0
           }
         },
-        "macro_f1": 0.991745,
+        "macro_f1": 0.994277,
         "micro_f1": 0.0,
         "fpr": {
           "benign_flows": 288566,
-          "false_positives": 4725,
-          "fpr": 0.01637407,
+          "false_positives": 3284,
+          "fpr": 0.01138041,
           "passes_gate": true
         },
         "n": 288566,
         "alert_metrics": {
-          "alerts": 7,
-          "scored": 7,
+          "alerts": 4,
+          "scored": 4,
           "unlabeled": 0,
           "unattributed": 0,
           "exact_tp": 0,
-          "exact_fp": 7,
+          "exact_fp": 4,
           "precision_exact": 0.0,
           "any_attack_tp": 0,
           "precision_any_attack": 0.0,
-          "benign_alerts": 7,
+          "benign_alerts": 4,
           "by_class": {
-            "ddos": {
-              "alerts": 3,
-              "scored": 3,
-              "unlabeled": 0,
-              "exact_tp": 0,
-              "exact_fp": 3,
-              "precision_exact": 0.0,
-              "precision_any_attack": 0.0
-            },
             "exfil": {
               "alerts": 1,
               "scored": 1,
@@ -1512,13 +1466,13 @@
         }
       },
       "alert_counts": {
-        "alerts": 7,
-        "scored": 7,
+        "alerts": 4,
+        "scored": 4,
         "unlabeled": 0,
         "unattributed": 0,
         "exact_tp": 0,
         "any_attack_tp": 0,
-        "benign_alerts": 7,
+        "benign_alerts": 4,
         "by_class": {
           "scan": {
             "alerts": 2,
@@ -1540,13 +1494,6 @@
             "exact_tp": 0,
             "any_attack_tp": 0,
             "unlabeled": 0
-          },
-          "ddos": {
-            "alerts": 3,
-            "scored": 3,
-            "exact_tp": 0,
-            "any_attack_tp": 0,
-            "unlabeled": 0
           }
         },
         "truth_units": {
@@ -1564,31 +1511,27 @@
       },
       "rule_counts": {
         "tp": {
-          "exfil": 0,
-          "benign": 283841,
           "slowdos": 0,
-          "ddos": 0,
+          "benign": 285282,
+          "exfil": 0,
           "scan": 0
         },
         "fp": {
-          "exfil": 235,
-          "benign": 0,
           "slowdos": 40,
-          "ddos": 1441,
+          "benign": 0,
+          "exfil": 235,
           "scan": 3009
         },
         "fn": {
-          "exfil": 0,
-          "benign": 4725,
           "slowdos": 0,
-          "ddos": 0,
+          "benign": 3284,
+          "exfil": 0,
           "scan": 0
         },
         "support": {
-          "exfil": 0,
-          "benign": 288566,
           "slowdos": 0,
-          "ddos": 0,
+          "benign": 288566,
+          "exfil": 0,
           "scan": 0
         },
         "n": 288566
@@ -1650,25 +1593,18 @@
       "n_flows": 445909,
       "unmapped_labels": {},
       "rule_alerts": {
-        "ddos": 12,
         "exfil": 1
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 21.7,
+      "elapsed_s": 28.4,
       "rules": {
         "per_class": {
           "benign": {
-            "precision": 0.968479,
-            "recall": 0.983825,
-            "f1": 0.976092,
+            "precision": 0.968867,
+            "recall": 0.996466,
+            "f1": 0.982473,
             "support": 432074
-          },
-          "ddos": {
-            "precision": 0.0,
-            "recall": null,
-            "f1": 0.0,
-            "support": 0
           },
           "exfil": {
             "precision": 0.0,
@@ -1683,36 +1619,27 @@
             "support": 13835
           }
         },
-        "macro_f1": 0.488046,
+        "macro_f1": 0.491237,
         "micro_f1": 0.0,
         "fpr": {
           "benign_flows": 432074,
-          "false_positives": 6989,
-          "fpr": 0.01617547,
+          "false_positives": 1527,
+          "fpr": 0.00353412,
           "passes_gate": true
         },
         "n": 445909,
         "alert_metrics": {
-          "alerts": 13,
-          "scored": 13,
+          "alerts": 1,
+          "scored": 1,
           "unlabeled": 0,
           "unattributed": 0,
           "exact_tp": 0,
-          "exact_fp": 13,
+          "exact_fp": 1,
           "precision_exact": 0.0,
           "any_attack_tp": 0,
           "precision_any_attack": 0.0,
-          "benign_alerts": 13,
+          "benign_alerts": 1,
           "by_class": {
-            "ddos": {
-              "alerts": 12,
-              "scored": 12,
-              "unlabeled": 0,
-              "exact_tp": 0,
-              "exact_fp": 12,
-              "precision_exact": 0.0,
-              "precision_any_attack": 0.0
-            },
             "exfil": {
               "alerts": 1,
               "scored": 1,
@@ -1748,21 +1675,14 @@
         }
       },
       "alert_counts": {
-        "alerts": 13,
-        "scored": 13,
+        "alerts": 1,
+        "scored": 1,
         "unlabeled": 0,
         "unattributed": 0,
         "exact_tp": 0,
         "any_attack_tp": 0,
-        "benign_alerts": 13,
+        "benign_alerts": 1,
         "by_class": {
-          "ddos": {
-            "alerts": 12,
-            "scored": 12,
-            "exact_tp": 0,
-            "any_attack_tp": 0,
-            "unlabeled": 0
-          },
           "exfil": {
             "alerts": 1,
             "scored": 1,
@@ -1786,28 +1706,24 @@
       },
       "rule_counts": {
         "tp": {
-          "exfil": 0,
-          "ddos": 0,
           "scan": 0,
-          "benign": 425085
+          "benign": 430547,
+          "exfil": 0
         },
         "fp": {
-          "exfil": 1527,
-          "ddos": 5462,
           "scan": 0,
-          "benign": 13835
+          "benign": 13835,
+          "exfil": 1527
         },
         "fn": {
-          "exfil": 0,
-          "ddos": 0,
           "scan": 13835,
-          "benign": 6989
+          "benign": 1527,
+          "exfil": 0
         },
         "support": {
-          "exfil": 0,
-          "ddos": 0,
           "scan": 13835,
-          "benign": 432074
+          "benign": 432074,
+          "exfil": 0
         },
         "n": 445909
       },
@@ -1878,24 +1794,24 @@
       "n_flows": 692703,
       "unmapped_labels": {},
       "rule_alerts": {
-        "ddos": 25,
-        "slowdos": 18
+        "slowdos": 18,
+        "ddos": 22
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 63.3,
+      "elapsed_s": 55.8,
       "rules": {
         "per_class": {
           "benign": {
-            "precision": 0.976217,
-            "recall": 0.992753,
-            "f1": 0.984415,
+            "precision": 0.976367,
+            "recall": 0.99923,
+            "f1": 0.987666,
             "support": 440042
           },
           "ddos": {
-            "precision": 0.987371,
+            "precision": 0.999209,
             "recall": 0.984078,
-            "f1": 0.985722,
+            "f1": 0.991586,
             "support": 241366
           },
           "slowdos": {
@@ -1905,35 +1821,35 @@
             "support": 11295
           }
         },
-        "macro_f1": 0.844697,
-        "micro_f1": 0.972218,
+        "macro_f1": 0.847736,
+        "micro_f1": 0.977815,
         "fpr": {
           "benign_flows": 440042,
-          "false_positives": 3189,
-          "fpr": 0.00724704,
+          "false_positives": 339,
+          "fpr": 0.00077038,
           "passes_gate": true
         },
         "n": 692703,
         "alert_metrics": {
-          "alerts": 43,
-          "scored": 43,
+          "alerts": 40,
+          "scored": 40,
           "unlabeled": 0,
           "unattributed": 0,
           "exact_tp": 40,
-          "exact_fp": 3,
-          "precision_exact": 0.930233,
+          "exact_fp": 0,
+          "precision_exact": 1.0,
           "any_attack_tp": 40,
-          "precision_any_attack": 0.930233,
-          "benign_alerts": 3,
+          "precision_any_attack": 1.0,
+          "benign_alerts": 0,
           "by_class": {
             "ddos": {
-              "alerts": 25,
-              "scored": 25,
+              "alerts": 22,
+              "scored": 22,
               "unlabeled": 0,
               "exact_tp": 22,
-              "exact_fp": 3,
-              "precision_exact": 0.88,
-              "precision_any_attack": 0.88
+              "exact_fp": 0,
+              "precision_exact": 1.0,
+              "precision_any_attack": 1.0
             },
             "slowdos": {
               "alerts": 18,
@@ -1970,26 +1886,26 @@
         }
       },
       "alert_counts": {
-        "alerts": 43,
-        "scored": 43,
+        "alerts": 40,
+        "scored": 40,
         "unlabeled": 0,
         "unattributed": 0,
         "exact_tp": 40,
         "any_attack_tp": 40,
-        "benign_alerts": 3,
+        "benign_alerts": 0,
         "by_class": {
-          "ddos": {
-            "alerts": 25,
-            "scored": 25,
-            "exact_tp": 22,
-            "any_attack_tp": 22,
-            "unlabeled": 0
-          },
           "slowdos": {
             "alerts": 18,
             "scored": 18,
             "exact_tp": 18,
             "any_attack_tp": 18,
+            "unlabeled": 0
+          },
+          "ddos": {
+            "alerts": 22,
+            "scored": 22,
+            "exact_tp": 22,
+            "any_attack_tp": 22,
             "unlabeled": 0
           }
         },
@@ -2009,23 +1925,23 @@
       "rule_counts": {
         "tp": {
           "slowdos": 4495,
-          "ddos": 237523,
-          "benign": 436853
+          "benign": 439703,
+          "ddos": 237523
         },
         "fp": {
           "slowdos": 151,
-          "ddos": 3038,
-          "benign": 10643
+          "benign": 10643,
+          "ddos": 188
         },
         "fn": {
           "slowdos": 6800,
-          "ddos": 3843,
-          "benign": 3189
+          "benign": 339,
+          "ddos": 3843
         },
         "support": {
           "slowdos": 11295,
-          "ddos": 241366,
-          "benign": 440042
+          "benign": 440042,
+          "ddos": 241366
         },
         "n": 692703
       },
@@ -2038,27 +1954,27 @@
         "counts": {
           "tp": {
             "slowdos": 0,
-            "ddos": 0,
+            "benign": 70027,
             "scan": 0,
-            "benign": 70027
+            "ddos": 0
           },
           "fp": {
             "slowdos": 0,
-            "ddos": 0,
+            "benign": 3429,
             "scan": 126544,
-            "benign": 3429
+            "ddos": 0
           },
           "fn": {
             "slowdos": 11295,
-            "ddos": 118676,
+            "benign": 2,
             "scan": 0,
-            "benign": 2
+            "ddos": 118676
           },
           "support": {
             "slowdos": 11295,
-            "ddos": 118676,
+            "benign": 70029,
             "scan": 0,
-            "benign": 70029
+            "ddos": 118676
           },
           "n": 200000
         },
@@ -2120,7 +2036,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 90.7,
+      "elapsed_s": 80.0,
       "rules": {
         "per_class": {
           "benign": {
@@ -2223,20 +2139,20 @@
       },
       "rule_counts": {
         "tp": {
-          "ddos": 2179203,
-          "benign": 1610
+          "benign": 1610,
+          "ddos": 2179203
         },
         "fp": {
-          "ddos": 2,
-          "benign": 727
+          "benign": 727,
+          "ddos": 2
         },
         "fn": {
-          "ddos": 727,
-          "benign": 2
+          "benign": 2,
+          "ddos": 727
         },
         "support": {
-          "ddos": 2179930,
-          "benign": 1612
+          "benign": 1612,
+          "ddos": 2179930
         },
         "n": 2181542
       },
@@ -2248,20 +2164,20 @@
         "dropped_no_clock": 0,
         "counts": {
           "tp": {
-            "ddos": 0,
-            "benign": 43
+            "benign": 43,
+            "ddos": 0
           },
           "fp": {
-            "ddos": 0,
-            "benign": 199957
+            "benign": 199957,
+            "ddos": 0
           },
           "fn": {
-            "ddos": 199957,
-            "benign": 0
+            "benign": 0,
+            "ddos": 199957
           },
           "support": {
-            "ddos": 199957,
-            "benign": 43
+            "benign": 43,
+            "ddos": 199957
           },
           "n": 200000
         },
@@ -2311,7 +2227,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 28.2,
+      "elapsed_s": 49.7,
       "rules": {
         "per_class": {
           "benign": {
@@ -2414,20 +2330,20 @@
       },
       "rule_counts": {
         "tp": {
-          "ddos": 1187895,
-          "benign": 14345
+          "benign": 14345,
+          "ddos": 1187895
         },
         "fp": {
-          "ddos": 20,
-          "benign": 14747
+          "benign": 14747,
+          "ddos": 20
         },
         "fn": {
-          "ddos": 14747,
-          "benign": 20
+          "benign": 20,
+          "ddos": 14747
         },
         "support": {
-          "ddos": 1202642,
-          "benign": 14365
+          "benign": 14365,
+          "ddos": 1202642
         },
         "n": 1217007
       },
@@ -2439,20 +2355,20 @@
         "dropped_no_clock": 0,
         "counts": {
           "tp": {
-            "ddos": 0,
-            "benign": 12675
+            "benign": 12675,
+            "ddos": 0
           },
           "fp": {
-            "ddos": 0,
-            "benign": 187325
+            "benign": 187325,
+            "ddos": 0
           },
           "fn": {
-            "ddos": 187325,
-            "benign": 0
+            "benign": 0,
+            "ddos": 187325
           },
           "support": {
-            "ddos": 187325,
-            "benign": 12675
+            "benign": 12675,
+            "ddos": 187325
           },
           "n": 200000
         },
@@ -2493,6 +2409,197 @@
         "duration_us": 3.732437
       }
     },
+    "ddos2019/01-12/DrDoS_MSSQL.csv|cic-ddos2019": {
+      "family": "cic-ddos2019",
+      "n_flows": 4524498,
+      "unmapped_labels": {},
+      "rule_alerts": {
+        "ddos": 79
+      },
+      "excluded_unmapped_flows": 0,
+      "blank_rows": 0,
+      "elapsed_s": 143.6,
+      "rules": {
+        "per_class": {
+          "benign": {
+            "precision": 0.579815,
+            "recall": 0.999501,
+            "f1": 0.733895,
+            "support": 2006
+          },
+          "ddos": {
+            "precision": 1.0,
+            "recall": 0.999679,
+            "f1": 0.999839,
+            "support": 4522492
+          }
+        },
+        "macro_f1": 0.866867,
+        "micro_f1": 0.999839,
+        "fpr": {
+          "benign_flows": 2006,
+          "false_positives": 1,
+          "fpr": 0.0004985,
+          "passes_gate": true
+        },
+        "n": 4524498,
+        "alert_metrics": {
+          "alerts": 79,
+          "scored": 79,
+          "unlabeled": 0,
+          "unattributed": 0,
+          "exact_tp": 79,
+          "exact_fp": 0,
+          "precision_exact": 1.0,
+          "any_attack_tp": 79,
+          "precision_any_attack": 1.0,
+          "benign_alerts": 0,
+          "by_class": {
+            "ddos": {
+              "alerts": 79,
+              "scored": 79,
+              "unlabeled": 0,
+              "exact_tp": 79,
+              "exact_fp": 0,
+              "precision_exact": 1.0,
+              "precision_any_attack": 1.0
+            }
+          },
+          "unit_recall": {
+            "ddos": {
+              "covered": 79,
+              "total": 206,
+              "recall": 0.383495
+            },
+            "slowdos": {
+              "covered": 0,
+              "total": 0,
+              "recall": null
+            },
+            "scan": {
+              "covered": 0,
+              "total": 0,
+              "recall": null
+            },
+            "exfil": {
+              "covered": 0,
+              "total": 0,
+              "recall": null
+            }
+          }
+        }
+      },
+      "alert_counts": {
+        "alerts": 79,
+        "scored": 79,
+        "unlabeled": 0,
+        "unattributed": 0,
+        "exact_tp": 79,
+        "any_attack_tp": 79,
+        "benign_alerts": 0,
+        "by_class": {
+          "ddos": {
+            "alerts": 79,
+            "scored": 79,
+            "exact_tp": 79,
+            "any_attack_tp": 79,
+            "unlabeled": 0
+          }
+        },
+        "truth_units": {
+          "ddos": 206,
+          "slowdos": 0,
+          "scan": 0,
+          "exfil": 0
+        },
+        "covered_units": {
+          "ddos": 79,
+          "slowdos": 0,
+          "scan": 0,
+          "exfil": 0
+        }
+      },
+      "rule_counts": {
+        "tp": {
+          "benign": 2005,
+          "ddos": 4521039
+        },
+        "fp": {
+          "benign": 1453,
+          "ddos": 1
+        },
+        "fn": {
+          "benign": 1,
+          "ddos": 1453
+        },
+        "support": {
+          "benign": 2006,
+          "ddos": 4522492
+        },
+        "n": 4524498
+      },
+      "ts_dropped": 0,
+      "ml": {
+        "channel": "ml.flowctx (flow + window context)",
+        "n": 200000,
+        "prefix_flows": 200000,
+        "dropped_no_clock": 0,
+        "counts": {
+          "tp": {
+            "benign": 653,
+            "ddos": 0
+          },
+          "fp": {
+            "benign": 199347,
+            "ddos": 0
+          },
+          "fn": {
+            "benign": 0,
+            "ddos": 199347
+          },
+          "support": {
+            "benign": 653,
+            "ddos": 199347
+          },
+          "n": 200000
+        },
+        "features_not_computed": [
+          "active_idle_*",
+          "dns_domain_length",
+          "dns_domain_entropy",
+          "dns_nxdomain_rate",
+          "tls_ja3",
+          "tls_ja3s"
+        ],
+        "per_class": {
+          "benign": {
+            "precision": 0.003265,
+            "recall": 1.0,
+            "f1": 0.006509,
+            "support": 653
+          },
+          "ddos": {
+            "precision": null,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 199347
+          }
+        },
+        "macro_f1": 0.003255,
+        "micro_f1": 0.0,
+        "fpr": {
+          "benign_flows": 653,
+          "false_positives": 0,
+          "fpr": 0.0,
+          "passes_gate": true
+        }
+      },
+      "psi": {
+        "fwd_pkts": 4.721435,
+        "fwd_bytes": 8.805177,
+        "duration_us": 8.505048
+      }
+    },
     "ddos2019/01-12/DrDoS_DNS.csv|cic-ddos2019": {
       "family": "cic-ddos2019",
       "n_flows": 5074413,
@@ -2502,7 +2609,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 152.7,
+      "elapsed_s": 156.0,
       "rules": {
         "per_class": {
           "benign": {
@@ -2684,197 +2791,6 @@
         "duration_us": 6.222892
       }
     },
-    "ddos2019/01-12/DrDoS_MSSQL.csv|cic-ddos2019": {
-      "family": "cic-ddos2019",
-      "n_flows": 4524498,
-      "unmapped_labels": {},
-      "rule_alerts": {
-        "ddos": 79
-      },
-      "excluded_unmapped_flows": 0,
-      "blank_rows": 0,
-      "elapsed_s": 140.1,
-      "rules": {
-        "per_class": {
-          "benign": {
-            "precision": 0.579815,
-            "recall": 0.999501,
-            "f1": 0.733895,
-            "support": 2006
-          },
-          "ddos": {
-            "precision": 1.0,
-            "recall": 0.999679,
-            "f1": 0.999839,
-            "support": 4522492
-          }
-        },
-        "macro_f1": 0.866867,
-        "micro_f1": 0.999839,
-        "fpr": {
-          "benign_flows": 2006,
-          "false_positives": 1,
-          "fpr": 0.0004985,
-          "passes_gate": true
-        },
-        "n": 4524498,
-        "alert_metrics": {
-          "alerts": 79,
-          "scored": 79,
-          "unlabeled": 0,
-          "unattributed": 0,
-          "exact_tp": 79,
-          "exact_fp": 0,
-          "precision_exact": 1.0,
-          "any_attack_tp": 79,
-          "precision_any_attack": 1.0,
-          "benign_alerts": 0,
-          "by_class": {
-            "ddos": {
-              "alerts": 79,
-              "scored": 79,
-              "unlabeled": 0,
-              "exact_tp": 79,
-              "exact_fp": 0,
-              "precision_exact": 1.0,
-              "precision_any_attack": 1.0
-            }
-          },
-          "unit_recall": {
-            "ddos": {
-              "covered": 79,
-              "total": 206,
-              "recall": 0.383495
-            },
-            "slowdos": {
-              "covered": 0,
-              "total": 0,
-              "recall": null
-            },
-            "scan": {
-              "covered": 0,
-              "total": 0,
-              "recall": null
-            },
-            "exfil": {
-              "covered": 0,
-              "total": 0,
-              "recall": null
-            }
-          }
-        }
-      },
-      "alert_counts": {
-        "alerts": 79,
-        "scored": 79,
-        "unlabeled": 0,
-        "unattributed": 0,
-        "exact_tp": 79,
-        "any_attack_tp": 79,
-        "benign_alerts": 0,
-        "by_class": {
-          "ddos": {
-            "alerts": 79,
-            "scored": 79,
-            "exact_tp": 79,
-            "any_attack_tp": 79,
-            "unlabeled": 0
-          }
-        },
-        "truth_units": {
-          "ddos": 206,
-          "slowdos": 0,
-          "scan": 0,
-          "exfil": 0
-        },
-        "covered_units": {
-          "ddos": 79,
-          "slowdos": 0,
-          "scan": 0,
-          "exfil": 0
-        }
-      },
-      "rule_counts": {
-        "tp": {
-          "ddos": 4521039,
-          "benign": 2005
-        },
-        "fp": {
-          "ddos": 1,
-          "benign": 1453
-        },
-        "fn": {
-          "ddos": 1453,
-          "benign": 1
-        },
-        "support": {
-          "ddos": 4522492,
-          "benign": 2006
-        },
-        "n": 4524498
-      },
-      "ts_dropped": 0,
-      "ml": {
-        "channel": "ml.flowctx (flow + window context)",
-        "n": 200000,
-        "prefix_flows": 200000,
-        "dropped_no_clock": 0,
-        "counts": {
-          "tp": {
-            "ddos": 0,
-            "benign": 653
-          },
-          "fp": {
-            "ddos": 0,
-            "benign": 199347
-          },
-          "fn": {
-            "ddos": 199347,
-            "benign": 0
-          },
-          "support": {
-            "ddos": 199347,
-            "benign": 653
-          },
-          "n": 200000
-        },
-        "features_not_computed": [
-          "active_idle_*",
-          "dns_domain_length",
-          "dns_domain_entropy",
-          "dns_nxdomain_rate",
-          "tls_ja3",
-          "tls_ja3s"
-        ],
-        "per_class": {
-          "benign": {
-            "precision": 0.003265,
-            "recall": 1.0,
-            "f1": 0.006509,
-            "support": 653
-          },
-          "ddos": {
-            "precision": null,
-            "recall": 0.0,
-            "f1": 0.0,
-            "support": 199347
-          }
-        },
-        "macro_f1": 0.003255,
-        "micro_f1": 0.0,
-        "fpr": {
-          "benign_flows": 653,
-          "false_positives": 0,
-          "fpr": 0.0,
-          "passes_gate": true
-        }
-      },
-      "psi": {
-        "fwd_pkts": 4.721435,
-        "fwd_bytes": 8.805177,
-        "duration_us": 8.505048
-      }
-    },
     "ddos2019/01-12/DrDoS_NetBIOS.csv|cic-ddos2019": {
       "family": "cic-ddos2019",
       "n_flows": 4094986,
@@ -2884,7 +2800,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 116.5,
+      "elapsed_s": 133.3,
       "rules": {
         "per_class": {
           "benign": {
@@ -2987,20 +2903,20 @@
       },
       "rule_counts": {
         "tp": {
-          "ddos": 4085999,
-          "benign": 1703
+          "benign": 1703,
+          "ddos": 4085999
         },
         "fp": {
-          "ddos": 4,
-          "benign": 7280
+          "benign": 7280,
+          "ddos": 4
         },
         "fn": {
-          "ddos": 7280,
-          "benign": 4
+          "benign": 4,
+          "ddos": 7280
         },
         "support": {
-          "ddos": 4093279,
-          "benign": 1707
+          "benign": 1707,
+          "ddos": 4093279
         },
         "n": 4094986
       },
@@ -3012,20 +2928,20 @@
         "dropped_no_clock": 0,
         "counts": {
           "tp": {
-            "ddos": 0,
-            "benign": 591
+            "benign": 591,
+            "ddos": 0
           },
           "fp": {
-            "ddos": 0,
-            "benign": 199409
+            "benign": 199409,
+            "ddos": 0
           },
           "fn": {
-            "ddos": 199409,
-            "benign": 0
+            "benign": 0,
+            "ddos": 199409
           },
           "support": {
-            "ddos": 199409,
-            "benign": 591
+            "benign": 591,
+            "ddos": 199409
           },
           "n": 200000
         },
@@ -3075,7 +2991,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 81.7,
+      "elapsed_s": 57.3,
       "rules": {
         "per_class": {
           "benign": {
@@ -3178,20 +3094,20 @@
       },
       "rule_counts": {
         "tp": {
-          "ddos": 1582112,
-          "benign": 392
+          "benign": 392,
+          "ddos": 1582112
         },
         "fp": {
-          "ddos": 0,
-          "benign": 177
+          "benign": 177,
+          "ddos": 0
         },
         "fn": {
-          "ddos": 177,
-          "benign": 0
+          "benign": 0,
+          "ddos": 177
         },
         "support": {
-          "ddos": 1582289,
-          "benign": 392
+          "benign": 392,
+          "ddos": 1582289
         },
         "n": 1582681
       },
@@ -3203,20 +3119,20 @@
         "dropped_no_clock": 0,
         "counts": {
           "tp": {
-            "ddos": 0,
-            "benign": 26
+            "benign": 26,
+            "ddos": 0
           },
           "fp": {
-            "ddos": 0,
-            "benign": 199974
+            "benign": 199974,
+            "ddos": 0
           },
           "fn": {
-            "ddos": 199974,
-            "benign": 0
+            "benign": 0,
+            "ddos": 199974
           },
           "support": {
-            "ddos": 199974,
-            "benign": 26
+            "benign": 26,
+            "ddos": 199974
           },
           "n": 200000
         },
@@ -3266,7 +3182,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 118.4,
+      "elapsed_s": 94.5,
       "rules": {
         "per_class": {
           "benign": {
@@ -3369,20 +3285,20 @@
       },
       "rule_counts": {
         "tp": {
-          "ddos": 2601691,
-          "benign": 757
+          "benign": 757,
+          "ddos": 2601691
         },
         "fp": {
-          "ddos": 6,
-          "benign": 8920
+          "benign": 8920,
+          "ddos": 6
         },
         "fn": {
-          "ddos": 8920,
-          "benign": 6
+          "benign": 6,
+          "ddos": 8920
         },
         "support": {
-          "ddos": 2610611,
-          "benign": 763
+          "benign": 763,
+          "ddos": 2610611
         },
         "n": 2611374
       },
@@ -3394,20 +3310,20 @@
         "dropped_no_clock": 0,
         "counts": {
           "tp": {
-            "ddos": 0,
-            "benign": 116
+            "benign": 116,
+            "ddos": 0
           },
           "fp": {
-            "ddos": 0,
-            "benign": 199884
+            "benign": 199884,
+            "ddos": 0
           },
           "fn": {
-            "ddos": 199884,
-            "benign": 0
+            "benign": 0,
+            "ddos": 199884
           },
           "support": {
-            "ddos": 199884,
-            "benign": 116
+            "benign": 116,
+            "ddos": 199884
           },
           "n": 200000
         },
@@ -3457,7 +3373,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 137.0,
+      "elapsed_s": 108.8,
       "rules": {
         "per_class": {
           "benign": {
@@ -3649,7 +3565,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 26.5,
+      "elapsed_s": 29.3,
       "rules": {
         "per_class": {
           "benign": {
@@ -3780,27 +3696,27 @@
       },
       "rule_counts": {
         "tp": {
-          "ddos": 22,
-          "benign": 3705,
           "slowdos": 0,
+          "benign": 3705,
+          "ddos": 22,
           "scan": 0
         },
         "fp": {
-          "ddos": 352302,
-          "benign": 9487,
           "slowdos": 0,
+          "benign": 9487,
+          "ddos": 352302,
           "scan": 5089
         },
         "fn": {
-          "ddos": 417,
-          "benign": 0,
           "slowdos": 366461,
+          "benign": 0,
+          "ddos": 417,
           "scan": 0
         },
         "support": {
-          "ddos": 439,
-          "benign": 3705,
           "slowdos": 366461,
+          "benign": 3705,
+          "ddos": 439,
           "scan": 0
         },
         "n": 370605
@@ -3813,24 +3729,24 @@
         "dropped_no_clock": 0,
         "counts": {
           "tp": {
-            "ddos": 0,
+            "slowdos": 0,
             "benign": 3693,
-            "slowdos": 0
+            "ddos": 0
           },
           "fp": {
-            "ddos": 0,
+            "slowdos": 0,
             "benign": 196307,
-            "slowdos": 0
+            "ddos": 0
           },
           "fn": {
-            "ddos": 421,
+            "slowdos": 195886,
             "benign": 0,
-            "slowdos": 195886
+            "ddos": 421
           },
           "support": {
-            "ddos": 421,
+            "slowdos": 195886,
             "benign": 3693,
-            "slowdos": 195886
+            "ddos": 421
           },
           "n": 200000
         },
@@ -3886,7 +3802,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 184.4,
+      "elapsed_s": 161.3,
       "rules": {
         "per_class": {
           "benign": {
@@ -3989,20 +3905,20 @@
       },
       "rule_counts": {
         "tp": {
-          "ddos": 5156796,
-          "benign": 1507
+          "benign": 1507,
+          "ddos": 5156796
         },
         "fp": {
-          "ddos": 0,
-          "benign": 3074
+          "benign": 3074,
+          "ddos": 0
         },
         "fn": {
-          "ddos": 3074,
-          "benign": 0
+          "benign": 0,
+          "ddos": 3074
         },
         "support": {
-          "ddos": 5159870,
-          "benign": 1507
+          "benign": 1507,
+          "ddos": 5159870
         },
         "n": 5161377
       },
@@ -4014,20 +3930,20 @@
         "dropped_no_clock": 0,
         "counts": {
           "tp": {
-            "ddos": 0,
-            "benign": 58
+            "benign": 58,
+            "ddos": 0
           },
           "fp": {
-            "ddos": 0,
-            "benign": 199942
+            "benign": 199942,
+            "ddos": 0
           },
           "fn": {
-            "ddos": 199942,
-            "benign": 0
+            "benign": 0,
+            "ddos": 199942
           },
           "support": {
-            "ddos": 199942,
-            "benign": 58
+            "benign": 58,
+            "ddos": 199942
           },
           "n": 200000
         },
@@ -4077,7 +3993,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 50.1,
+      "elapsed_s": 75.7,
       "rules": {
         "per_class": {
           "benign": {
@@ -4269,7 +4185,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 19.3,
+      "elapsed_s": 21.8,
       "rules": {
         "per_class": {
           "benign": {
@@ -4486,7 +4402,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 97.5,
+      "elapsed_s": 105.7,
       "rules": {
         "per_class": {
           "benign": {
@@ -4589,20 +4505,20 @@
       },
       "rule_counts": {
         "tp": {
-          "ddos": 3445250,
-          "benign": 1320
+          "benign": 1320,
+          "ddos": 3445250
         },
         "fp": {
-          "ddos": 1,
-          "benign": 9328
+          "benign": 9328,
+          "ddos": 1
         },
         "fn": {
-          "ddos": 9328,
-          "benign": 1
+          "benign": 1,
+          "ddos": 9328
         },
         "support": {
-          "ddos": 3454578,
-          "benign": 1321
+          "benign": 1321,
+          "ddos": 3454578
         },
         "n": 3455899
       },
@@ -4614,20 +4530,20 @@
         "dropped_no_clock": 0,
         "counts": {
           "tp": {
-            "ddos": 0,
-            "benign": 23
+            "benign": 23,
+            "ddos": 0
           },
           "fp": {
-            "ddos": 0,
-            "benign": 199977
+            "benign": 199977,
+            "ddos": 0
           },
           "fn": {
-            "ddos": 199977,
-            "benign": 0
+            "benign": 0,
+            "ddos": 199977
           },
           "support": {
-            "ddos": 199977,
-            "benign": 23
+            "benign": 23,
+            "ddos": 199977
           },
           "n": 200000
         },
@@ -4677,7 +4593,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 154.4,
+      "elapsed_s": 167.8,
       "rules": {
         "per_class": {
           "benign": {
@@ -4780,20 +4696,20 @@
       },
       "rule_counts": {
         "tp": {
-          "ddos": 5771067,
-          "benign": 2794
+          "benign": 2794,
+          "ddos": 5771067
         },
         "fp": {
-          "ddos": 0,
-          "benign": 1925
+          "benign": 1925,
+          "ddos": 0
         },
         "fn": {
-          "ddos": 1925,
-          "benign": 0
+          "benign": 0,
+          "ddos": 1925
         },
         "support": {
-          "ddos": 5772992,
-          "benign": 2794
+          "benign": 2794,
+          "ddos": 5772992
         },
         "n": 5775786
       },
@@ -4805,20 +4721,20 @@
         "dropped_no_clock": 0,
         "counts": {
           "tp": {
-            "ddos": 0,
-            "benign": 411
+            "benign": 411,
+            "ddos": 0
           },
           "fp": {
-            "ddos": 0,
-            "benign": 199589
+            "benign": 199589,
+            "ddos": 0
           },
           "fn": {
-            "ddos": 199589,
-            "benign": 0
+            "benign": 0,
+            "ddos": 199589
           },
           "support": {
-            "ddos": 199589,
-            "benign": 411
+            "benign": 411,
+            "ddos": 199589
           },
           "n": 200000
         },
@@ -4869,7 +4785,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 49.0,
+      "elapsed_s": 34.0,
       "rules": {
         "per_class": {
           "benign": {
@@ -5000,27 +4916,27 @@
       },
       "rule_counts": {
         "tp": {
-          "ddos": 710836,
-          "benign": 4067,
           "slowdos": 0,
+          "benign": 4067,
+          "ddos": 710836,
           "scan": 0
         },
         "fp": {
-          "ddos": 1,
-          "benign": 9120,
           "slowdos": 0,
+          "benign": 9120,
+          "ddos": 1,
           "scan": 1141
         },
         "fn": {
-          "ddos": 8388,
-          "benign": 1,
           "slowdos": 1873,
+          "benign": 1,
+          "ddos": 8388,
           "scan": 0
         },
         "support": {
-          "ddos": 719224,
-          "benign": 4068,
           "slowdos": 1873,
+          "benign": 4068,
+          "ddos": 719224,
           "scan": 0
         },
         "n": 725165
@@ -5033,24 +4949,24 @@
         "dropped_no_clock": 0,
         "counts": {
           "tp": {
-            "ddos": 0,
+            "slowdos": 0,
             "benign": 3889,
-            "slowdos": 0
+            "ddos": 0
           },
           "fp": {
-            "ddos": 0,
+            "slowdos": 0,
             "benign": 196111,
-            "slowdos": 0
+            "ddos": 0
           },
           "fn": {
-            "ddos": 194238,
+            "slowdos": 1873,
             "benign": 0,
-            "slowdos": 1873
+            "ddos": 194238
           },
           "support": {
-            "ddos": 194238,
+            "slowdos": 1873,
             "benign": 3889,
-            "slowdos": 1873
+            "ddos": 194238
           },
           "n": 200000
         },
@@ -5107,7 +5023,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 164.1,
+      "elapsed_s": 134.3,
       "rules": {
         "per_class": {
           "benign": {
@@ -5324,7 +5240,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 156.9,
+      "elapsed_s": 118.7,
       "rules": {
         "per_class": {
           "benign": {
@@ -5427,20 +5343,20 @@
       },
       "rule_counts": {
         "tp": {
-          "ddos": 3765846,
-          "benign": 3134
+          "benign": 3134,
+          "ddos": 3765846
         },
         "fp": {
-          "ddos": 0,
-          "benign": 13226
+          "benign": 13226,
+          "ddos": 0
         },
         "fn": {
-          "ddos": 13226,
-          "benign": 0
+          "benign": 0,
+          "ddos": 13226
         },
         "support": {
-          "ddos": 3779072,
-          "benign": 3134
+          "benign": 3134,
+          "ddos": 3779072
         },
         "n": 3782206
       },
@@ -5452,20 +5368,20 @@
         "dropped_no_clock": 0,
         "counts": {
           "tp": {
-            "ddos": 0,
-            "benign": 1721
+            "benign": 1721,
+            "ddos": 0
           },
           "fp": {
-            "ddos": 0,
-            "benign": 198279
+            "benign": 198279,
+            "ddos": 0
           },
           "fn": {
-            "ddos": 198279,
-            "benign": 0
+            "benign": 0,
+            "ddos": 198279
           },
           "support": {
-            "ddos": 198279,
-            "benign": 1721
+            "benign": 1721,
+            "ddos": 198279
           },
           "n": 200000
         },
@@ -5506,88 +5422,6 @@
         "duration_us": 5.259222
       }
     },
-    "ids2018/Friday-16-02-2018_TrafficForML_CICFlowMeter.csv|cic-ids2018": {
-      "family": "cic-ids2018",
-      "n_flows": 1048575,
-      "unmapped_labels": {},
-      "rule_alerts": {},
-      "excluded_unmapped_flows": 0,
-      "blank_rows": 0,
-      "elapsed_s": 44.0,
-      "rules": {
-        "error": "identity columns absent in export, entity-scoped rules not evaluable (reported, never faked)"
-      },
-      "ml": {
-        "channel": "ml.flowctx (flow + window context)",
-        "n": 200000,
-        "prefix_flows": 200000,
-        "dropped_no_clock": 0,
-        "counts": {
-          "tp": {
-            "slowdos": 0,
-            "ddos": 0,
-            "benign": 41216
-          },
-          "fp": {
-            "slowdos": 0,
-            "ddos": 0,
-            "benign": 158784
-          },
-          "fn": {
-            "slowdos": 91434,
-            "ddos": 67350,
-            "benign": 0
-          },
-          "support": {
-            "slowdos": 91434,
-            "ddos": 67350,
-            "benign": 41216
-          },
-          "n": 200000
-        },
-        "features_not_computed": [
-          "active_idle_*",
-          "dns_domain_length",
-          "dns_domain_entropy",
-          "dns_nxdomain_rate",
-          "tls_ja3",
-          "tls_ja3s"
-        ],
-        "per_class": {
-          "benign": {
-            "precision": 0.20608,
-            "recall": 1.0,
-            "f1": 0.341735,
-            "support": 41216
-          },
-          "ddos": {
-            "precision": null,
-            "recall": 0.0,
-            "f1": 0.0,
-            "support": 67350
-          },
-          "slowdos": {
-            "precision": null,
-            "recall": 0.0,
-            "f1": 0.0,
-            "support": 91434
-          }
-        },
-        "macro_f1": 0.113912,
-        "micro_f1": 0.0,
-        "fpr": {
-          "benign_flows": 41216,
-          "false_positives": 0,
-          "fpr": 0.0,
-          "passes_gate": true
-        }
-      },
-      "psi": {
-        "fwd_pkts": 3.337235,
-        "fwd_bytes": 5.162721,
-        "duration_us": 4.500014
-      }
-    },
     "ids2018/Friday-02-03-2018_TrafficForML_CICFlowMeter.csv|cic-ids2018": {
       "family": "cic-ids2018",
       "n_flows": 1048575,
@@ -5595,7 +5429,7 @@
       "rule_alerts": {},
       "excluded_unmapped_flows": 200786,
       "blank_rows": 0,
-      "elapsed_s": 76.2,
+      "elapsed_s": 41.6,
       "rules": {
         "error": "identity columns absent in export, entity-scoped rules not evaluable (reported, never faked)"
       },
@@ -5650,14 +5484,14 @@
         "duration_us": 4.236786
       }
     },
-    "ids2018/Thuesday-20-02-2018_TrafficForML_CICFlowMeter.csv|cic-ids2018": {
+    "ids2018/Friday-16-02-2018_TrafficForML_CICFlowMeter.csv|cic-ids2018": {
       "family": "cic-ids2018",
-      "n_flows": 7948748,
+      "n_flows": 1048575,
       "unmapped_labels": {},
       "rule_alerts": {},
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 25.8,
+      "elapsed_s": 25.0,
       "rules": {
         "error": "identity columns absent in export, entity-scoped rules not evaluable (reported, never faked)"
       },
@@ -5669,23 +5503,105 @@
         "counts": {
           "tp": {
             "ddos": 0,
-            "scan": 0,
-            "benign": 77
+            "benign": 41216,
+            "slowdos": 0
           },
           "fp": {
-            "ddos": 29,
-            "scan": 199894,
-            "benign": 0
+            "ddos": 0,
+            "benign": 158784,
+            "slowdos": 0
           },
           "fn": {
-            "ddos": 199894,
-            "scan": 0,
-            "benign": 29
+            "ddos": 67350,
+            "benign": 0,
+            "slowdos": 91434
           },
           "support": {
-            "ddos": 199894,
+            "ddos": 67350,
+            "benign": 41216,
+            "slowdos": 91434
+          },
+          "n": 200000
+        },
+        "features_not_computed": [
+          "active_idle_*",
+          "dns_domain_length",
+          "dns_domain_entropy",
+          "dns_nxdomain_rate",
+          "tls_ja3",
+          "tls_ja3s"
+        ],
+        "per_class": {
+          "benign": {
+            "precision": 0.20608,
+            "recall": 1.0,
+            "f1": 0.341735,
+            "support": 41216
+          },
+          "ddos": {
+            "precision": null,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 67350
+          },
+          "slowdos": {
+            "precision": null,
+            "recall": 0.0,
+            "f1": 0.0,
+            "support": 91434
+          }
+        },
+        "macro_f1": 0.113912,
+        "micro_f1": 0.0,
+        "fpr": {
+          "benign_flows": 41216,
+          "false_positives": 0,
+          "fpr": 0.0,
+          "passes_gate": true
+        }
+      },
+      "psi": {
+        "fwd_pkts": 3.337235,
+        "fwd_bytes": 5.162721,
+        "duration_us": 4.500014
+      }
+    },
+    "ids2018/Thuesday-20-02-2018_TrafficForML_CICFlowMeter.csv|cic-ids2018": {
+      "family": "cic-ids2018",
+      "n_flows": 7948748,
+      "unmapped_labels": {},
+      "rule_alerts": {},
+      "excluded_unmapped_flows": 0,
+      "blank_rows": 0,
+      "elapsed_s": 15.0,
+      "rules": {
+        "error": "identity columns absent in export, entity-scoped rules not evaluable (reported, never faked)"
+      },
+      "ml": {
+        "channel": "ml.flowctx (flow + window context)",
+        "n": 200000,
+        "prefix_flows": 200000,
+        "dropped_no_clock": 0,
+        "counts": {
+          "tp": {
             "scan": 0,
-            "benign": 106
+            "benign": 77,
+            "ddos": 0
+          },
+          "fp": {
+            "scan": 199894,
+            "benign": 0,
+            "ddos": 29
+          },
+          "fn": {
+            "scan": 0,
+            "benign": 29,
+            "ddos": 199894
+          },
+          "support": {
+            "scan": 0,
+            "benign": 106,
+            "ddos": 199894
           },
           "n": 200000
         },
@@ -5739,7 +5655,7 @@
       "rule_alerts": {},
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 51.4,
+      "elapsed_s": 31.3,
       "rules": {
         "error": "identity columns absent in export, entity-scoped rules not evaluable (reported, never faked)"
       },
@@ -5750,24 +5666,24 @@
         "dropped_no_clock": 0,
         "counts": {
           "tp": {
-            "ddos": 0,
+            "benign": 199432,
             "scan": 0,
-            "benign": 199432
+            "ddos": 0
           },
           "fp": {
-            "ddos": 2,
+            "benign": 566,
             "scan": 0,
-            "benign": 566
+            "ddos": 2
           },
           "fn": {
-            "ddos": 0,
+            "benign": 2,
             "scan": 566,
-            "benign": 2
+            "ddos": 0
           },
           "support": {
-            "ddos": 0,
+            "benign": 199434,
             "scan": 566,
-            "benign": 199434
+            "ddos": 0
           },
           "n": 200000
         },
@@ -5821,7 +5737,7 @@
       "rule_alerts": {},
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 25.7,
+      "elapsed_s": 28.2,
       "rules": {
         "error": "identity columns absent in export, entity-scoped rules not evaluable (reported, never faked)"
       },
@@ -5833,23 +5749,23 @@
         "counts": {
           "tp": {
             "slowdos": 0,
-            "ddos": 0,
-            "benign": 147502
+            "benign": 147502,
+            "ddos": 0
           },
           "fp": {
             "slowdos": 0,
-            "ddos": 0,
-            "benign": 52498
+            "benign": 52498,
+            "ddos": 0
           },
           "fn": {
             "slowdos": 10990,
-            "ddos": 41508,
-            "benign": 0
+            "benign": 0,
+            "ddos": 41508
           },
           "support": {
             "slowdos": 10990,
-            "ddos": 41508,
-            "benign": 147502
+            "benign": 147502,
+            "ddos": 41508
           },
           "n": 200000
         },
@@ -5903,7 +5819,7 @@
       "rule_alerts": {},
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 40.7,
+      "elapsed_s": 29.8,
       "rules": {
         "error": "identity columns absent in export, entity-scoped rules not evaluable (reported, never faked)"
       },
@@ -5914,24 +5830,24 @@
         "dropped_no_clock": 0,
         "counts": {
           "tp": {
-            "ddos": 0,
+            "benign": 199637,
             "scan": 0,
-            "benign": 199637
+            "ddos": 0
           },
           "fp": {
-            "ddos": 1,
+            "benign": 362,
             "scan": 0,
-            "benign": 362
+            "ddos": 1
           },
           "fn": {
-            "ddos": 0,
+            "benign": 1,
             "scan": 362,
-            "benign": 1
+            "ddos": 0
           },
           "support": {
-            "ddos": 0,
+            "benign": 199638,
             "scan": 362,
-            "benign": 199638
+            "ddos": 0
           },
           "n": 200000
         },
@@ -5985,7 +5901,7 @@
       "rule_alerts": {},
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 33.2,
+      "elapsed_s": 20.5,
       "rules": {
         "error": "identity columns absent in export, entity-scoped rules not evaluable (reported, never faked)"
       },
@@ -6057,7 +5973,7 @@
       "rule_alerts": {},
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 28.9,
+      "elapsed_s": 18.1,
       "rules": {
         "error": "identity columns absent in export, entity-scoped rules not evaluable (reported, never faked)"
       },
@@ -6068,20 +5984,20 @@
         "dropped_no_clock": 0,
         "counts": {
           "tp": {
-            "ddos": 1719,
-            "benign": 2215
+            "benign": 2215,
+            "ddos": 1719
           },
           "fp": {
-            "ddos": 0,
-            "benign": 196066
+            "benign": 196066,
+            "ddos": 0
           },
           "fn": {
-            "ddos": 196066,
-            "benign": 0
+            "benign": 0,
+            "ddos": 196066
           },
           "support": {
-            "ddos": 197785,
-            "benign": 2215
+            "benign": 2215,
+            "ddos": 197785
           },
           "n": 200000
         },
@@ -6129,7 +6045,7 @@
       "rule_alerts": {},
       "excluded_unmapped_flows": 96586,
       "blank_rows": 0,
-      "elapsed_s": 23.1,
+      "elapsed_s": 13.9,
       "rules": {
         "error": "identity columns absent in export, entity-scoped rules not evaluable (reported, never faked)"
       },
@@ -6140,24 +6056,24 @@
         "dropped_no_clock": 0,
         "counts": {
           "tp": {
-            "ddos": 16,
             "scan": 0,
-            "benign": 56000
+            "benign": 56000,
+            "ddos": 16
           },
           "fp": {
-            "ddos": 0,
             "scan": 0,
-            "benign": 22739
+            "benign": 22739,
+            "ddos": 0
           },
           "fn": {
-            "ddos": 12248,
             "scan": 10491,
-            "benign": 0
+            "benign": 0,
+            "ddos": 12248
           },
           "support": {
-            "ddos": 12264,
             "scan": 10491,
-            "benign": 56000
+            "benign": 56000,
+            "ddos": 12264
           },
           "n": 78755
         },
@@ -6409,7 +6325,7 @@
       "rule_alerts": {},
       "excluded_unmapped_flows": 68904,
       "blank_rows": 0,
-      "elapsed_s": 62.5,
+      "elapsed_s": 35.4,
       "rules": {
         "error": "identity columns absent in export, entity-scoped rules not evaluable (reported, never faked)"
       },
@@ -6473,7 +6389,7 @@
       "rule_alerts": {},
       "excluded_unmapped_flows": 93088,
       "blank_rows": 0,
-      "elapsed_s": 195.9,
+      "elapsed_s": 121.4,
       "rules": {
         "error": "identity columns absent in export, entity-scoped rules not evaluable (reported, never faked)"
       },
@@ -6537,7 +6453,7 @@
       },
       "excluded_unmapped_flows": 0,
       "blank_rows": 0,
-      "elapsed_s": 601.5,
+      "elapsed_s": 444.4,
       "rules": {
         "per_class": {
           "benign": {
@@ -6640,20 +6556,20 @@
       },
       "rule_counts": {
         "tp": {
-          "ddos": 20053745,
-          "benign": 25243
+          "benign": 25243,
+          "ddos": 20053745
         },
         "fp": {
-          "ddos": 4,
-          "benign": 28835
+          "benign": 28835,
+          "ddos": 4
         },
         "fn": {
-          "ddos": 28835,
-          "benign": 4
+          "benign": 4,
+          "ddos": 28835
         },
         "support": {
-          "ddos": 20082580,
-          "benign": 25247
+          "benign": 25247,
+          "ddos": 20082580
         },
         "n": 20107827
       },
@@ -6665,20 +6581,20 @@
         "dropped_no_clock": 0,
         "counts": {
           "tp": {
-            "ddos": 0,
-            "benign": 829
+            "benign": 829,
+            "ddos": 0
           },
           "fp": {
-            "ddos": 0,
-            "benign": 199171
+            "benign": 199171,
+            "ddos": 0
           },
           "fn": {
-            "ddos": 199171,
-            "benign": 0
+            "benign": 0,
+            "ddos": 199171
           },
           "support": {
-            "ddos": 199171,
-            "benign": 829
+            "benign": 829,
+            "ddos": 199171
           },
           "n": 200000
         },

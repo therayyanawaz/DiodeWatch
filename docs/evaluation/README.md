@@ -97,10 +97,11 @@ only in-sample ML family here and why the retrained records cannot be reproduced
 from this checkout.
 
 Gate outcome, pre-committed and unmoved: **four PASS**. On CIC-IDS2017 the
-rule layer reaches DDoS F1 0.962815 and benign FPR 25,278/2,273,108 =
-0.01112046. On CIC-DDoS2019 it reaches F1 0.996426 and FPR 51/113,828 =
-0.00044804. The CIC-IDS2017 F1 is 0.0128 above its gate and its FPR is 0.0089
-below its ceiling; this is a pass, not a wide margin.
+rule layer reaches DDoS F1 0.989026 and benign FPR 5,359/2,273,108 =
+0.00235757. On CIC-DDoS2019 it reaches F1 0.996426 and FPR 51/113,828 =
+0.00044804. The CIC-IDS2017 F1 is 0.039 above its gate and its FPR is 0.0176
+below its ceiling; it is the stronger of the two passes but still a measured
+one.
 
 The gain came from several changes, tested in staged runs, not one trick: a
 per-destination rate baseline, persistence, a low-rate byte floor and a
@@ -108,19 +109,23 @@ destination-port gate on the volume branch, scan arbitration against a DDoS
 victim, and slow-DoS corroboration. The older 0.845 FPR was mostly a
 window-attribution artefact; after attribution the rate branch still produced
 0.1496, dominated by the `192.168.10.3` benign burst and other volume claims.
-Those false alerts are now 32 benign-only out of 102, not zero. The 500 kB
-exfil ratio floor and the scan host-sweep removal took the other 90; DDoS flow
-F1 and truth recall were unchanged.
+The 500 kB exfil ratio floor and the scan host-sweep removal took the 192-alert
+pass to 102. The 20 KB/s floor below 250 flows/s then removed the last
+busy-server claim, and the reply-aware port gate removed 26 multi-port fan-in
+or high-port sweeps,
+leaving 5 benign-only alerts out of 75. All 27 DDoS false bursts are gone; DDoS
+flow recall is unchanged at 0.979339 and precision rose from 0.94683 to 0.998907.
 
-Alert-level scoring still shows the weak side. On CIC-IDS2017, 102 alerts are
-all scorable: exact precision is 70/102 = 0.686275, any-attack precision is
-also 70/102, and 32 alerts contain no attack truth. DDoS incident recall is
-41/51; scan is 11/222 and slow-DoS is 18/46. On CIC-DDoS2019, 1,183 alerts give
-exact precision 1,175/1,183 = 0.993238, any-attack precision 1,183/1,183 =
-1.0, and none are benign-only. DDoS incident recall is 1,175/9,927 =
-0.1184 even though flow recall is 0.99788: one scoped alert cannot cover every
-small victim window in a long capture. Volume recall and incident recall answer
-different questions, and the artifact prints both.
+Alert-level scoring still shows the remaining weak side. On CIC-IDS2017, 75
+alerts are all scorable: exact precision is 70/75 = 0.933333, any-attack
+precision is also 70/75, and 5 alerts contain no attack truth (2 scan, 2 exfil,
+1 slow DoS). DDoS incident recall is 41/51; scan is 11/222 and slow-DoS is
+18/46. On CIC-DDoS2019, 1,183 alerts give exact precision 1,175/1,183 =
+0.993238, any-attack precision 1,183/1,183 = 1.0, and none are benign-only.
+DDoS incident recall is 1,175/9,927 = 0.1184 even though flow recall is
+0.99788: one scoped alert cannot cover every small victim window in a long
+capture. Volume recall and incident recall answer different questions, and the
+artifact prints both.
 
 The corrected CIC-DDoS2019 benign denominator is 113,828, not 480,289,
 because 366,461 `UDP-lag` flows are slow-DoS truth. Its FPR gate passes on

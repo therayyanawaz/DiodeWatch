@@ -20,9 +20,9 @@ Streamlit UI):
    denominator (440,031 flows, 2.03M flows) must, in the same file, name the
    layer that produced it and state that corpus's own benign-window reality.
    Those two numbers are what keep a per-flow ML precision figure from
-   reading as a system-wide FPR: the rule layer emits 3 alerts on
-   benign-labelled windows of the Wednesday table, and 32 on the full
-   CIC-IDS2017 register (``docs/rules.md``).
+   reading as a system-wide FPR: the rule layer emits 5 benign-only alerts
+   on the full CIC-IDS2017 register and none on the Wednesday calibration
+   table (``docs/rules.md``).
 4. **Suite-size contract**, any documented "N collected" / "N passed" must
    equal what ``pytest --collect-only`` actually collects here. A hand-kept
    count went stale by more than 160 tests and nothing noticed, so the figure
@@ -146,11 +146,12 @@ LAYER_QUALIFIER = re.compile(
     r"\b(ml channel|ml flow-context|flow-context channel|rule layer|"
     r"rule engine|window ensemble|flow[- ]level model|supervised reference)\b",
     re.IGNORECASE)
-# "3 ... benign" or "benign ... 3" in the same file: the rule layer's own
-# count on the Wednesday table (32 on the full CIC2017 register), so the ML
-# number cannot stand in for the whole system.
-BENIGN_WINDOW_COUNT = re.compile(r"\b(?:3|32)\b.{0,80}\bbenign"
-                                 r"|\bbenign.{0,80}\b(?:3|32)\b",
+# "5 ... benign-only" or "benign-only ... 5" in the same file: the rule
+# layer's own count on the full CIC2017 register, so the ML number cannot
+# stand in for the whole system. A bare zero would match too much, hence the
+# explicit benign-only phrase.
+BENIGN_WINDOW_COUNT = re.compile(r"\b(?:5|five)\b.{0,80}\bbenign[- ]only\b"
+                                 r"|\bbenign[- ]only\b.{0,80}\b(?:5|five)\b",
                                  re.IGNORECASE)
 
 APPROX = re.compile(r"[~≈]")
@@ -381,11 +382,11 @@ def check_scope(texts: list[tuple[str, str]]) -> list[dict]:
         if not BENIGN_WINDOW_COUNT.search(flat):
             findings.append({
                 "kind": "missing-counter", "file": rel,
-                "phrase": "3 benign-window alerts",
+                "phrase": "5 benign-only alerts",
                 "detail": f"{rel} quotes a benign-flow denominator without "
-                          "the rule layer's 3 Wednesday alerts on "
-                          "benign-labelled windows, or the full CIC2017 "
-                          "count of 32 (docs/rules.md)"})
+                          "the rule layer's 5 benign-only alerts on "
+                          "benign-labelled windows of the full "
+                          "CIC-IDS2017 register (docs/rules.md)"})
     return findings
 
 

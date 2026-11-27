@@ -4,13 +4,13 @@ Every corpus file on disk scored at its full row count, with the rule layer stre
 
 ## cic-ids2017, 2,830,743 flows in 8 files
 - all 8 day-files (5 capture days), 85-column official schema; ML in-sample: these days trained the shipped artifact
-- **rules** (window rules): macro F1 0.863843, micro F1 0.949262, scored 2,828,741 flows
-    - benign: P 0.986473, R 0.98888, F1 0.987675, n 2,273,108
-    - ddos: P 0.94683, R 0.979339, F1 0.96281, n 369,393
+- **rules** (window rules): macro F1 0.871499, micro F1 0.966676, scored 2,828,741 flows
+    - benign: P 0.98659, R 0.997642, F1 0.992085, n 2,273,108
+    - ddos: P 0.998907, R 0.979339, F1 0.989026, n 369,393
     - scan: P 0.981369, R 0.906302, F1 0.942343, n 174,945
     - slowdos: P 0.95924, R 0.397964, F1 0.562543, n 11,295
-    - benign FPR 25,278/2,273,108 = 0.01112046 ([PASS])
-    - alerts: 102/102 scored, exact precision 0.686275, any-attack precision 0.686275, 32 benign-only
+    - benign FPR 5,359/2,273,108 = 0.00235757 ([PASS])
+    - alerts: 75/75 scored, exact precision 0.933333, any-attack precision 0.933333, 5 benign-only
     - alert recall (window x entity): ddos 41/51, slowdos 18/46, scan 11/222
 - **ml** (ml.flowctx (flow + window context)): macro F1 0.413036, micro F1 0.409471, scored 1,559,401 flows
     - benign: P 0.905741, R 0.999976, F1 0.950529, n 1,179,766
@@ -64,7 +64,7 @@ Every corpus file on disk scored at its full row count, with the rule layer stre
 - **ml**: not evaluable, directional flow statistics unavailable in this export
 
 ## Pre-committed gates (unchanged from bench_transfer)
-- [PASS] rule ddos F1 >= 0.95 (cic-ids2017): 0.96281
-- [PASS] benign FPR <= 0.02 (cic-ids2017): 0.01112046
+- [PASS] rule ddos F1 >= 0.95 (cic-ids2017): 0.989026
+- [PASS] benign FPR <= 0.02 (cic-ids2017): 0.00235757
 - [PASS] rule ddos F1 >= 0.95 (cic-ddos2019): 0.996426
 - [PASS] benign FPR <= 0.02 (cic-ddos2019): 0.00044804
