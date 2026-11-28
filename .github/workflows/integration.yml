@@ -62,7 +62,7 @@ jobs:
         run: |
           mkdir -p models
           cp docs/evaluation/models/*.joblib models/
-        cp docs/evaluation/models/calibration.json models/
+          cp docs/evaluation/models/calibration.json models/
 
       - name: Full suite with the corpora present
         # pipefail is not on by default in the runner's bash: without it a failing
