@@ -1,6 +1,6 @@
 """DiodeWatch mission-control web server: FastAPI backend + offline analyst wall.
 
-    python apps/mission_control/server.py [--port 8530]
+    python -m apps.mission_control.server [--port 8530]
     (or) .venv\\Scripts\\python.exe -m uvicorn apps.mission_control.server:app --port 8530
 
 Serves `apps/mission_control/static/`: `/` is the home page and the analyst
@@ -836,6 +836,9 @@ def main(argv: list[str] | None = None) -> None:
                     help=f"bearer token for /api (default: ${security.TOKEN_ENV})")
     ap.add_argument("--allow-unauthenticated", action="store_true",
                     help="permit a non-loopback bind with no token")
+    ap.add_argument("--workers", type=int, choices=(1,), default=1,
+                    help="must stay 1: the live session and its websocket set "
+                         "are process-local, so more workers would fragment it")
     args = ap.parse_args(argv)
     if args.token:
         os.environ[security.TOKEN_ENV] = args.token
@@ -851,7 +854,8 @@ def main(argv: list[str] | None = None) -> None:
         print(f"wall: /api requires {security.TOKEN_HEADER} ({len(token)} chars)")
     elif args.host not in security.LOOPBACK:
         print("wall: WARNING unauthenticated on a reachable interface")
-    uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
+    uvicorn.run(app, host=args.host, port=args.port, workers=args.workers,
+                log_level="warning")
 
 
 if __name__ == "__main__":

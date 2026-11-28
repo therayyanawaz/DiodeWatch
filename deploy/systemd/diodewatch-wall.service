@@ -1,0 +1,47 @@
+[Unit]
+Description=DiodeWatch mission-control wall (one worker)
+Documentation=file:///opt/diodewatch/docs/deployment.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=diodewatch
+Group=diodewatch
+WorkingDirectory=/opt/diodewatch
+Environment=PYTHONUNBUFFERED=1
+Environment=DIODE_LIVE_DB=/var/lib/diodewatch/live_session.db
+Environment=DIODE_LOG_DIR=/var/lib/diodewatch/logs
+# No scheduled maintenance loop ships in this build; backups are external.
+Environment=DIODE_MAINTENANCE_INTERVAL_S=0
+ExecStart=/opt/diodewatch/.venv/bin/python -m apps.mission_control.server --host 127.0.0.1 --port 8530 --workers 1
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+KillSignal=SIGTERM
+UMask=0027
+StateDirectory=diodewatch
+StateDirectoryMode=0750
+ReadWritePaths=/var/lib/diodewatch /opt/diodewatch/data/alerts
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectKernelLogs=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

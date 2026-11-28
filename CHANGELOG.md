@@ -5,6 +5,16 @@ All notable changes to DiodeWatch are documented here.
 ## [Unreleased]
 
 ### Added
+- Deployment bundle for the wall: `deploy/nginx/diodewatch.conf` terminates
+  TLS 1.2/1.3, redirects port 80, proxies one `127.0.0.1:8530` upstream with the
+  WebSocket upgrade, and writes a query-string-free access log;
+  `deploy/systemd/diodewatch-wall.service` runs as an unprivileged user with a
+  systemd sandbox, keeps the live db and logs under `/var/lib/diodewatch`, and
+  pins `--workers 1`. The server now rejects any other worker count with
+  argparse, because the session and WebSocket set are process-local.
+  `scripts/checks/check_deployment.py` guards the file contract, and
+  `docs/deployment.md` records install, certificate, verification, operations
+  and the authentication limit.
 - OCSF 1.10.0 Detection Finding export: `src/alerts/export_ocsf.py` maps one
   alert to one `class_uid=2004` Create event (`type_uid=200401`) and writes a
   deterministic JSONL stream, one compact object per line. `time` is the
@@ -183,6 +193,10 @@ All notable changes to DiodeWatch are documented here.
   silently dropped or mislabelled most of the rows.
 
 ### Fixed
+- `run_web.sh`, `run_web.bat` and the launch examples now invoke the wall as
+  `python -m apps.mission_control.server`. Running the file path directly could
+  not satisfy the server's package-relative imports and failed before binding,
+  so the documented one-line launch was broken.
 - Rule evaluation no longer paints every flow of an alerted entity for a whole
   capture. An alert labels only flows on its own entity inside its own 10-second
   window, unmapped truth is excluded instead of entering the benign denominator,

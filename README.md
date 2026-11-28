@@ -203,6 +203,7 @@ external calls. Full runbook: `docs/diode.md`, `docs/dashboard.md`.
 | [`docs/laya.md`](docs/laya.md) | Laya System-1 triage channel, offline ONNX decision model (advisory) |
 | [`docs/features.md`](docs/features.md) | Frozen 73-feature registry + parity validation |
 | [`docs/dashboard.md`](docs/dashboard.md) | Both analyst surfaces: the `:8530` mission-control wall (routes, which owner computes each on-screen number, caps, status board, and the `frontend/` React client its `/` and `/status` pages are built from) and the Streamlit dashboard with its Diode Proof panel |
+| [`docs/deployment.md`](docs/deployment.md) | nginx TLS termination, the single-worker systemd unit, state paths, operations and the live acceptance commands |
 | ![Diode Proof](docs/img/dashboard_diode_proof.png) | *Diode Proof panel, one-way link diagram and egress counters. Captured on a host without the egress monitor: the counters stay empty and say why, never a silent fake zero.* |
 | ![Status board](docs/img/status_board.png) | *`/status`, every service, component, and detector channel with its live state, derived from the same APIs the dashboard reads* |
 | [`docs/demo_script.md`](docs/demo_script.md) | Narrated 3-5 minute live demonstration script |

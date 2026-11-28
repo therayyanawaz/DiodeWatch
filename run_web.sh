@@ -26,4 +26,4 @@ PY=".venv/bin/python"
 echo "[web] Launching mission control on http://localhost:$PORT"
 ( sleep 2; command -v xdg-open >/dev/null && xdg-open "http://localhost:$PORT" \
   || command -v open >/dev/null && open "http://localhost:$PORT" ) >/dev/null 2>&1 &
-exec "$PY" apps/mission_control/server.py --port "$PORT"
+exec "$PY" -m apps.mission_control.server --port "$PORT"

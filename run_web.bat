@@ -24,4 +24,4 @@ if not exist ".venv\Scripts\python.exe" (
 
 echo [web] Launching mission control on http://localhost:%PORT%
 start "" http://localhost:%PORT%
-.venv\Scripts\python.exe apps\mission_control\server.py --port %PORT%
+.venv\Scripts\python.exe -m apps.mission_control.server --port %PORT%

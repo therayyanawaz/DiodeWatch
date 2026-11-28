@@ -8,7 +8,7 @@ shows the honest evaluation numbers, and proves zero egress. The wall is
 documented first, then the Streamlit tabs.
 
 ```bash
-python apps/mission_control/server.py --port 8530        # or: run_web.bat
+python -m apps.mission_control.server --port 8530     # or: run_web.bat
 streamlit run apps/dashboard/app.py            # http://localhost:8501
 ```
 
@@ -143,7 +143,7 @@ independent:
   socket carries the same alert stream as the REST routes.
 
 ```bash
-DIODE_WALL_TOKEN=$(python -c "import secrets;print(secrets.token_urlsafe(24))")   python apps/mission_control/server.py --port 8530
+DIODE_WALL_TOKEN=$(python -c "import secrets;print(secrets.token_urlsafe(24))")   python -m apps.mission_control.server --port 8530
 curl -H "X-Diode-Token: $DIODE_WALL_TOKEN" http://127.0.0.1:8530/api/session
 ```
 
@@ -153,7 +153,10 @@ drive and read the capture; `--allow-unauthenticated` exists for the case where
 that is genuinely intended. The browser client does not send a token, on purpose:
 a token pasted into a page is a token in a page. A token-protected wall is driven
 through the API (the launchers, the CLI, `curl -H`), and the read-only pages stay
-readable so there is somewhere to put the token at all.
+readable so there is somewhere to put the token at all. For a network-facing
+deployment, `deployment.md` ships TLS termination and the single-worker systemd
+unit; it does not add authentication, so the trusted-network restriction still
+applies.
 
 ## The Streamlit dashboard, four tabs
 

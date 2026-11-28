@@ -9,7 +9,7 @@ twice (two green `demo is GO` runs) then open the dashboard:
 
 (`run_demo.bat` does the same and generates the pack + restores the pinned
 models first; `--port 8510` moves it. The mission-control wall on `:8530`,
-`python apps/mission_control/server.py`, is the alternative surface, same
+`python -m apps.mission_control.server`, is the alternative surface, same
 pipeline, same numbers, one shared replay session, see `docs/dashboard.md`.)
 
 ---

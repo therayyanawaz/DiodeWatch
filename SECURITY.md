@@ -29,9 +29,12 @@ DiodeWatch ships as an evaluation-ready analytics enclave component.
 When deploying:
 
 - Bind the web mission-control UI to loopback (`--host 127.0.0.1`, the
-  default) or place it behind an authenticating reverse proxy, the UI
-  itself currently has **no built-in authentication or TLS**, and this is
-  documented rather than hidden.
+  default) and terminate TLS at the shipped nginx template
+  (`docs/deployment.md`). The UI itself has **no built-in TLS or
+  authentication**. The template adds TLS and a single-worker unit, not
+  authentication: keep its listener on a trusted management network until
+  that gap is closed. The optional bearer token protects API and WebSocket
+  clients, but the shipped browser does not send it.
 - Run the dashboard as an unprivileged user; grant nftables/iptables
   rights only to the enforcement profile that needs them (`docs/diode.md`).
 - On classified/air-gapped hosts, disable Streamlit usage telemetry

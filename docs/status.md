@@ -131,7 +131,7 @@ each claim:
   eight-day CIC-IDS2017 corpus, raising PortScan recall from 11/27 to 15/27.
   The remaining 12 PortScan units are 1-29 flow fragments, too small to
   separate safely from client traffic.
-* **The suite** collects 605 tests (2026-11-28). Three of them need corpora this repository
+* **The suite** collects 619 tests (2026-11-28). Three of them need corpora this repository
   deliberately never commits, so they skip locally and run in
   `.github/workflows/integration.yml`, which fails if they skip there.
 
@@ -149,12 +149,13 @@ have, not a decision we have not made.
 | OCSF Detection Finding export beside STIX | SOC interoperability a judge can name | **done**: OCSF 1.10.0 Detection Finding (class 2004, Create, type 200401), one compact JSON object per line with deterministic finding ids. The alert window is in `start_time`/`end_time` and `finding_info.first_seen_time`/`last_seen_time`; `evidences[0].data` keeps the full observed-vs-threshold, flow, detector and window detail; ATT&CK is split into technique and sub-technique; observables point at fields present in the event. Required attributes, enum siblings, endpoints and observable references are validated before writing, and an invalid stream is refused. CLI, `:8530` route and both analyst surfaces call the same exporter. [ocsf.md](ocsf.md) |
 | Rootless diode proof: container `--network=none` self-test and a PowerShell elevated path, with the enforcement mode wired into both UIs | the one-way guarantee is demonstrated on Linux with root today; a reviewer on a laptop cannot reproduce it | **blocked** on Docker or administrator rights |
 | Live-interface rehearsal over a veth pair, with a recorded clip | proves the pipeline under enforcement on a real interface, not only on a replay | **blocked** on Linux root |
-| Reverse proxy, TLS, and a service unit pinning **one worker** | the wall is plain HTTP on loopback; the shared session is per process, so multiple workers would fragment it | planned |
+| Reverse proxy, TLS, and a service unit pinning **one worker** | the wall is plain HTTP on loopback; the shared session is per process, so multiple workers would fragment it | **done** for transport and process: nginx 1.28.3 terminates TLS 1.2/1.3 on `:443`, redirects `:80`, proxies one `127.0.0.1:8530` upstream with the WebSocket upgrade, and writes a `$uri`-only access log; the systemd unit runs as `diodewatch`, keeps the db and logs under `/var/lib/diodewatch`, sandboxes the tree, and passes `--workers 1`, which the server also enforces with argparse. Authentication is **not** included: the optional token is for API clients, the browser does not send it, and row 154 covers only Streamlit, so the listener belongs on a trusted network until browser authentication (row 158) is designed. [deployment.md](deployment.md) |
 | Rate limit, request-size cap and `TrustedHost` on the wall | a token holder can drive the replay in a loop | planned |
 | An authentication story for the Streamlit dashboard | it is a second, unprotected surface | planned |
 | One config module that validates every environment variable at startup | the variables are read at their call sites, so a typo fails at use time | planned |
 | Schema versioning and a migration path for the alert store | tables are created if absent, with no version recorded | planned |
 | A daemon entry point for triage | triage ticks only while a dashboard session is open | planned |
+| An authentication story for the wall's browser surface | the wall can require a bearer token, but the shipped browser does not send one; a reachable listener is open to anyone who can reach it | planned |
 
 ## What we deliberately do not do
 
@@ -163,8 +164,9 @@ Naming these keeps the list above honest:
 * **No CORS.** The wall is same-origin by design; nothing should call it from
   another origin.
 * **No in-app TLS, no RBAC, no multi-tenancy.** One analyst, one host, one wall.
-  Termination belongs in a reverse proxy, and pretending otherwise would add
-  surface without adding safety.
+  TLS terminates at the shipped nginx template, not in Python; the app still
+  speaks HTTP on loopback. Adding an in-app terminator would duplicate that
+  boundary, not strengthen it.
 * **No public API documentation routes.** `docs_url` and `redoc_url` stay off.
 * **No claim of container or process-level enforcement** until the rootless proof
   above is closed.
