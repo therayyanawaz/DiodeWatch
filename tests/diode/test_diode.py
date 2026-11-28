@@ -734,6 +734,7 @@ def test_diode_panel_banner_matches_assess_verdict(tmp_path, monkeypatch, over):
     fact = tmp_path / "status.json"
     write_json(fact, _live(**over))
     monkeypatch.setenv("DIODE_STATUS_FILE", str(fact))
+    monkeypatch.setenv("DIODE_DASHBOARD_ALLOW_ANONYMOUS", "1")
 
     at = AppTest.from_file(str(panel))
     at.run(timeout=60)
@@ -764,6 +765,7 @@ def test_diode_panel_stops_counting_what_the_host_could_not_observe(tmp_path,
     fact = tmp_path / "status.json"
     write_json(fact, _live(monitor_available=False))
     monkeypatch.setenv("DIODE_STATUS_FILE", str(fact))
+    monkeypatch.setenv("DIODE_DASHBOARD_ALLOW_ANONYMOUS", "1")
 
     at = AppTest.from_file(str(panel))
     at.run(timeout=60)
@@ -806,6 +808,7 @@ def test_diode_panel_only_promises_a_refusal_it_measured(tmp_path, monkeypatch,
     fact = tmp_path / "status.json"
     write_json(fact, _live(**over))
     monkeypatch.setenv("DIODE_STATUS_FILE", str(fact))
+    monkeypatch.setenv("DIODE_DASHBOARD_ALLOW_ANONYMOUS", "1")
 
     at = AppTest.from_file(str(panel))
     at.run(timeout=60)

@@ -285,9 +285,11 @@ commitment is one event loop and one session, not one request at a time.
   and this wall has one session for one analyst. A script that loops
   start/reset spends its write budget and waits; a token holder can still
   fill the bucket and briefly deny other clients. Counters reset on restart.
-* No browser authentication, RBAC or multi-tenancy. The host, size and rate
-  checks are transport controls, not identity. This is one analyst, one host,
-  one wall.
+* No browser authentication for the wall, no RBAC or multi-tenancy. The host,
+  size and rate checks are transport controls, not identity. This is one
+  analyst, one host, one wall. The Streamlit dashboard's shared password
+  (`docs/dashboard.md`) is a separate credential and does not authenticate a
+  request to `:8530`.
 * No high availability. One systemd unit, one SQLite writer, one process.
   A restart is a short interruption, not a failover.
 * The systemd sandbox is a baseline, not a proof. `ProtectSystem=strict`,

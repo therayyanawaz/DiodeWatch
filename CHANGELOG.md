@@ -5,6 +5,19 @@ All notable changes to DiodeWatch are documented here.
 ## [Unreleased]
 
 ### Added
+- Streamlit dashboard authentication: `apps/dashboard/auth.py` locks the
+  dashboard and the standalone Diode Proof panel before either reads a store,
+  capture or status file. A shared password comes from
+  `DIODE_DASHBOARD_PASSWORD` (12+ characters) or
+  `DIODE_DASHBOARD_PASSWORD_FILE` (UTF-8, mode 0600 on POSIX); the comparison
+  is constant-time and five failures pause that browser session for 30 s.
+  `DIODE_DASHBOARD_ALLOW_ANONYMOUS=1` is the explicit local-demo opt-out and
+  is refused off loopback. The repository `.streamlit/config.toml` binds
+  Streamlit to `127.0.0.1` instead of its every-interface default, the demo
+  launchers opt in explicitly, and a changed password invalidates an open
+  session on its next rerun. This is one shared secret, not identity: no
+  usernames, RBAC or per-user audit, and remote access needs TLS in front.
+  Tests: `tests/ui/test_dashboard_auth.py`.
 - Wall request guards: `apps/mission_control/limits.py` adds a `TrustedHost`
   allowlist (default `127.0.0.1,localhost,[::1]`, bare `*` refused) and a 1 MiB
   ASGI body cap that counts the stream rather than trusting Content-Length.

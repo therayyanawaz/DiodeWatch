@@ -2,7 +2,9 @@
 
 Both Streamlit surfaces show this panel: the dashboard's Diode Proof tab
 (`apps/dashboard/app.py`) and the standalone page
-(`streamlit run apps/dashboard/diode_panel.py`). Each used to carry its own
+(`DIODE_DASHBOARD_ALLOW_ANONYMOUS=1 streamlit run
+apps/dashboard/diode_panel.py`; both pass `apps.dashboard.auth` first). Each
+used to carry its own
 copy of the banner, the four counters and the closing paragraph, which is how
 a honesty gate fixed in one file stayed broken in the other, printing
 `Outbound connections 0` beside an honest `Outbound bytes not observed`.

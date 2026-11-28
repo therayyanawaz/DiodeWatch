@@ -11,7 +11,8 @@ are therefore verified against the same calls the UI makes:
   4. alert→evidence→export chain works: STIX bundle validates, incident
      report renders, both from a session alert;
   5. the diode status path the Diode Proof tab polls returns honest data;
-  6. apps/dashboard/app.py imports clean and declares the four tabs.
+  6. apps/dashboard/app.py imports clean, declares the four tabs, and gates
+     both Streamlit surfaces before session state or a status file is read.
 
     python scripts/checks/check_dashboard.py
 """
@@ -149,6 +150,17 @@ def main() -> int:
                       if "st.tabs(" in ln and i + 1 < len(lines)), "")
     for tab in ("Live", "Evidence", "Metrics", "Diode Proof"):
         check(f"tab declared: {tab}", tab in tabs_line)
+    gate = src.find("require_auth(st")
+    check("auth gate imported",
+          "from apps.dashboard.auth import require_auth" in src)
+    check("auth gate precedes session state",
+          gate != -1 and gate < src.find("_reset_session()"))
+    panel = (REPO / "apps" / "dashboard" / "diode_panel.py").read_text(
+        encoding="utf-8")
+    panel_gate = panel.find("require_auth(st")
+    check("diode panel uses the same gate",
+          "from apps.dashboard.auth import require_auth" in panel
+          and panel_gate != -1 and panel_gate < panel.find("ProofReader()"))
 
     # ---- 7. demo pack sources in the sidebar --------------------------------
     print("=== demo pack sources (sidebar)")

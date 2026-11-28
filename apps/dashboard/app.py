@@ -1,7 +1,8 @@
 """DiodeWatch analyst dashboard: Live · Evidence · Metrics · Diode Proof.
 
+    DIODE_DASHBOARD_ALLOW_ANONYMOUS=1 streamlit run apps/dashboard/app.py
+    export DIODE_DASHBOARD_PASSWORD='a shared password of 12+ chars'
     streamlit run apps/dashboard/app.py
-    streamlit run apps/dashboard/app.py --server.port 8501
 
 Four tabs, one storyline, INPUT → INTELLIGENCE → PROOF:
 
@@ -19,6 +20,10 @@ Four tabs, one storyline, INPUT → INTELLIGENCE → PROOF:
   zero-outbound proof numbers, violations, and why this matters for NTRO.
 
 Runs fully offline; no external calls at runtime.
+
+The app is locked by default: `apps.dashboard.auth` runs before any store,
+capture or status file is read. Anonymous access is an explicit loopback-only
+demo mode; a network deployment sets a password and terminates TLS in front.
 """
 from __future__ import annotations
 
@@ -32,6 +37,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from apps.dashboard.auth import require_auth
 from apps.dashboard.diode_view import render_diode_proof
 from src.alerts.export_ocsf import write_ocsf
 from src.alerts.export_stix import write_stix
@@ -48,6 +54,10 @@ from src.triage.worker import TriageWorker, tick
 
 st.set_page_config(page_title="DiodeWatch, Flow Threat Detection",
                    page_icon="🛡️", layout="wide")
+
+# Locked by default: no store, status file or capture is read until this gate
+# returns. The wall is a separate surface with its own boundary.
+require_auth(st, surface="Analyst dashboard")
 
 
 # --------------------------------------------------------------------------- #

@@ -50,5 +50,10 @@ if errorlevel 1 (
     echo [demo]          rule detectors still fire. Train with scripts\checks\check_ml.py.
 )
 
+rem Local-only dashboard: the listener is loopback and the password gate is
+rem explicitly off for the double-click demo. A network deployment sets
+rem DIODE_DASHBOARD_PASSWORD instead; see docs/dashboard.md.
+set "DIODE_DASHBOARD_ALLOW_ANONYMOUS=1"
+
 echo [demo] Launching dashboard on http://localhost:%PORT%
-.venv\Scripts\python.exe -m streamlit run apps/dashboard/app.py --server.port %PORT% --server.headless true
+.venv\Scripts\python.exe -m streamlit run apps/dashboard/app.py --server.port %PORT% --server.address 127.0.0.1 --server.headless true

@@ -15,7 +15,10 @@ Run the monitor first:
 
 then start the panel:
 
-    streamlit run apps/dashboard/diode_panel.py
+    DIODE_DASHBOARD_ALLOW_ANONYMOUS=1 streamlit run apps/dashboard/diode_panel.py
+
+The panel uses the same password gate as the dashboard; anonymous access is
+loopback-only and refused on a network bind.
 """
 from __future__ import annotations
 
@@ -29,11 +32,16 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from apps.dashboard.auth import require_auth
 from apps.dashboard.diode_view import render_diode_proof
 from src.diode.monitor import ProofReader
 
 st.set_page_config(page_title="Diode Proof - zero egress", page_icon="🔒",
                    layout="wide")
+
+# Same gate as the dashboard: this panel reads the host's status file and is
+# a second, separately authenticated surface.
+require_auth(st, surface="Diode Proof panel")
 
 
 def render() -> None:

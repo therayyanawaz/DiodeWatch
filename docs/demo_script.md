@@ -4,8 +4,10 @@ Everything runs **offline** on this laptop: no cloud, no APIs, no internet.
 Pre-flight (once, before judges arrive): `python scripts/checks/rehearse_demo.py`
 twice (two green `demo is GO` runs) then open the dashboard:
 
+    set DIODE_DASHBOARD_ALLOW_ANONYMOUS=1
     .venv/Scripts/python.exe -m streamlit run apps/dashboard/app.py
     # http://localhost:8501, keep the 🔴 Live tab selected, demo pcap source
+    # (loopback only; set DIODE_DASHBOARD_PASSWORD for anything but the demo)
 
 (`run_demo.bat` does the same and generates the pack + restores the pinned
 models first; `--port 8510` moves it. The mission-control wall on `:8530`,

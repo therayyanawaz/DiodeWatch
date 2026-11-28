@@ -89,7 +89,12 @@ URL="http://localhost:$PORT"
 say "Launching dashboard on $URL"
 [ "$HEADLESS" = "1" ] && ok "headless mode, open $URL in a browser"
 
-ARGS=(run apps/dashboard/app.py --server.port "$PORT")
+# Local-only dashboard: loopback bind, and the password gate is explicitly
+# off for the one-command demo. A network deployment sets
+# DIODE_DASHBOARD_PASSWORD instead; see docs/dashboard.md.
+export DIODE_DASHBOARD_ALLOW_ANONYMOUS=1
+
+ARGS=(run apps/dashboard/app.py --server.port "$PORT" --server.address 127.0.0.1)
 [ "$HEADLESS" = "1" ] && ARGS+=(--server.headless)
 
 exec "$PY_BIN" -m streamlit "${ARGS[@]}"

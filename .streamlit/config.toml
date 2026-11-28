@@ -1,0 +1,6 @@
+# Bind the analyst surfaces to loopback by default. Streamlit's own default
+# is every interface. A deployment that needs a network listener must opt in
+# with --server.address and configure DIODE_DASHBOARD_PASSWORD /
+# DIODE_DASHBOARD_PASSWORD_FILE; anonymous mode is refused off loopback.
+[server]
+address = "127.0.0.1"

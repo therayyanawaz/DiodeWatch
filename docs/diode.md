@@ -74,7 +74,7 @@ python -m src.diode.cli monitor --enforce          # nodal centre: enforce + pol
 python -m src.diode.cli monitor                    # no root: monitor-only (observation)
 python -m src.diode.cli remove                     # take the profile down (idempotent)
 
-streamlit run apps/dashboard/diode_panel.py                    # Diode Proof panel (polls status JSON)
+DIODE_DASHBOARD_ALLOW_ANONYMOUS=1 streamlit run apps/dashboard/diode_panel.py  # local panel (polls status JSON)
 ```
 
 Acceptance (both paths, `scripts/checks/check_diode.py`, exit 0 = pass):

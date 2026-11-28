@@ -31,6 +31,12 @@ def demo_pcap() -> Path:
     return DEMO
 
 
+@pytest.fixture
+def dashboard_local_demo(monkeypatch):
+    """Render tests exercise the local demo path, not the locked default."""
+    monkeypatch.setenv("DIODE_DASHBOARD_ALLOW_ANONYMOUS", "1")
+
+
 @pytest.fixture(scope="module")
 def demo_flows(demo_pcap) -> list[dict]:
     flows = list(stream_flows(demo_pcap))
@@ -270,7 +276,7 @@ def test_filter_semantics_on_real_session(demo_flows):
 # --------------------------------------------------------------------------- #
 # channel disclosure in the metrics caption
 # --------------------------------------------------------------------------- #
-def test_tls_caption_discloses_the_novelty_layer():
+def test_tls_caption_discloses_the_novelty_layer(dashboard_local_demo):
     """The headline F1 is the *combined* channel, so the caption has to say
     how much each layer contributed and whether novelty runs at all -
     otherwise a watchlist-only 1.000 reads as an anomaly-model result."""
@@ -297,7 +303,8 @@ def test_tls_caption_discloses_the_novelty_layer():
 # --------------------------------------------------------------------------- #
 # the chain claim in the metrics panel
 # --------------------------------------------------------------------------- #
-def test_chain_panel_names_its_anchor(tmp_path, monkeypatch):
+def test_chain_panel_names_its_anchor(tmp_path, monkeypatch,
+                                      dashboard_local_demo):
     """Re-hashing proves the rows agree with each other; only the append-only
     ledger beside the db proves nobody rewrote them. This panel printed
     `integrity: PASS` either way, which is a stronger claim than the wall makes
@@ -331,7 +338,8 @@ def test_chain_panel_names_its_anchor(tmp_path, monkeypatch):
 # --------------------------------------------------------------------------- #
 # the diode tab's own counters
 # --------------------------------------------------------------------------- #
-def test_diode_card_prints_no_zero_it_did_not_observe(tmp_path, monkeypatch):
+def test_diode_card_prints_no_zero_it_did_not_observe(
+        tmp_path, monkeypatch, dashboard_local_demo):
     """`_diode_card()` is the tab's second renderer of the same status file
     (`apps/dashboard/diode_panel.py` is the standalone one), and it used to
     print `Outbound connections 0` / `Violations 0` next to an honest

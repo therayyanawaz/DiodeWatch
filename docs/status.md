@@ -131,9 +131,10 @@ each claim:
   eight-day CIC-IDS2017 corpus, raising PortScan recall from 11/27 to 15/27.
   The remaining 12 PortScan units are 1-29 flow fragments, too small to
   separate safely from client traffic.
-* **The suite** collects 636 tests (2026-11-28). Three of them need corpora this repository
+* **The suite** collects 671 tests (2026-11-28). Three of them need corpora this repository
   deliberately never commits, so they skip locally and run in
-  `.github/workflows/integration.yml`, which fails if they skip there.
+  `.github/workflows/integration.yml`, which fails if they skip there. The
+  POSIX password-file mode test skips on Windows and runs on Linux CI.
 
 ## What is next
 
@@ -149,9 +150,9 @@ have, not a decision we have not made.
 | OCSF Detection Finding export beside STIX | SOC interoperability a judge can name | **done**: OCSF 1.10.0 Detection Finding (class 2004, Create, type 200401), one compact JSON object per line with deterministic finding ids. The alert window is in `start_time`/`end_time` and `finding_info.first_seen_time`/`last_seen_time`; `evidences[0].data` keeps the full observed-vs-threshold, flow, detector and window detail; ATT&CK is split into technique and sub-technique; observables point at fields present in the event. Required attributes, enum siblings, endpoints and observable references are validated before writing, and an invalid stream is refused. CLI, `:8530` route and both analyst surfaces call the same exporter. [ocsf.md](ocsf.md) |
 | Rootless diode proof: container `--network=none` self-test and a PowerShell elevated path, with the enforcement mode wired into both UIs | the one-way guarantee is demonstrated on Linux with root today; a reviewer on a laptop cannot reproduce it | **blocked** on Docker or administrator rights |
 | Live-interface rehearsal over a veth pair, with a recorded clip | proves the pipeline under enforcement on a real interface, not only on a replay | **blocked** on Linux root |
-| Reverse proxy, TLS, and a service unit pinning **one worker** | the wall is plain HTTP on loopback; the shared session is per process, so multiple workers would fragment it | **done** for transport and process: nginx 1.28.3 terminates TLS 1.2/1.3 on `:443`, redirects `:80`, proxies one `127.0.0.1:8530` upstream with the WebSocket upgrade, and writes a `$uri`-only access log; the systemd unit runs as `diodewatch`, keeps the db and logs under `/var/lib/diodewatch`, sandboxes the tree, and passes `--workers 1`, which the server also enforces with argparse. Authentication is **not** included: the optional token is for API clients, the browser does not send it, and row 154 covers only Streamlit, so the listener belongs on a trusted network until browser authentication (row 158) is designed. [deployment.md](deployment.md) |
+| Reverse proxy, TLS, and a service unit pinning **one worker** | the wall is plain HTTP on loopback; the shared session is per process, so multiple workers would fragment it | **done** for transport and process: nginx 1.28.3 terminates TLS 1.2/1.3 on `:443`, redirects `:80`, proxies one `127.0.0.1:8530` upstream with the WebSocket upgrade, and writes a `$uri`-only access log; the systemd unit runs as `diodewatch`, keeps the db and logs under `/var/lib/diodewatch`, sandboxes the tree, and passes `--workers 1`, which the server also enforces with argparse. Authentication is **not** included for the wall: the optional token is for API clients, the browser does not send it, and the Streamlit password gate (row 154) is a separate credential, so the wall listener still belongs on a trusted network until browser authentication (row 158) is designed. [deployment.md](deployment.md) |
 | Rate limit, request-size cap and `TrustedHost` on the wall | a token holder can drive the replay in a loop | **done**: `apps/mission_control/limits.py` installs Starlette `TrustedHost` (default `127.0.0.1,localhost,[::1]`, bare `*` refused), a 1 MiB ASGI body cap counted from the stream rather than Content-Length, and sliding-window limits of 600 `/api` requests and 12 unsafe requests per 60 s. A foreign Host is 400 once the token layer admits it (401 first if configured and absent), an oversized body 413 and a spent bucket 429 with `Retry-After`; all keep the hardening headers because the security layer is outermost. The buckets are process-global, not per client, so a token holder can still deny other clients until the window slides; this is a cost, not identity. Behind nginx the browser's Host is forwarded, so `DIODE_ALLOWED_HOSTS` must include the public name. [deployment.md](deployment.md) · `tests/ui/test_wall_limits.py` |
-| An authentication story for the Streamlit dashboard | it is a second, unprotected surface | planned |
+| An authentication story for the Streamlit dashboard | it was a second, unprotected surface | **done**: `apps/dashboard/auth.py` gates both Streamlit surfaces before a store, capture or status file is read. With no secret the dashboard renders only a locked setup page; `.streamlit/config.toml` binds `127.0.0.1` because Streamlit's own default is every interface. A shared password comes from `DIODE_DASHBOARD_PASSWORD` (12+ characters) or `DIODE_DASHBOARD_PASSWORD_FILE` (UTF-8, mode 0600 on POSIX), compared in constant time; five failures pause that session for 30 s. `DIODE_DASHBOARD_ALLOW_ANONYMOUS=1` is the explicit local-demo opt-out and is refused on any non-loopback bind; `run_demo.bat` and `run_demo.sh` set it only for their loopback launch. A sign-in lives in the Streamlit session (a refresh asks again), a changed password invalidates it, and **Sign out** clears it. This is one shared secret, not identity: no usernames, RBAC, per-user audit or multi-tenancy, and the password must cross a TLS proxy rather than a plaintext network. The wall at `:8530` is unchanged and row 158 still owns its browser surface. Locked by `tests/ui/test_dashboard_auth.py` (environment, file modes, ambiguity, loopback rules, wrong and right passwords, lockout, sign-out, password rotation and the anonymous local path). [dashboard.md](dashboard.md) |
 | One config module that validates every environment variable at startup | most variables are read at their call sites, so a typo fails at use time; `limits.py` now validates its five variables when it is imported | planned |
 | Schema versioning and a migration path for the alert store | tables are created if absent, with no version recorded | planned |
 | A daemon entry point for triage | triage ticks only while a dashboard session is open | planned |
@@ -164,9 +165,10 @@ Naming these keeps the list above honest:
 * **No CORS.** The wall is same-origin by design; nothing should call it from
   another origin.
 * **No in-app TLS, no RBAC, no multi-tenancy.** One analyst, one host, one wall.
-  TLS terminates at the shipped nginx template, not in Python; the app still
-  speaks HTTP on loopback. Adding an in-app terminator would duplicate that
-  boundary, not strengthen it.
+  The Streamlit surfaces use one shared password, not user accounts or per-user
+  audit. TLS terminates at the shipped nginx template, not in Python; the app
+  still speaks HTTP on loopback. Adding an in-app terminator would duplicate
+  that boundary, not strengthen it.
 * **No public API documentation routes.** `docs_url` and `redoc_url` stay off.
 * **No claim of container or process-level enforcement** until the rootless proof
   above is closed.

@@ -9,7 +9,8 @@ documented first, then the Streamlit tabs.
 
 ```bash
 python -m apps.mission_control.server --port 8530     # or: run_web.bat
-streamlit run apps/dashboard/app.py            # http://localhost:8501
+# local demo only; the repository config binds Streamlit to 127.0.0.1
+DIODE_DASHBOARD_ALLOW_ANONYMOUS=1 streamlit run apps/dashboard/app.py
 ```
 
 ## The mission-control wall, `apps/mission_control/` (:8530)
@@ -186,6 +187,72 @@ unit and a Host drop-in; it does not add authentication, so the trusted-network
 restriction still applies. nginx forwards the browser's Host, so add the public
 name to `DIODE_ALLOWED_HOSTS` or the wall answers 400.
 
+## Who may open the Streamlit surfaces (`apps/dashboard/auth.py`)
+
+The dashboard and the standalone Diode Proof panel are locked by default. The
+gate runs before either script creates a session store, reads a capture or
+opens the status file, so an unauthenticated request renders a setup page and
+nothing else. Streamlit's own default binds every interface; the repository
+`.streamlit/config.toml` sets `server.address = "127.0.0.1"` so the default
+launch is local as well.
+
+One shared secret guards both surfaces:
+
+| Variable | Default | Effect |
+|---|---|---|
+| `DIODE_DASHBOARD_PASSWORD` | unset | the shared password, at least 12 characters; set this **or** the file, never both |
+| `DIODE_DASHBOARD_PASSWORD_FILE` | unset | a UTF-8 file whose trailing newline is ignored; on POSIX it must not be group- or other-readable, so mode 0600 |
+| `DIODE_DASHBOARD_ALLOW_ANONYMOUS` | unset | `1` opts into the local demo without a password; it is refused unless Streamlit is bound to a loopback address |
+
+If no password is configured and anonymous mode is not explicitly allowed, the
+dashboard renders a locked page with these instructions. If both password
+sources are set, the password is blank or shorter than 12 characters, the file
+cannot be read, or a POSIX file has mode 0644, the dashboard stays locked and
+names the configuration fault; it never falls back to anonymous. Anonymous mode
+with a password configured is ignored: the password gate wins. Any other
+value for the anonymous flag is a configuration error and locks the surface
+even when a valid password is set.
+
+```bash
+# a local demo, no password, loopback only
+export DIODE_DASHBOARD_ALLOW_ANONYMOUS=1
+streamlit run apps/dashboard/app.py
+
+# a password, still loopback; put a TLS proxy in front for remote access
+export DIODE_DASHBOARD_PASSWORD='a shared password of 12+ chars'
+streamlit run apps/dashboard/app.py
+
+# or keep the secret out of the environment
+install -m 600 /dev/null /run/diodewatch/dashboard.pass
+read -rsp 'Dashboard password: ' DIODE_DASHBOARD_PASSWORD; echo
+printf '%s' "$DIODE_DASHBOARD_PASSWORD" > /run/diodewatch/dashboard.pass
+unset DIODE_DASHBOARD_PASSWORD
+export DIODE_DASHBOARD_PASSWORD_FILE=/run/diodewatch/dashboard.pass
+streamlit run apps/dashboard/app.py
+```
+
+The login form is one password field. The comparison is constant-time, and five
+failed attempts pause that browser session for 30 seconds. The counter lives in
+the Streamlit session, so a new session starts a new count; for a network-facing
+proxy, rate-limit the login path there as well. A successful sign-in also lives
+in the session state, not a cookie: a browser refresh asks again, and a changed
+password invalidates an already-open session on its next rerun. **Sign out** in
+the sidebar clears it.
+
+This is authentication, not identity. There are no usernames, roles, per-user
+audit trails or multi-tenancy; every holder of the password sees the same
+surfaces and can drive the same replay. The secret travels in the Streamlit
+WebSocket, so it must not cross a plaintext network. It speaks HTTP and ships
+no in-app TLS; the repository default binds loopback, and a remote deployment
+terminates TLS in a reverse proxy and passes the password only through that
+origin. The
+wall at `:8530` is a separate surface with a separate boundary: its browser
+authentication is a later item, and this password is not a wall credential.
+
+`run_demo.bat` and `run_demo.sh` set `DIODE_DASHBOARD_ALLOW_ANONYMOUS=1` and pin
+`--server.address 127.0.0.1` for the double-click demo. They are the only shipped
+launchers that do so.
+
 ## The Streamlit dashboard, four tabs
 
 ### Tab 1, 🔴 Live
@@ -325,9 +392,12 @@ Regenerate: `python scripts/generators/make_demo_pcap.py [--out PATH]`.
 Headless verification of everything the UI does: demo capture present →
 replay fires **all four signatures on the right windows with zero benign
 false alarms** → counters populate → session alert exports (STIX and OCSF
-validate, report renders) → diode status path honest → `apps/dashboard/app.py` parses and
-declares the four tabs. The interactive checks (start offline, replay,
-click-through, Diode Proof at zero) are the same calls with a UI on top.
+validate, report renders) → diode status path honest → `apps/dashboard/app.py`
+parses and declares the four tabs, and both Streamlit surfaces import the auth
+gate and invoke it before session state or a status file is read. The
+interactive checks (start offline, replay, click-through, Diode Proof at zero)
+are the same calls with a UI on top; `tests/ui/test_dashboard_auth.py` drives the
+locked, password, lockout and local-demo paths.
 
 The wall's own JavaScript is gated too: `node --check` on every file it ships,
 plus `node scripts/checks/check_timefmt.mjs` on the feed's capture-clock

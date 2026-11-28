@@ -25,6 +25,8 @@ Three trust zones. The first is untrusted by construction: everything arriving
 from the monitored network is attacker-influenced, including the packet contents
 and therefore every feature, name and field a detector reads. The second is the
 enclave where the pipeline runs. The third is a browser an analyst is using.
+The Streamlit dashboard (`:8501`) is a second browser surface in that third zone;
+its boundary is below, beside the wall's.
 
 ## Boundary 1, monitored traffic into the pipeline
 
@@ -44,7 +46,8 @@ enclave directly; the diode makes sure of that. They reach it *through* the data
 
 The adversary here is a page in the analyst's browser, or a person on the same
 network as the wall. This is the boundary most likely to be attacked in practice,
-because the wall is the only listening socket.
+because the wall is the production listening socket. The Streamlit dashboard is
+a second listener, loopback-first and gated separately below.
 
 | Threat | How it lands | What this tree does | Residual risk |
 |---|---|---|---|
@@ -55,6 +58,22 @@ because the wall is the only listening socket.
 | **Denial of service** by one viewer | Starting and resetting replays in a loop | One shared session, a 600/min API limit with a 12/min unsafe-method budget, and a 1 MiB body cap (`apps/mission_control/limits.py`) | A token holder can still fill the bucket and deny other clients until the window slides, and the counters reset on process restart. This is a cost, not a guarantee |
 | **Spoofing the loopback origin** | A page under an attacker-controlled DNS name resolves to 127.0.0.1 and sends that name in Host | `DIODE_ALLOWED_HOSTS` defaults to `127.0.0.1,localhost,[::1]`; any other Host cannot reach a route. With no token it is 400; with a token, a missing token is 401 first and a token-bearing foreign Host is 400. WebSocket included | An operator who adds a wildcard pattern widens the list; the deployment doc names the exact public host instead |
 | **Elevation of privilege** | A UI bug reaching an admin route | There are no privileged routes: every route either reads or controls the replay | Not applicable beyond the above |
+
+### The Streamlit dashboard, the second listening surface
+
+`apps/dashboard/app.py` and `apps/dashboard/diode_panel.py` are not the wall and
+do not share its token. They use `apps/dashboard/auth.py`, and the repository
+`.streamlit/config.toml` binds them to `127.0.0.1` rather than Streamlit's
+every-interface default. With no configured secret the gate renders a locked
+page before reading a store, capture or status file; anonymous mode is an
+explicit local-demo opt-out that is refused off loopback.
+
+| Threat | How it lands | What this tree does | Residual risk |
+|---|---|---|---|
+| **Spoofing** an authorised analyst | Anyone who can reach the Streamlit port, or a stolen browser session | One shared password from `DIODE_DASHBOARD_PASSWORD` or a mode-0600 file, compared in constant time; five failures pause that session for 30 s; a changed password invalidates an open session on its next rerun | There is no identity, RBAC or per-user revocation: every holder sees the same surfaces. The counter is per session, so a new session resets it; a network proxy must rate-limit the login path |
+| **Information disclosure** of the password or feed | The password travels in the Streamlit WebSocket, and the app speaks HTTP | The shipped binding is loopback; a remote deployment must terminate TLS in a proxy and pass the password only through that origin | The app cannot detect a TLS terminator or stop an operator from binding `0.0.0.0` with a password over plaintext. No in-app TLS is claimed |
+| **Information disclosure** through the local demo | `DIODE_DASHBOARD_ALLOW_ANONYMOUS=1` left on while a proxy exposes the loopback port | Anonymous mode is refused unless `server.address` is loopback; the demo launchers pin both the address and the flag | A proxy on the same host can still make a loopback listener remote; the operator must not expose the anonymous demo |
+| **Denial of service** by password guessing | Repeated form submissions | Constant-time comparison and a 30 s per-session pause after five failures | A new browser session starts a new counter, and a shared password has no account lockout. This is a speed bump, not a process-global defense; the proxy should rate-limit |
 
 ## Boundary 3, evidence leaving the enclave
 
@@ -112,6 +131,7 @@ The claims above are executable, which is what keeps them true:
 | A token really stops the live socket too | `tests/ui/test_wall_security.py` |
 | A one-way bind refuses to start unauthenticated | `tests/ui/test_wall_security.py` |
 | A foreign Host, an oversized body and a request loop are refused | `tests/ui/test_wall_limits.py` |
+| The Streamlit surfaces lock without a secret, and anonymous mode is loopback-only | `tests/ui/test_dashboard_auth.py` |
 | Tampering with a stored alert is detected | `tests/alerts/test_chain_attest.py` |
 | A digest moves when the store moves | `tests/alerts/test_attest_offbox.py` |
 | Shipped model digests match their cards | `tests/test_model_cards.py` |
