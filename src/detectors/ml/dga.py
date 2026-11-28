@@ -492,12 +492,15 @@ class DgaModel:
 
     def score_domains(self, domains: pd.Series) -> np.ndarray:
         """P(dga-or-tunnel) per domain (model); heuristic score when untrained."""
+        feats = domain_features(domains, bigrams=self.bigrams)
+        return self.score_features(feats)
+
+    def score_features(self, feats: pd.DataFrame) -> np.ndarray:
+        """Score a feature frame already built by domain_features()."""
         if self.booster is None:
-            feats = domain_features(domains)
             lex = (feats["len"] >= 30) | (feats["consonant_run6"].astype(bool)) \
                 | (feats["digit_ratio"] >= 0.4)
             return lex.to_numpy(dtype=float)
-        feats = domain_features(domains, bigrams=self.bigrams)
         X, _ = _matrix(feats, self.medians)
         return self.booster.predict_proba(X)[:, 1]
 

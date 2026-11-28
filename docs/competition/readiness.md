@@ -18,12 +18,13 @@ The remaining work is proof packaging plus one uncovered class, not more UI: roo
 
 | Check | Result |
 |---|---|
-| Test suite (`pytest tests/ -q`) | **557 collected**, no failures; the cells that need a corpus the repository never commits skip and say so (`docs/datasets.md`), and `.github/workflows/integration.yml` fetches those corpora and requires that they run there |
+| Test suite (`pytest tests/ -q`) | **581 collected**, no failures; the cells that need a corpus the repository never commits skip and say so (`docs/datasets.md`), and `.github/workflows/integration.yml` fetches those corpora and requires that they run there |
 | `ruff check src/ tests/ apps/ scripts/ waf/` | **All checks passed** |
 | Calibration artifact (`scripts/checks/check_calibration.py`) | **PASS**: 4 channels, 8 class maps, monotone curves, sorted conformal samples, and every policy floor agrees with the pinned evaluation summary |
+| Drift artifact (`scripts/checks/check_drift.py`) | **PASS**: 4 channels, sorted reference bins and proportions, per-channel thresholds, artifact bytes, and every pinned null/holdout claim agree with `evaluation/runs/drift.json` |
 | Claim guardrail (`scripts/checks/check_claims.py`) | **GUARDRAIL CLEAN**: every judge-facing file scanned (the run prints the count; it is deliberately not repeated here), 16 documented metrics reconciled against the pinned artifacts, documented counts re-derived from `pytest --collect-only`, documented commands and every slashed path a surface names verified to resolve, and every `github.com` link under this account checked against remote `origin` |
 | `bench_transfer.py --selftest` | rules F1 = 1.0 / FPR = 0.0 on the **synthetic** self-test corpus (harness sanity, not an evaluation result); ML cell fail-closed + PSI-explained |
-| Canonical test count | **557 collected** (re-derived by `check_claims.py` on every run, no hand-kept figure) |
+| Canonical test count | **581 collected** (re-derived by `check_claims.py` on every run, no hand-kept figure) |
 
 ## 1. Approved claim language (lock these verbatim, do not paraphrase)
 
@@ -94,6 +95,7 @@ Every public surface (README headers, slides, dashboard tiles, judge brief, doss
 - [x] Rule DDoS detector F1 ≥ 0.95 on every evaluable corpus (CIC-IDS2017 0.989026, CIC-DDoS2019 0.996426; both full-corpus, gates fixed before the run).
 - [ ] Rootless-diode path implemented *and self-tested*, OR the honest monitor-only banner confirmed visible on the demo box. *(Closes with ledger P0-4; that row is the source of truth for what is still missing.)*
 - [x] Dedup/suppression counter visible on both live feeds.
+- [x] A drift alarm withholds a channel's alerts before calibration, with the reset and the demo's below-minimum row count stated rather than hidden (`docs/drift.md`).
 - [ ] Both UIs render identical envelopes for the same pack. *(Closes with a test that pushes one pack through both surfaces and compares the rendered envelope; today only the shared severity vocabulary is locked, by `test_threat_level_words_cover_the_severity_ladder`.)*
 - [x] Every FPR claim names the layer it measured, across README, docs, UI.
 - [x] No banned phrasing survives `scripts/checks/check_claims.py` (clean on the last run over every judge-facing file; the count is printed by the tool, not kept here, because a hand-maintained total is the thing this guardrail exists to prevent).
@@ -108,6 +110,7 @@ Every public surface (README headers, slides, dashboard tiles, judge brief, doss
 | `docs/competition/judge-brief.md` | One-page opening narrative + demo runbook (claim-locked) | In repo |
 | `docs/diode.md` | Diode architecture, enforcement modes, honest-degradation contract | In repo |
 | `docs/benchmarks.md` + [`docs/evaluation/transfer.md`](../evaluation/transfer.md) | Throughput ladder, accuracy gates, consolidated transfer summary with its per-run JSON records | In repo (real corpora, 5 of them; the `results/` tree is generated locally and deliberately not committed) |
+| [`docs/drift.md`](../drift.md) | Drift policy, per-channel thresholds, measured null and holdout readings, limits | In repo |
 | `docs/demo_script.md` | Narrated 4-minute demo script | In repo |
 | `scripts/checks/check_claims.py` | Executable claim guardrail (Appendix A, test-enforced) | In repo |
 

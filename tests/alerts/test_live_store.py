@@ -28,10 +28,24 @@ Covered:
 """
 from __future__ import annotations
 
+import numpy as np
+
+from src.alerts.drift import ChannelBaseline, DriftPolicy, FeatureBaseline
 from src.alerts.live_store import LiveEvidenceStore
 from src.alerts.store import AlertStore, ledger_path, verify_chain
 from src.alerts.watch import SessionStore, WindowResult
 from tests.alerts.test_alerts import make_alert
+
+
+def _beacon_drift_policy() -> DriftPolicy:
+    ref = np.random.default_rng(11).normal(0, 1, 5_000)
+    return DriftPolicy(
+        channels={"ml.beacon": ChannelBaseline(
+            channel="ml.beacon",
+            features={"dt_cv": FeatureBaseline.from_values(ref)},
+            threshold=0.5,
+        )},
+        threshold=0.5, min_samples=100)
 
 
 def _window(i: int, n: int = 3) -> WindowResult:
@@ -41,6 +55,54 @@ def _window(i: int, n: int = 3) -> WindowResult:
     return WindowResult(win_idx=i, window_start=i * 10.0, n_flows=50,
                         alerts=alerts, flows_per_sec=5.0, eval_ms=12.0,
                         capture_end=i * 10.0 + 10.0)
+
+
+# --------------------------------------------------------------------------- #
+# drift latch gates the channel before calibration
+# --------------------------------------------------------------------------- #
+def test_drift_alarm_withholds_that_channels_alerts(tmp_path):
+    live = LiveEvidenceStore(path=tmp_path / "drift.db", calibration=None,
+                             drift=_beacon_drift_policy())
+    shifted = [{"dt_cv": 10.0} for _ in range(500)]
+    rule = make_alert(2, cls="ddos")
+    rule.detector = "ddos"
+    shown = live.absorb_alerts(
+        [make_alert(1, cls="beacon"), rule],
+        [("ml.beacon", shifted)])
+    assert [a.detector for a in shown] == ["ddos"]   # rules are never gated
+    assert live.drift_abstained == 1
+    ev = live.evidence()
+    assert ev["drift"]["alarmed"] == ["ml.beacon"]
+    assert ev["drift"]["readings"]["ml.beacon"]["alarm"] is True
+    assert live.chain()["links"] == 1
+    live.close()
+
+
+def test_drift_latch_does_not_hide_a_healthy_channel(tmp_path):
+    live = LiveEvidenceStore(path=tmp_path / "drift.db", calibration=None,
+                             drift=_beacon_drift_policy())
+    live.absorb_alerts([make_alert(1, cls="beacon")],
+                       [("ml.beacon", [{"dt_cv": 10.0} for _ in range(500)])])
+    again = live.absorb_alerts([make_alert(2, cls="beacon")],
+                               [("ml.beacon", [{"dt_cv": 0.0}
+                                               for _ in range(500)])])
+    assert again == []                       # a good window does not clear it
+    dga = live.absorb_alerts([make_alert(3, cls="dga")])
+    assert len(dga) == 1 and dga[0].detector == "ml.dga"
+    assert live.drift_abstained == 2
+    live.close()
+
+
+def test_too_few_rows_is_not_a_drift_alarm(tmp_path):
+    live = LiveEvidenceStore(path=tmp_path / "drift.db", calibration=None,
+                             drift=_beacon_drift_policy())
+    shown = live.absorb_alerts([make_alert(1, cls="beacon")],
+                               [("ml.beacon", [{"dt_cv": 10.0} for _ in range(2)])])
+    assert len(shown) == 1
+    assert live.drift_abstained == 0
+    reading = live.evidence()["drift"]["readings"]["ml.beacon"]
+    assert reading["evaluated"] is False and reading["alarm"] is False
+    live.close()
 
 
 # --------------------------------------------------------------------------- #
@@ -239,7 +301,9 @@ def test_evidence_reports_whether_the_feed_is_chained(tmp_path):
     live = LiveEvidenceStore(path=tmp_path / "live.db")
     assert live.evidence() == {
         "persisted": True, "rejected": 0, "abstained": 0,
-        "calibration": {"available": False, "error": None}, "error": None}
+        "calibration": {"available": False, "error": None},
+        "drift": {"available": False, "error": None},
+        "drift_abstained": 0, "error": None}
     live.absorb(_window(0, n=3))
     assert live.evidence()["persisted"] is True
     live.close()

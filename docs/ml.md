@@ -150,6 +150,17 @@ are already tighter than the gate. The scenario-holdout beacon result (3 alerts,
 true positives) is the honest warning that a random-split guarantee does not survive
 distribution shift. Artifact: [`evaluation/models/calibration.json`](evaluation/models/calibration.json).
 
+Feature drift is a separate gate that runs before calibration. The three shipped
+probabilistic channels (flow-context, beacon, DGA) pin quantile PSI references
+for their monitored features. A frame that exceeds the channel threshold latches
+the channel, and every alert from it is withheld until the latch is reset. The
+thresholds are empirical rather than the textbook 0.25 because ordinary CIC
+day-to-day variation reaches PSI 2.815 on the flow reference. The beacon holdout
+that calibration could not save (scenario 52) does alarm, at PSI 1.117500. Rules
+and identity TLS bypass the gate. Artifact,
+thresholds and limitations: [drift.md](drift.md) and
+[`evaluation/runs/drift.json`](evaluation/runs/drift.json).
+
 ## Honest limitations
 
 - **The flowctx models are calibrated to a full-day aggregation horizon.**

@@ -559,6 +559,51 @@ def test_ml_engine_end_to_end(tmp_path, monkeypatch):
     assert rec["threat_class"] in {"ddos", "scan"}
 
 
+def test_ml_engine_drift_gates_a_channel_and_rejects_a_missing_artifact(
+        tmp_path, capsys):
+    """An explicit drift artifact is actionable: latch the channel, or exit 2."""
+    from src.alerts.drift import ChannelBaseline, DriftPolicy, FeatureBaseline
+    from src.detectors.ml_engine import main as engine_main
+
+    df = _synthetic_features(200)
+    for c in MODEL_FEATURES:
+        if c not in df.columns:
+            df[c] = 0.0
+    df["dst_ip"] = "10.0.0.2"
+    df["dst_port"] = 443
+    df["src_port"] = 50000
+    df["protocol"] = "TCP"
+    feat = tmp_path / "feat.parquet"
+    df.to_parquet(feat, index=False)
+    out = tmp_path / "alerts.jsonl"
+
+    rc = engine_main(["--input", str(feat), "--out", str(out),
+                      "--drift", str(tmp_path / "missing.json"),
+                      "--no-calibration"])
+    assert rc == 2
+    assert "explicit artifact not found" in capsys.readouterr().err
+
+    zeros = np.zeros(100)
+    policy = DriftPolicy(
+        channels={"ml.flowctx": ChannelBaseline(
+            channel="ml.flowctx",
+            features={"tot_bytes": FeatureBaseline.from_values(zeros)},
+            threshold=0.5,
+        )},
+        threshold=0.5, min_samples=50,
+    )
+    policy.save(tmp_path / "drift.json")
+    rc = engine_main(["--input", str(feat), "--out", str(out),
+                      "--model-dir", str(REPO / "models"),
+                      "--drift", str(tmp_path / "drift.json"),
+                      "--no-calibration"])
+    assert rc == 0
+    err = capsys.readouterr().err
+    assert "drift ml.flowctx: channel gated" in err, err
+    records = [json.loads(ln) for ln in out.read_text().splitlines() if ln.strip()]
+    assert not [r for r in records if r["detector"] == "ml.flowctx"]
+
+
 def test_ml_engine_validates_alerts(tmp_path, monkeypatch):
     from src.alerts.schema import Alert, EvidenceItem
     from src.detectors.ml_engine import _write_alerts

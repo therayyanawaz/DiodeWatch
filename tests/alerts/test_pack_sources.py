@@ -6,7 +6,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.alerts.pack import PACK_DIR, available_sources, ensure_pack
+from src.alerts.pack import (
+    PACK_DIR,
+    MlChannelReplay,
+    available_sources,
+    ensure_pack,
+)
 from src.detectors.rules import run_rules
 from src.ingest.pcap_reader import stream_flows
 
@@ -113,6 +118,42 @@ def test_ml_channel_alerts_and_progressive_release():
     got += [a.alert_id for a in r.due(ts[-1])]
     assert len(got) == 46 and len(set(got)) == 46
     assert r.due(ts[-1] + 60) == []  # cursor exhausted
+
+
+def test_ml_pack_samples_are_below_a_psi_estimate():
+    """The demo sidecars are too small to estimate PSI; drift must abstain."""
+    from src.alerts.drift import DriftPolicy
+    from src.alerts.pack import ml_channel_samples
+
+    policy = DriftPolicy.load(REPO / "docs/evaluation/models/drift.json")
+    beacon = ml_channel_samples("02_c2_beacon")
+    dga = ml_channel_samples("03_dga_tunnel")
+    assert sum(len(s.values) for s in beacon) == 2
+    assert sum(len(s.values) for s in dga) == 46
+    for samples, channel in ((beacon, "ml.beacon"), (dga, "ml.dga")):
+        rows = [row for sample in samples for row in sample.values]
+        reading = policy.evaluate(channel, rows)
+        assert reading.n < policy.min_samples
+        assert reading.evaluated is False and reading.alarm is False
+
+
+def test_live_store_reports_the_pack_row_deficit(tmp_path):
+    """The real live path sees 46 rows, reports the deficit, and keeps alerts."""
+    from src.alerts.live_store import LiveEvidenceStore
+
+    live = LiveEvidenceStore(path=tmp_path / "pack.db", calibration=None,
+                             drift=REPO / "docs/evaluation/models/drift.json")
+    replay = MlChannelReplay.for_scenario("03_dga_tunnel")
+    due = replay.drain_all()
+    samples = replay.drain_samples()
+    shown = live.absorb_alerts(due, samples)
+    assert len(shown) == 46
+    ev = live.evidence()
+    assert ev["drift_abstained"] == 0
+    assert ev["drift"]["readings"]["ml.dga"]["n"] == 46
+    assert ev["drift"]["readings"]["ml.dga"]["evaluated"] is False
+    assert ev["drift"]["alarmed"] == []
+    live.close()
 
 
 def test_ml_alerts_join_the_live_feed_end_to_end():

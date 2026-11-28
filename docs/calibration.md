@@ -117,8 +117,9 @@ These are trade-offs, not free wins.
   scenarios 42/43/53, evaluate 51/52), the same policy keeps 3 alerts, 0 true
   positives and 3 false positives (benign FPR 0.000216). The conformal p-value is
   valid only while the benign and attack distributions match the fit sample. The
-  next item, a drift alarm that forces abstention, is motivated directly by this
-  failure.
+  drift alarm in [drift.md](drift.md) is the response to this failure: scenario 52
+  is excluded from the beacon reference, and its PSI of 1.117500 now latches the
+  channel before calibration rather than emitting three confident false positives.
 * **DGA is a family holdout, not a random split.** The map is fitted on family
   fold 0 and evaluated on family fold 1, so the artifact records
   `exchangeable: false` for DGA. That is deliberate: a random split would hide the

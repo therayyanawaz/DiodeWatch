@@ -27,6 +27,8 @@ from pathlib import Path
 from typing import Any
 
 from .calibration import DEFAULT_PATH, CalibrationPolicy
+from .drift import DEFAULT_PATH as DRIFT_DEFAULT_PATH
+from .drift import DriftMonitor, DriftPolicy, DriftReading
 from .schema import Alert, validate_alert
 from .store import AlertStore, ledger_path, verify_chain
 from .watch import SessionStore, WindowResult
@@ -46,16 +48,21 @@ class LiveEvidenceStore:
     def __init__(self, max_alerts: int = 5_000,
                  path: str | Path | None = None,
                  calibration: CalibrationPolicy | str | None = "auto",
+                 drift: DriftPolicy | str | None = "auto",
                  ) -> None:
         self.session = SessionStore(max_alerts=max_alerts)
         self.path = Path(path) if path is not None else db_path()
         self.error: str | None = None       # degrade reason (None = healthy)
         self.rejected = 0     # alerts the schema refused, never shown, never lost
         self.abstained = 0    # alerts a calibration policy withheld on purpose
+        self.drift_abstained = 0   # alerts a drift alarm withheld on purpose
         self.calibration: CalibrationPolicy | None = None
         self.calibration_error: str | None = None
+        self.drift_monitor: DriftMonitor | None = None
+        self.drift_error: str | None = None
         self._store: AlertStore | None = None
         self._load_calibration(calibration)
+        self._load_drift(drift)
         self._open()
 
     def _load_calibration(self, spec: CalibrationPolicy | str | None) -> None:
@@ -79,6 +86,28 @@ class LiveEvidenceStore:
             self.calibration = CalibrationPolicy.load(path)
         except (OSError, ValueError, TypeError, KeyError) as e:
             self.calibration_error = f"calibration artifact unreadable: {e}"
+
+    def _load_drift(self, spec: DriftPolicy | str | None) -> None:
+        """Load the drift policy; a missing artifact disables gating, not the wall."""
+        if spec is None:
+            return
+        if isinstance(spec, DriftPolicy):
+            self.drift_monitor = DriftMonitor(spec)
+            return
+        env = os.environ.get("DIODE_DRIFT", "").strip()
+        if spec == "auto":
+            if env.lower() in {"off", "0", "false", "no"}:
+                return
+            path = Path(env) if env else DRIFT_DEFAULT_PATH
+        else:
+            path = Path(spec)
+        if not path.exists():
+            self.drift_error = f"drift artifact not found: {path}"
+            return
+        try:
+            self.drift_monitor = DriftMonitor(DriftPolicy.load(path))
+        except (OSError, ValueError, TypeError, KeyError) as e:
+            self.drift_error = f"drift artifact unreadable: {e}"
 
     # ------------------------------------------------------------------ setup
     def _open(self) -> None:
@@ -131,18 +160,40 @@ class LiveEvidenceStore:
         self.session.extend(shown, w.window_start)
         return shown
 
-    def absorb_alerts(self, alerts: list[Alert]) -> list[Alert]:
-        """ML-channel sidecar alerts (no window counters). Returns what to show."""
+    def absorb_alerts(self, alerts: list[Alert],
+                      samples: list[tuple[str, Any]] | None = None
+                      ) -> list[Alert]:
+        """ML-channel sidecar alerts (no window counters). Returns what to show.
+
+        `samples` are the channel's feature rows observed at the same tick; they
+        are evaluated before the alerts so a drift alarm can withhold that
+        tick's output. A sample below the policy's minimum row count is not an
+        alarm (a two-pair demo cannot estimate PSI).
+        """
+        for channel, frame in samples or []:
+            self.observe(channel, frame)
         fresh = self.session.take_fresh(self._valid(alerts))
         shown = self._persist(fresh)
         self.session.extend_alerts(shown)
         return shown
 
+    def observe(self, channel: str, frame: Any) -> DriftReading | None:
+        """Evaluate one channel frame, never letting a bad frame crash the wall."""
+        if self.drift_monitor is None:
+            return None
+        try:
+            return self.drift_monitor.observe(channel, frame)
+        except (KeyError, TypeError, ValueError, FloatingPointError) as e:
+            self.drift_error = f"drift evaluation failed for {channel}: {e}"
+            return None
+
     def _valid(self, alerts: list[Alert]) -> list[Alert]:
-        """Drop schema-rejects, then apply calibration, BEFORE dedup counters.
+        """Drop schema-rejects, apply drift then calibration, BEFORE dedup.
 
         Raw validation comes first so a malformed detector score cannot be
-        clamped into validity by the calibration map. Filtering ahead of
+        clamped into validity by either policy. A latched channel is withheld
+        before calibration, so it never looks like a normal abstention.
+        Filtering ahead of
         `take_fresh` is what keeps the three views of the same fact in
         agreement: the counters, the feed and the chain all see one population.
         Rejected alerts appear nowhere except `rejected`; abstained alerts
@@ -152,6 +203,14 @@ class LiveEvidenceStore:
             return alerts
         candidates = [a for a in alerts if not validate_alert(a)]
         self.rejected += len(alerts) - len(candidates)
+        if self.drift_monitor is not None:
+            kept = []
+            for a in candidates:
+                if self.drift_monitor.alarmed(a.detector):
+                    self.drift_abstained += 1
+                else:
+                    kept.append(a)
+            candidates = kept
         if self.calibration is not None:
             report = self.calibration.apply(candidates)
             self.abstained += report.abstained
@@ -211,7 +270,15 @@ class LiveEvidenceStore:
                 "calibration": (self.calibration.status if self.calibration
                                 else {"available": False,
                                       "error": self.calibration_error}),
+                "drift": self.drift_status(),
+                "drift_abstained": self.drift_abstained,
                 "error": self.error}
+
+    def drift_status(self) -> dict[str, Any]:
+        """Drift monitor state for the wall; unavailable is explicit, not silent."""
+        if self.drift_monitor is None:
+            return {"available": False, "error": self.drift_error}
+        return self.drift_monitor.status()
 
     def chain(self) -> dict[str, Any]:
         """Everything /api/chain and the Metrics tab need, honestly."""
@@ -219,7 +286,9 @@ class LiveEvidenceStore:
             return {"available": False, "degraded": True,
                     "error": self.error, "links": 0, "head": None,
                     "inserted": self._inserted, "persisted": False,
-                    "rejected": self.rejected, "abstained": self.abstained}
+                    "rejected": self.rejected, "abstained": self.abstained,
+                    "drift": self.drift_status(),
+                    "drift_abstained": self.drift_abstained}
         head = self._store.chain_head()
         return {
             "available": head is not None,
@@ -231,6 +300,8 @@ class LiveEvidenceStore:
             "inserted": self._inserted,
             "rejected": self.rejected,
             "abstained": self.abstained,
+            "drift": self.drift_status(),
+            "drift_abstained": self.drift_abstained,
             "persisted": True,
             # False = the chain is only self-consistent: no append-only ledger
             # exists to prove the db was not rewritten or truncated.

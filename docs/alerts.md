@@ -24,6 +24,11 @@ consumes. `to_dict()` produces JSON-safe plain types:
 | `attack_technique`, `attack_tactic`, `att&ck_techniques[]` | MITRE ATT&CK mapping (list form for exports) |
 | `window_start/end`, `window_seconds`, `key`, `label` | window bounds, aggregated entity, ground truth when known (eval only) |
 
+A channel can also abstain before calibration. If its live feature frame trips the
+pinned drift policy, the alert is withheld and counted in `drift_abstained`; it
+never receives a calibrated confidence. The store evidence and chain status carry
+the per-channel reading. Rules are never gated. See [drift.md](drift.md).
+
 `validate_alert()` enforces the contract (timestamp, known class, confidence
 ∈ [0,1], evidence present, severity ∈ ladder, alert_id is a UUID, ports in
 range); `alert_from_dict()` rebuilds alerts from any stored/exported dict -

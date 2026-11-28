@@ -5,6 +5,21 @@ All notable changes to DiodeWatch are documented here.
 ## [Unreleased]
 
 ### Added
+- Per-channel drift abstention: `src/alerts/drift.py` pins quantile PSI
+  references for the flow-context, beacon and DGA channels and latches a channel
+  whose live frame exceeds its threshold. `LiveEvidenceStore` evaluates samples
+  before the tick's alerts, so a latched channel's alerts never reach calibration;
+  `ml_engine` applies the same gate before scoring. The latch is sticky within a
+  process and clears only on an explicit reset. Rules and identity TLS are not
+  gated. Thresholds are empirical: the flow null maximum is 2.808149, giving 3.0,
+  and all eight held-out CIC days stay under it (max 2.815199) while an injected
+  shift reaches 13.221836.
+  Beacon null 0.535586 gives 1.0, and the excluded scenario-52 holdout reaches
+  1.117500; DGA null 0.000423 gives 0.5, with family fold 1 at 1.885670 and
+  Umbrella at 1.257144. The canned pack has 2 beacon pairs and 46 DGA domains,
+  below `min_samples=500`, so it abstains from drift judgment instead of
+  suppressing its alerts. Artifact, measured readings and limits:
+  `docs/drift.md` and `docs/evaluation/runs/drift.json`.
 - Per-channel calibration and conformal abstention: `src/alerts/calibration.py`
   fits an isotonic score-to-frequency map and a split-conformal benign sample for
   each ML channel and class. `LiveEvidenceStore` and `ml_engine` apply the policy

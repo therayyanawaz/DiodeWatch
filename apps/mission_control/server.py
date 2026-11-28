@@ -273,11 +273,15 @@ class ReplaySession:
         """
         if ml_replay is None:
             return []
-        due = (ml_replay.drain_all() if capture_end is None
-               else ml_replay.due(capture_end))
+        if capture_end is None:
+            due = ml_replay.drain_all()
+            samples = ml_replay.drain_samples()
+        else:
+            due = ml_replay.due(capture_end)
+            samples = ml_replay.due_samples(capture_end)
         # Return what the store accepted, not what the channel emitted: an alert
         # the chain refused must not reach the wall either.
-        return store.absorb_alerts(due) if due else []
+        return store.absorb_alerts(due, samples) if (due or samples) else []
 
     async def _loop(self, gen, epoch: int) -> None:
         """Advance one window per tick (pandas work in a thread), broadcast.

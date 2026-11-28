@@ -110,7 +110,9 @@ Measured, not promised, every number traces to `results/` or `docs/benchmarks.md
 
 **What we deliberately don't claim:** the ML flow-context channel reports
 recall 0.0 on the corpora it wasn't trained for, and publishes PSI drift as
-the reason, it fails closed rather than guessing under distribution shift.
+the reason, it fails closed rather than guessing under distribution shift. On
+the live wall, that PSI now has a consequence: a channel that trips its pinned
+drift threshold abstains until the latch is reset ([drift.md](docs/drift.md)).
 The full honesty ledger (including not-evaluable cells and a disclosed
 leave-one-day-out threshold gap) is in [`docs/evaluation/transfer.md`](docs/evaluation/transfer.md).
 

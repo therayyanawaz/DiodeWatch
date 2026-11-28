@@ -1,0 +1,243 @@
+{
+  "generated_utc": "2026-11-28T16:05:00Z",
+  "threshold": 3.0,
+  "threshold_rule": "next 0.5 step above the maximum null PSI; each channel provenance records the null split",
+  "min_samples": 500,
+  "bins": 10,
+  "artifact_bytes": 14218,
+  "artifact": "docs/evaluation/models/drift.json",
+  "flowctx": {
+    "reference_n": 160000,
+    "features": [
+      "duration_s",
+      "fwd_pkts",
+      "bwd_pkts",
+      "fwd_bytes",
+      "bwd_bytes",
+      "flow_bytes_per_s",
+      "flow_pkts_per_s",
+      "wdst_flows_per_sec",
+      "wdst_syn_share",
+      "wsrc_n_dports"
+    ],
+    "null_max": 2.808149333794213,
+    "channel_threshold": 3.0,
+    "eval": {
+      "Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv": {
+        "channel": "ml.flowctx",
+        "n": 22624,
+        "evaluated": true,
+        "threshold": 3.0,
+        "max_psi": 1.36989,
+        "max_feature": "wdst_flows_per_sec",
+        "alarm": false,
+        "reason": "max PSI 1.370 on wdst_flows_per_sec (threshold 3.000)"
+      },
+      "Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv": {
+        "channel": "ml.flowctx",
+        "n": 28618,
+        "evaluated": true,
+        "threshold": 3.0,
+        "max_psi": 1.126009,
+        "max_feature": "wsrc_n_dports",
+        "alarm": false,
+        "reason": "max PSI 1.126 on wsrc_n_dports (threshold 3.000)"
+      },
+      "Friday-WorkingHours-Morning.pcap_ISCX.csv": {
+        "channel": "ml.flowctx",
+        "n": 19059,
+        "evaluated": true,
+        "threshold": 3.0,
+        "max_psi": 2.365049,
+        "max_feature": "wdst_flows_per_sec",
+        "alarm": false,
+        "reason": "max PSI 2.365 on wdst_flows_per_sec (threshold 3.000)"
+      },
+      "Monday-WorkingHours.pcap_ISCX.csv": {
+        "channel": "ml.flowctx",
+        "n": 52716,
+        "evaluated": true,
+        "threshold": 3.0,
+        "max_psi": 2.815199,
+        "max_feature": "wdst_flows_per_sec",
+        "alarm": false,
+        "reason": "max PSI 2.815 on wdst_flows_per_sec (threshold 3.000)"
+      },
+      "Thursday-WorkingHours-Afternoon-Infilteration.pcap_ISCX.csv": {
+        "channel": "ml.flowctx",
+        "n": 28831,
+        "evaluated": true,
+        "threshold": 3.0,
+        "max_psi": 1.292601,
+        "max_feature": "wdst_flows_per_sec",
+        "alarm": false,
+        "reason": "max PSI 1.293 on wdst_flows_per_sec (threshold 3.000)"
+      },
+      "Thursday-WorkingHours-Morning-WebAttacks.pcap_ISCX.csv": {
+        "channel": "ml.flowctx",
+        "n": 16970,
+        "evaluated": true,
+        "threshold": 3.0,
+        "max_psi": 2.380953,
+        "max_feature": "wdst_flows_per_sec",
+        "alarm": false,
+        "reason": "max PSI 2.381 on wdst_flows_per_sec (threshold 3.000)"
+      },
+      "Tuesday-WorkingHours.pcap_ISCX.csv": {
+        "channel": "ml.flowctx",
+        "n": 44536,
+        "evaluated": true,
+        "threshold": 3.0,
+        "max_psi": 2.365175,
+        "max_feature": "wdst_flows_per_sec",
+        "alarm": false,
+        "reason": "max PSI 2.365 on wdst_flows_per_sec (threshold 3.000)"
+      },
+      "Wednesday-workingHours.pcap_ISCX.csv": {
+        "channel": "ml.flowctx",
+        "n": 69349,
+        "evaluated": true,
+        "threshold": 3.0,
+        "max_psi": 1.341533,
+        "max_feature": "wsrc_n_dports",
+        "alarm": false,
+        "reason": "max PSI 1.342 on wsrc_n_dports (threshold 3.000)"
+      }
+    },
+    "stress_shifted_wednesday": {
+      "channel": "ml.flowctx",
+      "n": 69349,
+      "evaluated": true,
+      "threshold": 3.0,
+      "max_psi": 13.221836,
+      "max_feature": "fwd_pkts",
+      "alarm": true,
+      "reason": "max PSI 13.222 on fwd_pkts (threshold 3.000)"
+    }
+  },
+  "beacon": {
+    "reference_n": 50000,
+    "features": [
+      "n_flows",
+      "dt_cv",
+      "dt_scores",
+      "dt_jitter_share",
+      "fwd_bytes_mean",
+      "byte_std"
+    ],
+    "null_max": 0.53558639720155,
+    "channel_threshold": 1.0,
+    "holdout": "52",
+    "eval": {
+      "42": {
+        "channel": "ml.beacon",
+        "n": 45142,
+        "evaluated": true,
+        "threshold": 1.0,
+        "max_psi": 0.052395,
+        "max_feature": "dt_cv",
+        "alarm": false,
+        "reason": "max PSI 0.052 on dt_cv (threshold 1.000)"
+      },
+      "43": {
+        "channel": "ml.beacon",
+        "n": 18690,
+        "evaluated": true,
+        "threshold": 1.0,
+        "max_psi": 0.161405,
+        "max_feature": "dt_cv",
+        "alarm": false,
+        "reason": "max PSI 0.161 on dt_cv (threshold 1.000)"
+      },
+      "51": {
+        "channel": "ml.beacon",
+        "n": 13138,
+        "evaluated": true,
+        "threshold": 1.0,
+        "max_psi": 0.202016,
+        "max_feature": "fwd_bytes_mean",
+        "alarm": false,
+        "reason": "max PSI 0.202 on fwd_bytes_mean (threshold 1.000)"
+      },
+      "52": {
+        "channel": "ml.beacon",
+        "n": 797,
+        "evaluated": true,
+        "threshold": 1.0,
+        "max_psi": 1.1175,
+        "max_feature": "dt_scores",
+        "alarm": true,
+        "reason": "max PSI 1.118 on dt_scores (threshold 1.000)"
+      },
+      "53": {
+        "channel": "ml.beacon",
+        "n": 2621,
+        "evaluated": true,
+        "threshold": 1.0,
+        "max_psi": 0.507488,
+        "max_feature": "dt_cv",
+        "alarm": false,
+        "reason": "max PSI 0.507 on dt_cv (threshold 1.000)"
+      }
+    },
+    "pack": {
+      "channel": "ml.beacon",
+      "n": 2,
+      "evaluated": false,
+      "threshold": 1.0,
+      "max_psi": null,
+      "max_feature": null,
+      "alarm": false,
+      "reason": "2 rows, need 500 for a PSI reading"
+    },
+    "pack_candidates": 2
+  },
+  "dga": {
+    "reference_n": 50000,
+    "features": [
+      "len",
+      "entropy",
+      "digit_ratio",
+      "vowel_ratio",
+      "unique_ratio",
+      "consonant_run6",
+      "sld_len",
+      "sld_entropy",
+      "sld_digit_ratio",
+      "sld_consonant_run4"
+    ],
+    "null_max": 0.00042255240340965185,
+    "channel_threshold": 0.5,
+    "fold1": {
+      "channel": "ml.dga",
+      "n": 253850,
+      "evaluated": true,
+      "threshold": 0.5,
+      "max_psi": 1.88567,
+      "max_feature": "sld_len",
+      "alarm": true,
+      "reason": "max PSI 1.886 on sld_len (threshold 0.500)"
+    },
+    "umbrella": {
+      "channel": "ml.dga",
+      "n": 50000,
+      "evaluated": true,
+      "threshold": 0.5,
+      "max_psi": 1.257144,
+      "max_feature": "entropy",
+      "alarm": true,
+      "reason": "max PSI 1.257 on entropy (threshold 0.500)"
+    },
+    "pack": {
+      "channel": "ml.dga",
+      "n": 46,
+      "evaluated": false,
+      "threshold": 0.5,
+      "max_psi": null,
+      "max_feature": null,
+      "alarm": false,
+      "reason": "46 rows, need 500 for a PSI reading"
+    },
+    "pack_domains": 46
+  }
+}

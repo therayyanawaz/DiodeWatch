@@ -160,10 +160,15 @@ class FlowContextModel:
         return cls(**blob)
 
     # -------------------------------------------------------------- inference
-    def _ctx_matrix(self, flows: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray]:
+    def context_matrix(self, flows: pd.DataFrame
+                       ) -> tuple[pd.DataFrame, np.ndarray]:
+        """The exact context frame and design matrix the detectors score."""
         ctx = add_window_context(flows)
         X, _ = _matrix(ctx, self.medians)
         return ctx, X
+
+    def _ctx_matrix(self, flows: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray]:
+        return self.context_matrix(flows)
 
     def threat_proba(self, X: np.ndarray) -> dict[str, np.ndarray]:
         """Per-class positive-class probabilities."""
@@ -172,7 +177,11 @@ class FlowContextModel:
     def predict_proba(self, flows: pd.DataFrame) -> np.ndarray:
         """(n, len(CLASSES)) matrix: threat columns hold their binary
         probability, benign column = 1 - max threat p, excluded classes 0."""
-        _, X = self._ctx_matrix(flows)
+        _, X = self.context_matrix(flows)
+        return self.predict_proba_matrix(X)
+
+    def predict_proba_matrix(self, X: np.ndarray) -> np.ndarray:
+        """predict_proba for a design matrix already built by context_matrix."""
         tp = self.threat_proba(X)
         out = np.zeros((len(X), len(CLASSES)), dtype=np.float64)
         for c, p in tp.items():
@@ -194,7 +203,11 @@ class FlowContextModel:
         WITHOUT a threshold and do not alert here (their models still back
         predict_proba/threat_proba for ranking and analysis).
         """
-        ctx, X = self._ctx_matrix(flows)
+        ctx, X = self.context_matrix(flows)
+        return self.score_matrix(ctx, X)
+
+    def score_matrix(self, ctx: pd.DataFrame, X: np.ndarray) -> list[Alert]:
+        """score() for a context frame and design matrix already computed."""
         alerts: list[Alert] = []
         for cls, p in self.threat_proba(X).items():
             thr = self.thresholds.get(cls)

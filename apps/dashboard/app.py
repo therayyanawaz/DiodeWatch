@@ -105,9 +105,14 @@ def _absorb_ml_due(capture_end: float | None) -> None:
     ml = st.session_state.get("ml_replay")
     if ml is None:
         return
-    due = ml.drain_all() if capture_end is None else ml.due(capture_end)
-    if due:
-        st.session_state.store.absorb_alerts(due)
+    if capture_end is None:
+        due = ml.drain_all()
+        samples = ml.drain_samples()
+    else:
+        due = ml.due(capture_end)
+        samples = ml.due_samples(capture_end)
+    if due or samples:
+        st.session_state.store.absorb_alerts(due, samples)
 
 
 def _advance(pcap: Path | None, window_s: int, n_windows: int) -> None:

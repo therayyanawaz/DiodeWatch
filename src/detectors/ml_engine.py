@@ -26,7 +26,10 @@ import json
 import sys
 from pathlib import Path
 
+import numpy as np
+
 from src.alerts.calibration import CalibrationPolicy
+from src.alerts.drift import DriftMonitor, DriftPolicy
 from src.alerts.schema import Alert, validate_alert
 
 from .ml import beacon as beacon_mod
@@ -77,6 +80,10 @@ def main(argv: list[str] | None = None) -> int:
                     help="calibration artifact (default: <model-dir>/calibration.json)")
     ap.add_argument("--no-calibration", action="store_true",
                     help="write raw detector scores, ignoring the calibration artifact")
+    ap.add_argument("--drift", default=None,
+                    help="drift artifact (default: <model-dir>/drift.json)")
+    ap.add_argument("--no-drift", action="store_true",
+                    help="do not load the drift artifact; never gate on feature drift")
     args = ap.parse_args(argv)
 
     df = load_features(args.input)
@@ -85,6 +92,27 @@ def main(argv: list[str] | None = None) -> int:
     print(f"[ml_engine] scoring {len(df):,} flows from {args.input}", file=sys.stderr)
 
     alerts: list[Alert] = []
+    drift: DriftMonitor | None = None
+    if not args.no_drift:
+        drift_path = (Path(args.drift) if args.drift
+                      else Path(args.model_dir) / "drift.json")
+        if args.drift and not drift_path.exists():
+            print(f"[ml_engine] drift: explicit artifact not found: {drift_path}",
+                  file=sys.stderr)
+            return 2
+        try:
+            drift = DriftMonitor(DriftPolicy.load(drift_path))
+        except FileNotFoundError:
+            print(f"[ml_engine] drift: no artifact at {drift_path}; "
+                  "channels are not drift-gated", file=sys.stderr)
+        except (OSError, ValueError, TypeError, KeyError) as e:
+            print(f"[ml_engine] drift: unreadable artifact {drift_path}: {e}; "
+                  "channels are not drift-gated", file=sys.stderr)
+        else:
+            print(f"[ml_engine] drift: {len(drift.policy.channels)} channel "
+                  f"baselines, min {drift.policy.min_samples} rows",
+                  file=sys.stderr)
+    gated: list[str] = []
 
     # ---- supervised (core path) ------------------------------------------
     # Primary: the flow+window-context model (scripts/checks/check_ml.py train-windows).
@@ -97,8 +125,21 @@ def main(argv: list[str] | None = None) -> int:
         # No --threshold here: flowctx alerts on its tuned per-class values,
         # which is what the precision gate validated. --threshold applies to
         # the fallback supervised model below.
-        alerts.extend(flowctx.score(df))
-        proba = flowctx.predict_proba(df.head(min(len(df), 50_000)))
+        ctx, X = flowctx.context_matrix(df)
+        if drift is not None:
+            reading = drift.observe("ml.flowctx", ctx)
+            if reading.evaluated:
+                print(f"[ml_engine] drift ml.flowctx: {reading.reason}",
+                      file=sys.stderr)
+            if reading.alarm:
+                gated.append("ml.flowctx")
+                print("[ml_engine] drift ml.flowctx: channel gated, no alerts "
+                      "will be emitted", file=sys.stderr)
+        if "ml.flowctx" not in gated:
+            alerts.extend(flowctx.score_matrix(ctx, X))
+            proba = flowctx.predict_proba_matrix(X[:50_000])
+        else:
+            proba = np.zeros((min(len(X), 50_000), len(flowctx.classes)))
         used = "ml.flowctx (flow + window context)"
         classes = flowctx.classes
     except (FileNotFoundError, ValueError):
@@ -119,6 +160,9 @@ def main(argv: list[str] | None = None) -> int:
         proba = sup.predict_proba(df.head(min(len(df), 50_000)))
         used = "ml.supervised (flow-level reference)"
         classes = sup.classes
+        if drift is not None:
+            print("[ml_engine] drift: ml.supervised has no pinned baseline; "
+                  "the fallback model is not drift-gated", file=sys.stderr)
 
     pmax = proba.max(axis=1)
     hit = pmax >= args.threshold
@@ -133,8 +177,23 @@ def main(argv: list[str] | None = None) -> int:
         flows = beacon_mod.load_ctu(args.beacon_flows)
         pairs = beacon_mod.pair_series(flows)
         bm = beacon_mod.BeaconModel.load(model_dir)
-        scores = bm.predict_score(pairs)
-        got = beacon_mod.emit_alerts(pairs, scores, threshold=bm.threshold)
+        if drift is not None:
+            candidates = pairs[beacon_mod.beacon_candidates(pairs)]
+            reading = drift.observe("ml.beacon", candidates)
+            if reading.evaluated:
+                print(f"[ml_engine] drift ml.beacon: {reading.reason}",
+                      file=sys.stderr)
+            if reading.alarm:
+                gated.append("ml.beacon")
+                got = []
+                print("[ml_engine] drift ml.beacon: channel gated, no alerts "
+                      "will be emitted", file=sys.stderr)
+            else:
+                scores = bm.predict_score(pairs)
+                got = beacon_mod.emit_alerts(pairs, scores, threshold=bm.threshold)
+        else:
+            scores = bm.predict_score(pairs)
+            got = beacon_mod.emit_alerts(pairs, scores, threshold=bm.threshold)
         alerts.extend(got)
         print(f"[ml_engine] beacon: {len(got)} pair alerts "
               f"(model={'lgbm' if bm.booster is not None else 'fallback rule'}, "
@@ -148,8 +207,23 @@ def main(argv: list[str] | None = None) -> int:
             print("[ml_engine] dga: no model artifact, falling back to the "
                   "transparent lexical rule", file=sys.stderr)
             dm = dga_mod.DgaModel.fallback()
-        s = dm.score_domains(domains)
-        got = dm.emit_alerts(domains, s, threshold=dm.threshold)
+        feats = dga_mod.domain_features(domains, bigrams=dm.bigrams)
+        if drift is not None:
+            reading = drift.observe("ml.dga", feats)
+            if reading.evaluated:
+                print(f"[ml_engine] drift ml.dga: {reading.reason}",
+                      file=sys.stderr)
+            if reading.alarm:
+                gated.append("ml.dga")
+                got = []
+                print("[ml_engine] drift ml.dga: channel gated, no alerts "
+                      "will be emitted", file=sys.stderr)
+            else:
+                s = dm.score_features(feats)
+                got = dm.emit_alerts(domains, s, threshold=dm.threshold)
+        else:
+            s = dm.score_features(feats)
+            got = dm.emit_alerts(domains, s, threshold=dm.threshold)
         alerts.extend(got)
         print(f"[ml_engine] dga: {len(got)} domain alerts (thr={dm.threshold:.3f})",
               file=sys.stderr)
@@ -187,6 +261,9 @@ def main(argv: list[str] | None = None) -> int:
                   f"{report.abstained:,} abstained -> {len(alerts):,} kept",
                   file=sys.stderr)
 
+    if gated:
+        print(f"[ml_engine] drift: gated {', '.join(gated)}; their alerts were "
+              "withheld instead of calibrated", file=sys.stderr)
     bad = _write_alerts(alerts, args.out)
     print(f"[ml_engine] wrote {len(alerts):,} alerts -> {args.out}"
           + (f" ({bad} invalid)" if bad else ""), file=sys.stderr)

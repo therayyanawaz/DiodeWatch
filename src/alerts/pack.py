@@ -193,6 +193,95 @@ def ml_channel_alerts(key: str) -> list[Alert]:
     return []
 
 
+@dataclass(frozen=True)
+class DriftSample:
+    """One channel's feature rows at a capture-time clock."""
+
+    clock: float
+    channel: str
+    values: list[dict[str, float]]
+
+
+def ml_channel_samples(key: str) -> list[DriftSample]:
+    """Feature rows for the same sidecars the ML channel alerts on.
+
+    The live wall feeds these to its drift monitor before absorbing the tick's
+    alerts. A scenario with fewer rows than the policy minimum (2 beacon pairs,
+    46 domains) reports "insufficient" rather than inventing a PSI alarm.
+    """
+    import numpy as np
+    import pandas as pd
+
+    if key == "02_c2_beacon":
+        from src.detectors.ml import beacon as beacon_mod
+
+        csv_path = PACK_DIR / "02_c2_beacon_netflow.csv"
+        if not csv_path.exists():
+            return []
+        pairs = beacon_mod.pair_series(beacon_mod.load_ctu(csv_path))
+        candidates = pairs[beacon_mod.beacon_candidates(pairs)]
+        rows: list[tuple[float, dict[str, float]]] = []
+        for _, row in candidates.iterrows():
+            values: dict[str, float] = {}
+            for name in beacon_mod.BEACON_FEATURES:
+                try:
+                    v = float(row.get(name))
+                except (TypeError, ValueError):
+                    continue
+                if np.isfinite(v):
+                    values[name] = v
+            try:
+                clock = float(row.get("ts_first"))
+            except (TypeError, ValueError):
+                clock = 0.0
+            rows.append((clock, values))
+        return _one_frame(rows, "ml.beacon")
+
+    if key == "03_dga_tunnel":
+        from src.detectors.ml.dga import DGA_FEATURES, DgaModel, domain_features
+
+        txt = PACK_DIR / "03_dga_domains.txt"
+        if not txt.exists():
+            return []
+        domains = pd.Series(
+            [ln.strip() for ln in txt.read_text(encoding="utf-8").splitlines()
+             if ln.strip()], dtype="string")
+        try:
+            model = DgaModel.load(REPO / "models")
+        except FileNotFoundError:
+            model = DgaModel.fallback()
+        feats = domain_features(domains, bigrams=model.bigrams)
+        qts = _dns_query_times()
+        rows: list[tuple[float, dict[str, float]]] = []
+        for i, domain in enumerate(domains):
+            ts = qts.get(str(domain).strip(".").lower())
+            try:
+                clock = pd_ts_to_epoch(ts) if ts else 0.0
+            except (TypeError, ValueError):
+                clock = 0.0
+            values = {}
+            for name in DGA_FEATURES:
+                try:
+                    v = float(feats.iloc[i][name])
+                except (TypeError, ValueError):
+                    continue
+                if np.isfinite(v):
+                    values[name] = v
+            rows.append((clock, values))
+        return _one_frame(rows, "ml.dga")
+
+    return []
+
+
+def _one_frame(rows: list[tuple[float, dict[str, float]]],
+               channel: str) -> list[DriftSample]:
+    """The sidecar is one frame, released at its first capture timestamp."""
+    if not rows:
+        return []
+    rows.sort(key=lambda item: item[0])
+    return [DriftSample(rows[0][0], channel, [values for _, values in rows])]
+
+
 def _dns_query_times() -> dict[str, str]:
     """{domain: iso-ts} for the DNS queries in 03_dga_tunnel.pcap (pkt layer)."""
     from scapy.all import DNS, PcapReader
@@ -241,10 +330,13 @@ class MlChannelReplay:
 
     alerts: list[Alert] = field(default_factory=list)
     cursor: int = 0
+    samples: list[DriftSample] = field(default_factory=list)
+    sample_cursor: int = 0
 
     @classmethod
     def for_scenario(cls, key: str) -> MlChannelReplay:
-        return cls(alerts=ml_channel_alerts(key))
+        return cls(alerts=ml_channel_alerts(key),
+                   samples=ml_channel_samples(key))
 
     @property
     def total(self) -> int:
@@ -271,6 +363,25 @@ class MlChannelReplay:
         """Release everything remaining (end of replay / timestampless alerts)."""
         out = self.alerts[self.cursor:]
         self.cursor = len(self.alerts)
+        return out
+
+    def due_samples(self, clock_epoch: float
+                    ) -> list[tuple[str, list[dict[str, float]]]]:
+        """Feature rows due at this clock, grouped per channel and tick."""
+        out: list[tuple[str, list[dict[str, float]]]] = []
+        while self.sample_cursor < len(self.samples):
+            sample = self.samples[self.sample_cursor]
+            if sample.clock > clock_epoch:
+                break
+            out.append((sample.channel, sample.values))
+            self.sample_cursor += 1
+        return out
+
+    def drain_samples(self) -> list[tuple[str, list[dict[str, float]]]]:
+        """Release all remaining sample groups (end of replay)."""
+        out = [(sample.channel, sample.values)
+               for sample in self.samples[self.sample_cursor:]]
+        self.sample_cursor = len(self.samples)
         return out
 
 
