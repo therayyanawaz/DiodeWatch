@@ -26,6 +26,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from .calibration import DEFAULT_PATH, CalibrationPolicy
 from .schema import Alert, validate_alert
 from .store import AlertStore, ledger_path, verify_chain
 from .watch import SessionStore, WindowResult
@@ -43,13 +44,41 @@ class LiveEvidenceStore:
     """Ring-buffer session + persistent chain-writing sidecar."""
 
     def __init__(self, max_alerts: int = 5_000,
-                 path: str | Path | None = None) -> None:
+                 path: str | Path | None = None,
+                 calibration: CalibrationPolicy | str | None = "auto",
+                 ) -> None:
         self.session = SessionStore(max_alerts=max_alerts)
         self.path = Path(path) if path is not None else db_path()
         self.error: str | None = None       # degrade reason (None = healthy)
         self.rejected = 0     # alerts the schema refused, never shown, never lost
+        self.abstained = 0    # alerts a calibration policy withheld on purpose
+        self.calibration: CalibrationPolicy | None = None
+        self.calibration_error: str | None = None
         self._store: AlertStore | None = None
+        self._load_calibration(calibration)
         self._open()
+
+    def _load_calibration(self, spec: CalibrationPolicy | str | None) -> None:
+        """Load the shipped policy without making persistence depend on it."""
+        if spec is None:
+            return
+        if isinstance(spec, CalibrationPolicy):
+            self.calibration = spec
+            return
+        env = os.environ.get("DIODE_CALIBRATION", "").strip()
+        if spec == "auto":
+            if env.lower() in {"off", "0", "false", "no"}:
+                return
+            path = Path(env) if env else DEFAULT_PATH
+        else:
+            path = Path(spec)
+        if not path.exists():
+            self.calibration_error = f"calibration artifact not found: {path}"
+            return
+        try:
+            self.calibration = CalibrationPolicy.load(path)
+        except (OSError, ValueError, TypeError, KeyError) as e:
+            self.calibration_error = f"calibration artifact unreadable: {e}"
 
     # ------------------------------------------------------------------ setup
     def _open(self) -> None:
@@ -110,16 +139,25 @@ class LiveEvidenceStore:
         return shown
 
     def _valid(self, alerts: list[Alert]) -> list[Alert]:
-        """Drop schema-rejects BEFORE the dedup counters, and count them.
+        """Drop schema-rejects, then apply calibration, BEFORE dedup counters.
 
-        Filtering ahead of `take_fresh` is what keeps the three views of the
-        same fact in agreement: the counters, the feed and the chain all see
-        one population. Rejected alerts appear nowhere except `rejected`.
+        Raw validation comes first so a malformed detector score cannot be
+        clamped into validity by the calibration map. Filtering ahead of
+        `take_fresh` is what keeps the three views of the same fact in
+        agreement: the counters, the feed and the chain all see one population.
+        Rejected alerts appear nowhere except `rejected`; abstained alerts
+        appear only in `abstained` and carry no evidence.
         """
         if not alerts:
             return alerts
-        valid = [a for a in alerts if not validate_alert(a)]
-        self.rejected += len(alerts) - len(valid)
+        candidates = [a for a in alerts if not validate_alert(a)]
+        self.rejected += len(alerts) - len(candidates)
+        if self.calibration is not None:
+            report = self.calibration.apply(candidates)
+            self.abstained += report.abstained
+            candidates = report.accepted
+        valid = [a for a in candidates if not validate_alert(a)]
+        self.rejected += len(candidates) - len(valid)
         return valid
 
     def _persist(self, alerts: list[Alert]) -> list[Alert]:
@@ -165,8 +203,14 @@ class LiveEvidenceStore:
         `persisted` false means the feed is backed by the ring buffer only, so
         nothing the analyst sees is provably in the chain; `rejected` counts the
         alerts the schema refused, which are shown nowhere but are not lost.
+        `abstained` counts alerts a calibration policy withheld deliberately, so
+        it never looks like a transport or schema loss.
         """
         return {"persisted": not self.degraded, "rejected": self.rejected,
+                "abstained": self.abstained,
+                "calibration": (self.calibration.status if self.calibration
+                                else {"available": False,
+                                      "error": self.calibration_error}),
                 "error": self.error}
 
     def chain(self) -> dict[str, Any]:
@@ -175,7 +219,7 @@ class LiveEvidenceStore:
             return {"available": False, "degraded": True,
                     "error": self.error, "links": 0, "head": None,
                     "inserted": self._inserted, "persisted": False,
-                    "rejected": self.rejected}
+                    "rejected": self.rejected, "abstained": self.abstained}
         head = self._store.chain_head()
         return {
             "available": head is not None,
@@ -186,6 +230,7 @@ class LiveEvidenceStore:
             "head": head,
             "inserted": self._inserted,
             "rejected": self.rejected,
+            "abstained": self.abstained,
             "persisted": True,
             # False = the chain is only self-consistent: no append-only ledger
             # exists to prove the db was not rewritten or truncated.

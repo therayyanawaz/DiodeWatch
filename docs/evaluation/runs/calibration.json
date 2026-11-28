@@ -1,0 +1,219 @@
+{
+  "schema": 1,
+  "generated_utc": "2026-11-28T08:50:53Z",
+  "flowctx": {
+    "before": {
+      "alerts": 54192,
+      "precision": 0.999945
+    },
+    "after": {
+      "alerts": 54192,
+      "precision": 0.999945
+    },
+    "protocol": "random 50/50 split of the protocol-A held-out 20% flows",
+    "exchangeable": true
+  },
+  "flowctx_by_class": {
+    "ddos": {
+      "threshold": 0.9999027992847203,
+      "alpha": 0.01,
+      "min_confidence": 0.986977606,
+      "target_precision": 0.99,
+      "before": {
+        "alerts": 37971,
+        "tp": 37970,
+        "fp": 1,
+        "precision": 0.999974,
+        "recall": 0.999974
+      },
+      "after": {
+        "alerts": 37971,
+        "tp": 37970,
+        "fp": 1,
+        "precision": 0.999974,
+        "recall": 0.999974
+      },
+      "brier_before": 7.0503e-06,
+      "brier_after": 3.6757e-06,
+      "ece_before": 7.0273e-06,
+      "ece_after": 6.7818e-06,
+      "conformal_n": 5000
+    },
+    "scan": {
+      "threshold": 0.9999996486421512,
+      "alpha": 0.01,
+      "min_confidence": 0.9999999113,
+      "target_precision": 0.99,
+      "before": {
+        "alerts": 15934,
+        "tp": 15934,
+        "fp": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "after": {
+        "alerts": 15934,
+        "tp": 15934,
+        "fp": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "brier_before": 0.0,
+      "brier_after": 0.0,
+      "ece_before": 1.65e-08,
+      "ece_after": 1.2e-09,
+      "conformal_n": 5000
+    },
+    "bruteforce": {
+      "threshold": 0.999968488630534,
+      "alpha": 0.01,
+      "min_confidence": 1.0,
+      "target_precision": 0.99,
+      "before": {
+        "alerts": 0,
+        "tp": 0,
+        "fp": 0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "after": {
+        "alerts": 0,
+        "tp": 0,
+        "fp": 0,
+        "precision": 0.0,
+        "recall": 0.0
+      },
+      "brier_before": 0.0049210094,
+      "brier_after": 1.44333e-05,
+      "ece_before": 0.0049210083,
+      "ece_after": 0.0001897664,
+      "conformal_n": 5000
+    },
+    "webattack": {
+      "threshold": 0.9999999102800384,
+      "alpha": 0.01,
+      "min_confidence": 0.9955752212,
+      "target_precision": 0.99,
+      "before": {
+        "alerts": 213,
+        "tp": 211,
+        "fp": 2,
+        "precision": 0.99061,
+        "recall": 1.0
+      },
+      "after": {
+        "alerts": 213,
+        "tp": 211,
+        "fp": 2,
+        "precision": 0.99061,
+        "recall": 1.0
+      },
+      "brier_before": 7.0653e-06,
+      "brier_after": 7.0175e-06,
+      "ece_before": 7.0693e-06,
+      "ece_after": 3.7359e-06,
+      "conformal_n": 5000
+    },
+    "bot": {
+      "threshold": 0.999999999220716,
+      "alpha": 0.01,
+      "min_confidence": 0.9999999997,
+      "target_precision": 0.99,
+      "before": {
+        "alerts": 74,
+        "tp": 74,
+        "fp": 0,
+        "precision": 1.0,
+        "recall": 0.364532
+      },
+      "after": {
+        "alerts": 74,
+        "tp": 74,
+        "fp": 0,
+        "precision": 1.0,
+        "recall": 0.364532
+      },
+      "brier_before": 3.5327e-06,
+      "brier_after": 3.5327e-06,
+      "ece_before": 3.5314e-06,
+      "ece_after": 3.5322e-06,
+      "conformal_n": 5000
+    }
+  },
+  "beacon": {
+    "threshold": 0.3591,
+    "alpha": 0.01,
+    "min_confidence": 0.9858302942,
+    "target_precision": 0.9,
+    "before": {
+      "alerts": 312,
+      "tp": 94,
+      "fp": 218,
+      "precision": 0.301282,
+      "recall": 0.194617
+    },
+    "after": {
+      "alerts": 43,
+      "tp": 34,
+      "fp": 9,
+      "precision": 0.790698,
+      "recall": 0.070393
+    },
+    "brier_before": 0.0130372713,
+    "brier_after": 0.01081021,
+    "ece_before": 0.0132365033,
+    "ece_after": 0.0016216831,
+    "conformal_n": 20000,
+    "row_n": 40194,
+    "positives": 483
+  },
+  "beacon_stress": {
+    "alerts": 3,
+    "tp": 0,
+    "fp": 3,
+    "precision": 0.0,
+    "recall": 0.0,
+    "positives": 32,
+    "benign_fpr": 0.000216,
+    "protocol": "fit scenarios 42/43/53, evaluate 51/52"
+  },
+  "dga": {
+    "threshold": 0.9321,
+    "alpha": 0.01,
+    "min_confidence": 0.8861788618,
+    "target_precision": 0.95,
+    "before": {
+      "alerts": 305086,
+      "tp": 304219,
+      "fp": 867,
+      "precision": 0.997158,
+      "recall": 0.578527
+    },
+    "after": {
+      "alerts": 295694,
+      "tp": 295004,
+      "fp": 690,
+      "precision": 0.997667,
+      "recall": 0.561003
+    },
+    "brier_before": 0.1730461723,
+    "brier_after": 0.1452494744,
+    "ece_before": 0.1801555356,
+    "ece_after": 0.1468964363,
+    "conformal_n": 20000,
+    "row_n": 749296,
+    "positives": 525851
+  },
+  "dga_stress": {
+    "alerts": 11396,
+    "fp": 11396,
+    "benign_fpr": 0.011396,
+    "n": 1000000,
+    "protocol": "Umbrella top-1m, model never trained on it"
+  },
+  "tls": {
+    "status": "identity",
+    "reason": "deterministic watchlist; no probabilistic calibration"
+  },
+  "artifact_bytes": 1126177
+}

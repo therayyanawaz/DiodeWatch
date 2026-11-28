@@ -7,14 +7,20 @@ missing files that are committed under ``docs/evaluation/``.
 """
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 
 import pytest
 
+# The live store loads models/calibration.json by default in production. Tests
+# must not depend on a repo artifact: calibration tests build their own policy.
+os.environ["DIODE_CALIBRATION"] = "off"
+
 REPO = Path(__file__).resolve().parents[1]
 _RESTORE = (
     (REPO / "docs" / "evaluation" / "models", REPO / "models", "*.joblib"),
+    (REPO / "docs" / "evaluation" / "models", REPO / "models", "calibration.json"),
     (REPO / "docs" / "evaluation" / "runs", REPO / "results" / "ml", "*_metrics.json"),
 )
 

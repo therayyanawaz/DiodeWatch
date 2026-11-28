@@ -129,8 +129,9 @@ not assume it.
 
 ## Confidence (start simple)
 
-`confidence = fired_conditions / total_conditions` of the rule, unweighted,
-interpretable, and refined by calibration against labelled data. Alerts carry
+`confidence = fired_conditions / total_conditions` of the rule, unweighted and
+interpretable. It is an evidence-coverage fraction, not a probability, and rules
+deliberately bypass the ML calibration policy. Alerts carry
 `attack_technique` / `attack_tactic` (T1498 Impact,
 T1046 Discovery, T1048 Exfiltration, T1499.002 Endpoint Denial of Service).
 

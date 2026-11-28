@@ -131,7 +131,7 @@ each claim:
   eight-day CIC-IDS2017 corpus, raising PortScan recall from 11/27 to 15/27.
   The remaining 12 PortScan units are 1-29 flow fragments, too small to
   separate safely from client traffic.
-* **The suite** collects 544 tests. Three of them need corpora this repository
+* **The suite** collects 557 tests. Three of them need corpora this repository
   deliberately never commits, so they skip locally and run in
   `.github/workflows/integration.yml`, which fails if they skip there.
 
@@ -144,7 +144,7 @@ have, not a decision we have not made.
 |---|---|---|
 | Scan and slow-DoS recall on CIC-IDS2017 | slow-DoS is 33/46 after the 300 B, strong-window and held-dominant fixes; scan is 15/222 canonically, but 195 units are Patator/web attacks folded into scan and the port-sweep rule covers 15/27 PortScan units. The 13 slow misses are 5 windows below 30 flows, 6 larger windows below 15 held or 1.6 ratio, one isolated 88-flow window, and one 338.9 B window above the 300 B cap; the 12 PortScan misses are 1-29 flow fragments | **done** |
 | Packet-to-alert clock, bounded queue, backpressure at 5k/10k/50k flows/s | the 175 ms figure is window-evaluation p95, not end-to-end latency | **done** for the canonical-flow boundary: a 2 s blocking queue drops nothing, and p95 flow-ingest-to-alert is 11.81 s at 5k and 12.68 s at 10k over six 10 s windows. At the 50k target the queue saturates, the producer blocks for 53.59 s, accepted ingress falls to 23,880 flows/s, and p95 is 39.92 s. The clock starts at the canonical flow record; NIC capture and capture-to-flow export are **not** included. [`evaluation/runs/stream_backpressure.md`](evaluation/runs/stream_backpressure.md) |
-| Calibration and conformal abstention per channel | confidence is not calibrated and no alert can abstain | planned |
+| Calibration and conformal abstention per channel | confidence is not calibrated and no alert can abstain | **done** for the ML channels: an isotonic map plus a split-conformal gate per channel/class, applied in `ml_engine` and `LiveEvidenceStore`, with `min_confidence` fitted on the fit split and the whole policy evaluated on a disjoint split, and evidence recorded. On the beacon random split precision rises 0.301 → 0.791 at recall 0.070; DGA 0.99716 → 0.99767; flowctx thresholds were already tighter than `alpha=0.01`, so no flowctx alert changed. The beacon scenario holdout keeps 3 alerts and 0 true positives, the shift failure that motivates the drift item. Rules keep coverage, not probability. [`calibration.md`](calibration.md) · [`evaluation/runs/calibration.json`](evaluation/runs/calibration.json) |
 | Drift alarm that makes a channel abstain, not just a chart | PSI is published as an explanation, not acted on | planned |
 | OCSF Detection Finding export beside STIX | SOC interoperability a judge can name | planned |
 | Rootless diode proof: container `--network=none` self-test and a PowerShell elevated path, with the enforcement mode wired into both UIs | the one-way guarantee is demonstrated on Linux with root today; a reviewer on a laptop cannot reproduce it | **blocked** on Docker or administrator rights |

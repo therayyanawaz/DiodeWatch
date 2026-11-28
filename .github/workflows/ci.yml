@@ -89,6 +89,9 @@ jobs:
       - name: Claim guardrail (phrasing, metrics, scope, test counts, commands)
         run: python -m scripts.checks.check_claims
 
+      - name: Calibration artifact (monotone curves, sorted scores, policy floors)
+        run: python scripts/checks/check_calibration.py
+
       - name: Generate synthetic demo pack (offline, deterministic)
         # Both artifacts are generated, not committed: the flow table the demo
         # replays, and the capture the reference-IDS measurement runs over.
@@ -100,6 +103,7 @@ jobs:
         run: |
           mkdir -p models results/ml
           cp docs/evaluation/models/*.joblib models/
+          cp docs/evaluation/models/calibration.json models/
           cp docs/evaluation/runs/*_metrics.json results/ml/
 
       - name: Test suite (pytest)

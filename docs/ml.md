@@ -136,6 +136,20 @@ print('declared', len(FEATURES), '| active', len(a), '| model', len(MODEL_FEATUR
    artifacts; if none exist it says so and (optionally) falls back to
    non-ML channels. Training happens only via `scripts/checks/check_ml.py`.
 
+## Calibration and abstention
+
+Raw model scores are not probabilities. A shipped policy
+([calibration.md](calibration.md)) fits an isotonic map per ML channel and class,
+adds a split-conformal p-value against benign calibration scores, and abstains when
+`p > alpha` or the calibrated confidence is below the fitted floor. It keeps
+ranking, recomputes severity from the calibrated confidence, and records both gates
+in evidence. `ml_engine` and `LiveEvidenceStore` apply it before writing; rules
+keep their coverage fraction and bypass it. On the pinned split, beacon precision
+rises 0.301 to 0.791 and DGA precision 0.99716 to 0.99767, while flowctx thresholds
+are already tighter than the gate. The scenario-holdout beacon result (3 alerts, 0
+true positives) is the honest warning that a random-split guarantee does not survive
+distribution shift. Artifact: [`evaluation/models/calibration.json`](evaluation/models/calibration.json).
+
 ## Honest limitations
 
 - **The flowctx models are calibrated to a full-day aggregation horizon.**

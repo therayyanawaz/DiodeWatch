@@ -5,6 +5,19 @@ All notable changes to DiodeWatch are documented here.
 ## [Unreleased]
 
 ### Added
+- Per-channel calibration and conformal abstention: `src/alerts/calibration.py`
+  fits an isotonic score-to-frequency map and a split-conformal benign sample for
+  each ML channel and class. `LiveEvidenceStore` and `ml_engine` apply the policy
+  before persistence, so an alert abstains when `p > alpha` or the calibrated
+  confidence is below the floor; severity is recomputed, the alert id is stable,
+  and already-calibrated alerts are skipped. A pinned artifact ships at
+  `models/calibration.json` (copy under `docs/evaluation/models/`), with rules
+  deliberately excluded because their confidence is coverage, not probability.
+  On the pinned split, beacon precision rises 0.301 to 0.791 (recall 0.195 to
+  0.070), DGA 0.99716 to 0.99767, and flowctx is unchanged because its thresholds
+  were already tighter than `alpha=0.01`. The beacon scenario holdout keeps 3
+  alerts and 0 true positives, recorded as the shift limitation that motivates a
+  drift alarm. Artifact and caveats: `docs/evaluation/runs/calibration.json`.
 - Paced flow-intake clock and bounded backpressure: `src/alerts/stream.py`
   wraps the existing `replay_flows` worker with a producer that paces canonical
   records in wall-clock time and a blocking `queue.Queue` sized to two seconds

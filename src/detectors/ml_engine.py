@@ -26,6 +26,7 @@ import json
 import sys
 from pathlib import Path
 
+from src.alerts.calibration import CalibrationPolicy
 from src.alerts.schema import Alert, validate_alert
 
 from .ml import beacon as beacon_mod
@@ -72,6 +73,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--tls-ssl-log",
                     help="Zeek ssl.log or tls_metadata JSON-lines for the "
                          "JA3/JA4 detector")
+    ap.add_argument("--calibration", default=None,
+                    help="calibration artifact (default: <model-dir>/calibration.json)")
+    ap.add_argument("--no-calibration", action="store_true",
+                    help="write raw detector scores, ignoring the calibration artifact")
     args = ap.parse_args(argv)
 
     df = load_features(args.input)
@@ -159,6 +164,28 @@ def main(argv: list[str] | None = None) -> int:
               f"(watchlist={len(tm.watchlist)} hashes, "
               f"novelty={'on' if tm.iso is not None else 'unavailable'})",
               file=sys.stderr)
+
+    if not args.no_calibration:
+        cal_path = (Path(args.calibration) if args.calibration
+                    else model_dir / "calibration.json")
+        if args.calibration and not cal_path.exists():
+            print(f"[ml_engine] calibration: explicit artifact not found: "
+                  f"{cal_path}", file=sys.stderr)
+            return 2
+        try:
+            policy = CalibrationPolicy.load(cal_path)
+        except FileNotFoundError:
+            print(f"[ml_engine] calibration: no artifact at {cal_path}; "
+                  "writing raw detector scores", file=sys.stderr)
+        except (OSError, ValueError, TypeError, KeyError) as e:
+            print(f"[ml_engine] calibration: unreadable artifact {cal_path}: "
+                  f"{e}; writing raw detector scores", file=sys.stderr)
+        else:
+            report = policy.apply(alerts)
+            alerts = report.accepted
+            print(f"[ml_engine] calibration: {report.calibrated:,} scored, "
+                  f"{report.abstained:,} abstained -> {len(alerts):,} kept",
+                  file=sys.stderr)
 
     bad = _write_alerts(alerts, args.out)
     print(f"[ml_engine] wrote {len(alerts):,} alerts -> {args.out}"

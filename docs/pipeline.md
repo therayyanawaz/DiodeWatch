@@ -822,8 +822,9 @@ set yields a byte-identical bundle, which makes diffs and caches meaningful.
 The limitations are documented rather than hidden: patterns are single-item
 equality patterns with no boolean composition; an alert whose key is not observable
 gets a deliberately never-matching sentinel pattern and **no observed-data**, rather
-than a fabricated observable; and `confidence` is the detector's own score scaled to
-0-100, not a calibrated probability of intrusion.
+than a fabricated observable; and `confidence` is the stored alert confidence
+scaled to 0-100 (calibrated when the policy artifact was applied, the raw detector
+score otherwise), never a guarantee of intrusion.
 
 **The HTML incident report** is one self-contained file: no external assets, no
 JavaScript, print-ready to PDF from the browser. It renders the full trail: the

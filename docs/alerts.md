@@ -18,7 +18,7 @@ consumes. `to_dict()` produces JSON-safe plain types:
 | `flow_id`, `src_ip`, `dst_ip`, `src_port`, `dst_port`, `proto` | flow 5-tuple; best-effort, flow-level detectors (rules, ML on features) fill it, aggregate/window alerts may leave parts unset |
 | `threat_class` | `ddos` · `scan` · `exfil` · `slowdos`-family · `bot` · `beacon` · `dga` · `dns_tunnel` · `tls_anomaly` · `bruteforce` · `webattack` · `infiltration`, of these, `dns_tunnel` is a severity/ATT&CK mapping kept for a channel no detector ships yet; `slowdos` is a live rule class (`src/detectors/slowdos.py`), while the pinned ML classifier still folds it into `ddos` until its artifacts are retrained |
 | `severity` | **derived, never hand-set**: base from `SEVERITY_BY_CLASS` (exfil/webattack `critical`, most C2/DoS `high`, scan `medium`); a very confident alert (conf ≥ 0.9) escalates one notch; unknown classes stay `medium` without escalation |
-| `confidence` | 0..1 (rules: fired-conditions fraction; ML: calibrated prediction probability) |
+| `confidence` | 0..1 (rules: fired-conditions fraction, coverage not probability; ML: raw score until the calibration policy is applied, then the calibrated probability, see [calibration.md](calibration.md)) |
 | `evidence[]` | `{condition, operator, observed, threshold, description, unit}`, observed **vs** threshold, human-auditable |
 | `detector` | module id, e.g. `ddos`, `ml.flowctx`, `ml.beacon` |
 | `attack_technique`, `attack_tactic`, `att&ck_techniques[]` | MITRE ATT&CK mapping (list form for exports) |
@@ -89,7 +89,9 @@ Honest limitations: patterns are single-item equality patterns (no boolean
 composition); alerts with **no** observable (no IP/domain anywhere) fall back
 to a never-matching sentinel pattern and carry the full detail in the
 description, observed-data is omitted rather than fabricated. `confidence` is
-the detector's own score scaled to 0-100, not a calibrated probability.
+the stored alert confidence scaled to 0-100: calibrated when the policy artifact
+was applied, the detector's raw score otherwise. It is not a guarantee of
+intrusion (see [calibration.md](calibration.md)).
 `validate_bundle()` enforces the 2.1 shape before writing: ids are
 `<type>--<uuid>`, indicators carry `pattern_type`/`indicator_types` and none of
 the 2.0-era `labels`/`kill_chain_phases`, observations use `object_refs` rather

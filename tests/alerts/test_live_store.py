@@ -237,8 +237,9 @@ def test_absorb_hides_what_the_schema_rejected(tmp_path):
 
 def test_evidence_reports_whether_the_feed_is_chained(tmp_path):
     live = LiveEvidenceStore(path=tmp_path / "live.db")
-    assert live.evidence() == {"persisted": True, "rejected": 0,
-                               "error": None}
+    assert live.evidence() == {
+        "persisted": True, "rejected": 0, "abstained": 0,
+        "calibration": {"available": False, "error": None}, "error": None}
     live.absorb(_window(0, n=3))
     assert live.evidence()["persisted"] is True
     live.close()
