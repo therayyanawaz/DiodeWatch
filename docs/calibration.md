@@ -119,9 +119,12 @@ These are trade-offs, not free wins.
   valid only while the benign and attack distributions match the fit sample. The
   next item, a drift alarm that forces abstention, is motivated directly by this
   failure.
-* **The DGA Umbrella stress is at the edge.** At `alpha = 0.01` the policy flags
-  1.14% of 1,000,000 never-trained Umbrella domains, close to the 1% target but not
-  below it. The model was not trained on that family; treat this as a shift stress,
+* **DGA is a family holdout, not a random split.** The map is fitted on family
+  fold 0 and evaluated on family fold 1, so the artifact records
+  `exchangeable: false` for DGA. That is deliberate: a random split would hide the
+  family shift the channel actually meets. The Umbrella stress is also at the edge:
+  at `alpha = 0.01` the policy flags 1.14% of 1,000,000 never-trained Umbrella
+  domains, close to the 1% target but not below it. Treat both as shift evidence,
   not a coverage proof.
 * **Flowctx depends on the aggregation horizon.** The held-out 20% preserves the
   full-day context the model was trained on. Replaying a subsample changes the
