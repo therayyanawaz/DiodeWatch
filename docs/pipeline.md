@@ -10,7 +10,7 @@ its own, so you can jump to the one you are touching.
 
 **Related docs:** [diode.md](diode.md) · [features.md](features.md) ·
 [ml.md](ml.md) · [rules.md](rules.md) · [alerts.md](alerts.md) ·
-[dashboard.md](dashboard.md) · [benchmarks.md](benchmarks.md) ·
+[ocsf.md](ocsf.md) · [dashboard.md](dashboard.md) · [benchmarks.md](benchmarks.md) ·
 [laya.md](laya.md)
 
 ---
@@ -33,8 +33,9 @@ When either one says something looks like an attack, DiodeWatch writes an
 what fired, the observed value, the threshold, the time window, the attacker and
 victim addresses, and a MITRE ATT&CK label. Alerts go into a SQLite database
 that is chained with hashes so a changed record is detectable, and they show up
-on two live screens. One button turns any alert into a STIX 2.1 bundle, the
-format another agency's security system can ingest.
+on two live screens. One button turns any alert into a STIX 2.1 bundle or an
+OCSF 1.10 Detection Finding, formats another agency's security system can
+ingest.
 
 Running beside all of this, a small component proves that DiodeWatch itself has
 sent **zero packets back** into the network it watches. That proof is on the
@@ -86,7 +87,7 @@ flowchart LR
     F --> G
     G --> H["Stage 8<br/>hash-chained<br/>evidence store"]
     H --> I["Stage 10<br/>live screens"]
-    H --> J["Stage 11<br/>STIX 2.1 + HTML"]
+    H --> J["Stage 11<br/>STIX 2.1 + OCSF 1.10 + HTML"]
     K["Diode guard<br/>runs beside everything"] -.proves.-> I
 ```
 
@@ -683,7 +684,7 @@ launch, which is why a replayed capture collapses into "N re-detections collapse
 instead of showing an old finding as a new one.
 
 `python -m src.alerts.cli` exposes the store directly: `store`, `recent`, `report`,
-`stix`, `stats`, `verify-chain`.
+`stix`, `ocsf`, `stats`, `verify-chain`.
 
 ---
 
@@ -705,8 +706,8 @@ The contract is what makes this safe to have in a detection system at all:
   alert from this field, and the stamp is applied by one module-level function so
   live inference and the background worker cannot diverge.
 * It is **advisory in storage too**: the verdict lands as an extra `EvidenceItem`
-  with condition `triage.disposition`, so the store, UI, STIX bundle and HTML report
-  all pick it up with no schema change.
+  with condition `triage.disposition`, so the store, UI, STIX and OCSF exports and
+  the HTML report all pick it up with no schema change.
 * It is **never in the fast path.** This is a 424M-parameter encoder and it costs
   seconds per alert (measured around 7 s/alert on the development machine's 8-core
   CPU). The operating pattern is bounded triage, newest-first over the current alert
@@ -763,7 +764,7 @@ event loop, and each closed window's alerts and counters are pushed to every
 connected browser over `/ws/live`. The feed is capped at 400 alerts per snapshot
 because a snapshot rebroadcasts on every tick, so the wire carries what a browser can
 re-render rather than the whole session. REST routes cover sources, session control,
-per-alert evidence, STIX and report export, ML metrics, diode status, chain
+per-alert evidence, STIX, OCSF and report export, ML metrics, diode status, chain
 verification, `/status` (a board listing every service, component and detector
 channel with its live state) and `/report/{alert_id}`. Both surfaces read the same
 `/api/ml_metrics` and the same class-name table, which is why one session cannot be
@@ -792,8 +793,10 @@ each on-screen number.
 
 ### Stage 11. Anything on screen can leave the building
 
-**In:** an alert. **Out:** a STIX 2.1 bundle or a printable incident report.
+**In:** an alert. **Out:** a STIX 2.1 bundle, an OCSF 1.10 Detection Finding
+stream, or a printable incident report.
 **Code:** [src/alerts/export_stix.py](../src/alerts/export_stix.py),
+[src/alerts/export_ocsf.py](../src/alerts/export_ocsf.py),
 [src/alerts/report.py](../src/alerts/report.py)
 
 **STIX 2.1** is the structured-threat-information format that lets one organisation
@@ -825,6 +828,34 @@ gets a deliberately never-matching sentinel pattern and **no observed-data**, ra
 than a fabricated observable; and `confidence` is the stored alert confidence
 scaled to 0-100 (calibrated when the policy artifact was applied, the raw detector
 score otherwise), never a guarantee of intrusion.
+
+**OCSF 1.10** is the second structured contract, for a SIEM, SOAR or data lake
+that names the Open Cybersecurity Schema Framework rather than STIX. Every alert
+becomes one Detection Finding Create event (`class_uid=2004`, `category_uid=2`,
+`activity_id=1`, `type_uid=200401`). OCSF defines event objects, not a bundle,
+so a batch is JSONL with one compact object per line and a single alert is one
+line that is also one valid JSON document. The build is stdlib-only and
+deterministic, and the validator refuses to write a stream that fails its
+structural checks.
+
+For `time`, the exporter uses the instant the detector created the finding: the
+alert's detection timestamp (normally the window end), never the start of the
+traffic or the export clock. The alert window is carried in
+`start_time`/`end_time` and `finding_info.first_seen_time`/`last_seen_time`;
+an alert with no parseable timestamp or window end is refused rather than
+stamped with the export clock. Severity low/medium/high/critical maps to ids
+2/3/4/5, confidence maps to the OCSF low/medium/high ladder, and status is New
+because this is finding lifecycle, not the analyst's triage verdict.
+
+`evidences[0].data` keeps the complete observed-vs-threshold list, flow id, key
+and window seconds, because OCSF has no first-class field for that detail.
+Endpoints appear only when the alert carries them, and a DNS
+`query.hostname` appears only for the `dga` and `dns_tunnel` classes, when the
+key is a domain the detector actually saw (a dotted IP is not a hostname).
+Observables point at values already
+present in the event; a pointer whose path or value does not resolve fails
+validation. The pinned release, exact field map and limits are in
+[ocsf.md](ocsf.md).
 
 **The HTML incident report** is one self-contained file: no external assets, no
 JavaScript, print-ready to PDF from the browser. It renders the full trail: the
@@ -942,8 +973,8 @@ calm. Here is what happens to that flood, one stage at a time.
    worth noticing: the ratio is undefined because the target sent zero packets back,
    and the alert prints `n/a` instead of dividing by zero and reporting a number.
 
-One button then downloads a STIX 2.1 bundle for another agency, or a self-contained
-HTML incident report for printing, and the Diode Proof panel beside it reports the
+One button then downloads a STIX 2.1 bundle, an OCSF 1.10 Detection Finding, or a
+self-contained HTML incident report for printing, and the Diode Proof panel beside it reports the
 enforcement verdict and the outbound byte counter, so the analyst can confirm the
 enclave never answered the flood it just described.
 
@@ -1101,6 +1132,7 @@ python -m src.detectors.ml_engine --input data/slices/features.parquet --out dat
 python -m src.alerts.cli store        --alerts data/slices/rule_alerts.ndjson --db alerts.db
 python -m src.alerts.cli verify-chain --db alerts.db
 python -m src.alerts.cli stix         --alerts data/slices/rule_alerts.ndjson --out bundle.json
+python -m src.alerts.cli ocsf         --alerts data/slices/rule_alerts.ndjson --out findings.jsonl
 python -m src.alerts.cli report       --alerts data/slices/rule_alerts.ndjson --out incident.html
 
 # Stage 9 (optional, CPU-bound): advisory triage
@@ -1178,6 +1210,7 @@ headless pre-flight that prints "demo is GO".
 | **leave-one-day-out / leave-one-scenario-out / family-holdout** | Held-out test schemes: never train on the day, the botnet scenario, or the malware family you claim to test |
 | **MITRE ATT&CK** | A shared public catalogue of adversary techniques, each with a code like T1498 |
 | **STIX 2.1 / TAXII** | The format for structured threat information, and the transport that carries it between organisations |
+| **OCSF 1.10** | The Open Cybersecurity Schema Framework: a common event schema a SIEM or data lake can ingest without a per-vendor adapter |
 | **ONNX** | An open model file format that lets a model trained in one framework run in a small portable runtime |
 | **WAL** | SQLite's write-ahead logging, which lets a reader look while a writer writes |
 | **nftables / iptables** | Linux kernel firewall interfaces. Here, what makes egress actually impossible |

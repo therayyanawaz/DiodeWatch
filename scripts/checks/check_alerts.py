@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exit check: alert evidence store + STIX / incident-report exports.
+"""Exit check: alert evidence store + STIX / OCSF / incident-report exports.
 
 Acceptance criteria (exit 0 = met):
 
@@ -14,7 +14,8 @@ Acceptance criteria (exit 0 = met):
      filters over the indexed ts_epoch) and return newest-first;
   4. a STIX 2.1 bundle exports cleanly (structural validation passes) for a
      class-balanced subset;
-  5. an incident report renders every evidence field and the 5-tuple.
+  5. OCSF 1.10.0 Detection Finding JSONL exports cleanly for the same subset;
+  6. an incident report renders every evidence field and the 5-tuple.
 
     python scripts/checks/check_alerts.py [--limit 50000] [--outdir data/alerts]
 
@@ -32,6 +33,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 
+from src.alerts.export_ocsf import write_ocsf
 from src.alerts.export_stix import write_stix
 from src.alerts.report import write_report
 from src.alerts.schema import Alert, EvidenceItem, alert_from_dict
@@ -119,9 +121,10 @@ def main() -> int:
         ok = False
 
     # idempotent re-ingest (stable alert_id, OR IGNORE)
+    replay = records[:5000]
     with AlertStore(db) as store:
-        i2, d2, v2 = store.insert_many(alert_from_dict(d) for d in records[:5000])
-    if not (i2 == 0 and d2 == 5000 and v2 == 0):
+        i2, d2, v2 = store.insert_many(alert_from_dict(d) for d in replay)
+    if not (i2 == 0 and d2 == len(replay) and v2 == 0):
         print(f"  [FAIL] re-ingest not idempotent: ({i2}, {d2}, {v2})")
         ok = False
     else:
@@ -190,6 +193,20 @@ def main() -> int:
         ok = False
     else:
         print("  stix validation: clean [ok]")
+
+    # ------------------------------------------ 5. OCSF Detection Findings
+    ocsf_path = out / "ocsf_detection_findings.jsonl"
+    t0 = time.perf_counter()
+    events, ocsf_problems = write_ocsf(stix_alerts, ocsf_path)
+    ocsf_ms = (time.perf_counter() - t0) * 1000.0
+    print(f"[ocsf  ] {len(events)} alerts -> {ocsf_path} "
+          f"({ocsf_ms:,.0f} ms) class_uid="
+          f"{sorted({e['class_uid'] for e in events})}")
+    if ocsf_problems:
+        print(f"  [FAIL] OCSF validation: {ocsf_problems[:5]}")
+        ok = False
+    else:
+        print("  ocsf validation: clean [ok]")
 
     # ------------------------------------------------- 6. incident report
     with AlertStore(db) as store:

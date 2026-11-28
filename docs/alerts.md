@@ -2,8 +2,9 @@
 
 Make alerts **SOC-ready**: one stable, self-describing envelope from every
 detector (rules and ML), persisted to an indexed SQLite evidence store, and
-exportable as STIX 2.1 bundles and human-readable incident reports, fully
-offline, stdlib-only, no runtime network calls.
+exportable as STIX 2.1 bundles, OCSF 1.10 Detection Findings and
+human-readable incident reports, fully offline, stdlib-only, no runtime network
+calls.
 
 ## The alert schema (`src/alerts/schema.py`)
 
@@ -104,6 +105,49 @@ than the 2.0 `objects` map, observables are value-only objects with no SDO
 properties, and every reference resolves. The reason it is that strict: a bundle
 of bare UUIDs is JSON, but no TAXII server, SIEM or `stix2` parser will take it.
 
+## OCSF 1.10 Detection Finding export (`src/alerts/export_ocsf.py`)
+
+The SOC-facing counterpart to STIX. One alert becomes one OCSF 1.10.0
+Detection Finding Create event: `class_uid=2004`, `category_uid=2`,
+`activity_id=1`, `type_uid=200401`. OCSF defines events, not a bundle, so a
+batch is JSONL with one compact object per line; a single event is one line and
+also one valid JSON document. The exporter is stdlib-only, offline and
+deterministic: finding ids are the alert uuid5, and re-exporting the same alerts
+is byte-identical.
+
+For `time`, OCSF means the instant of the finding event. The exporter uses the
+alert's detection timestamp (falling back to the window end only when that is
+absent), never the wall clock at export. The activity window itself travels in
+`start_time`/`end_time` and `finding_info.first_seen_time`/`last_seen_time`.
+An alert with neither a
+parseable timestamp nor window end is refused; the exporter does not stamp the
+export clock on it.
+
+Severity maps low/medium/high/critical to OCSF ids 2/3/4/5. Confidence maps
+`>=0.9` to High, `>=0.7` to Medium, `>0` to Low, otherwise Unknown, with
+`confidence_score` as the stored confidence times 100. It is the alert's stored
+detector or calibrated value, not a probability of intrusion. Status is always
+New: this is finding lifecycle, not the advisory triage verdict.
+
+`finding_info.analytic` names the detector, with `type_id=4` for `ml.*` and
+`type_id=1` otherwise. ATT&CK is carried as tactic name plus technique uid, and
+a dotted id is split into technique and sub-technique the way OCSF models it.
+`evidences[0].data` carries the full observed-vs-threshold evidence list, flow
+id, key and window seconds, because OCSF has no first-class field for that
+detail. Endpoints appear only when the alert carries the IP or port. A DNS
+`query.hostname` appears only for `dga` and `dns_tunnel`, where the key is a
+queried domain, never merely because a key looks like one. Observables point at
+values already present in the event and are checked against those paths;
+duplicates are removed and no observable is fabricated.
+
+The structural validator covers the required Detection Finding base attributes,
+class/category/activity/type identity, timestamps, metadata and product,
+finding info, enum sibling labels, ATT&CK ids, endpoint IP/port validity, DNS
+hostname validity, observable resolution and null absence. It is **not** a full
+OCSF meta-schema validator; `write_ocsf` refuses to write if any event fails,
+so a partial or invalid stream never reaches the alert directory. The pinned
+release, exact field map and limits are in [ocsf.md](ocsf.md).
+
 ## Incident report (`src/alerts/report.py`)
 
 `write_report(alerts, path, title=)` renders a **self-contained HTML** file
@@ -145,11 +189,15 @@ python -m src.alerts.cli recent --db alerts.db [--limit 50] [--class ddos] [--se
 python -m src.alerts.cli stats  --db alerts.db
 python -m src.alerts.cli report (--alerts f.ndjson | --db alerts.db [--window-start T --window-end T]) --out incident.html
 python -m src.alerts.cli stix   --alerts f.ndjson --out bundle.json
+python -m src.alerts.cli ocsf   --alerts f.ndjson --out findings.jsonl
 ```
 
 ## Acceptance (`scripts/checks/check_alerts.py`, exit 0 = pass)
 
-Verified 2026-09-05 on the ml_engine full-day corpus:
+The store, STIX and report paths were verified 2026-09-05 on the ml_engine
+full-day corpus. The OCSF leg was verified separately on 2026-11-28 against the
+deterministic 2,000-alert stand-in, because no ML output was present in the tree;
+that leg is structural and uses no labels.
 
 * **insert thousands error-free**: 50,000 real alerts ingested in seconds;
   every row passes `validate_alert`; re-ingesting the first 5,000 inserts 0
@@ -160,6 +208,8 @@ Verified 2026-09-05 on the ml_engine full-day corpus:
   answer in milliseconds over the 50k-row store;
 * **STIX 2.1**: class-balanced bundle exports with clean structural
   validation;
+* **OCSF 1.10**: the same class-balanced subset exports as Detection Finding
+  JSONL with clean structural validation; verified 2026-11-28;
 * **incident report**: every alert block renders with its evidence rows
   (condition, observed vs threshold, description, unit) and the flow 5-tuple
   when the detectors supplied it.

@@ -26,8 +26,8 @@ each claim:
   TLS/JA3 novelty (with JA4 context) and triage channels, each with a run record
   under `docs/evaluation/runs/`.
 * **Evidence:** a hash chain over every alert row, an append-only ledger, incident
-  packs, STIX 2.1 and report export, and an off-box digest that a third party can
-  verify without this repository.
+  packs, STIX 2.1, OCSF 1.10 Detection Finding and report export, and an off-box
+  digest that a third party can verify without this repository.
 * **Surfaces:** the Streamlit dashboard and the mission-control wall at `:8530`,
   both offline, both reading the same store.
 * **Guards:** a claim guardrail, a documentation link check, a coverage floor, a
@@ -131,7 +131,7 @@ each claim:
   eight-day CIC-IDS2017 corpus, raising PortScan recall from 11/27 to 15/27.
   The remaining 12 PortScan units are 1-29 flow fragments, too small to
   separate safely from client traffic.
-* **The suite** collects 581 tests. Three of them need corpora this repository
+* **The suite** collects 605 tests (2026-11-28). Three of them need corpora this repository
   deliberately never commits, so they skip locally and run in
   `.github/workflows/integration.yml`, which fails if they skip there.
 
@@ -146,7 +146,7 @@ have, not a decision we have not made.
 | Packet-to-alert clock, bounded queue, backpressure at 5k/10k/50k flows/s | the 175 ms figure is window-evaluation p95, not end-to-end latency | **done** for the canonical-flow boundary: a 2 s blocking queue drops nothing, and p95 flow-ingest-to-alert is 11.81 s at 5k and 12.68 s at 10k over six 10 s windows. At the 50k target the queue saturates, the producer blocks for 53.59 s, accepted ingress falls to 23,880 flows/s, and p95 is 39.92 s. The clock starts at the canonical flow record; NIC capture and capture-to-flow export are **not** included. [`evaluation/runs/stream_backpressure.md`](evaluation/runs/stream_backpressure.md) |
 | Calibration and conformal abstention per channel | confidence is not calibrated and no alert can abstain | **done** for the ML channels: an isotonic map plus a split-conformal gate per channel/class, applied in `ml_engine` and `LiveEvidenceStore`, with `min_confidence` fitted on the fit split and the whole policy evaluated on a disjoint split, and evidence recorded. On the beacon random split precision rises 0.301 → 0.791 at recall 0.070; DGA 0.99716 → 0.99767; flowctx thresholds were already tighter than `alpha=0.01`, so no flowctx alert changed. The beacon scenario holdout keeps 3 alerts and 0 true positives, the shift failure that motivates the drift item. Rules keep coverage, not probability. [`calibration.md`](calibration.md) · [`evaluation/runs/calibration.json`](evaluation/runs/calibration.json) |
 | Drift alarm that makes a channel abstain, not just a chart | PSI is published as an explanation, not acted on | **done** for the three shipped ML channels: pinned quantile PSI references over 10 flowctx, 6 beacon and 10 DGA features, a per-channel threshold, and a sticky latch that withholds a channel's alerts before calibration in LiveEvidenceStore and ml_engine. Rules and identity TLS are never gated. Thresholds are empirical, not textbook 0.25: the flow null maximum is 2.808149, so the threshold is 3.0; all 8 held-out CIC days stay under it (max 2.815199) and an injected shift reaches 13.221836. Beacon null 0.535586 gives 1.0; the excluded scenario-52 holdout reaches 1.117500 and alarms, while reference scenarios stay at or below 0.507488. DGA null 0.000423 gives 0.5; family fold 1 reaches 1.885670 and Umbrella 1.257144. The live pack sidecars have 2 and 46 rows, below min_samples=500, so the canned demo abstains from judging rather than suppressing its alerts; the evidence JSON reports the row deficit. [drift.md](drift.md) · [evaluation/runs/drift.json](evaluation/runs/drift.json) |
-| OCSF Detection Finding export beside STIX | SOC interoperability a judge can name | planned |
+| OCSF Detection Finding export beside STIX | SOC interoperability a judge can name | **done**: OCSF 1.10.0 Detection Finding (class 2004, Create, type 200401), one compact JSON object per line with deterministic finding ids. The alert window is in `start_time`/`end_time` and `finding_info.first_seen_time`/`last_seen_time`; `evidences[0].data` keeps the full observed-vs-threshold, flow, detector and window detail; ATT&CK is split into technique and sub-technique; observables point at fields present in the event. Required attributes, enum siblings, endpoints and observable references are validated before writing, and an invalid stream is refused. CLI, `:8530` route and both analyst surfaces call the same exporter. [ocsf.md](ocsf.md) |
 | Rootless diode proof: container `--network=none` self-test and a PowerShell elevated path, with the enforcement mode wired into both UIs | the one-way guarantee is demonstrated on Linux with root today; a reviewer on a laptop cannot reproduce it | **blocked** on Docker or administrator rights |
 | Live-interface rehearsal over a veth pair, with a recorded clip | proves the pipeline under enforcement on a real interface, not only on a replay | **blocked** on Linux root |
 | Reverse proxy, TLS, and a service unit pinning **one worker** | the wall is plain HTTP on loopback; the shared session is per process, so multiple workers would fragment it | planned |

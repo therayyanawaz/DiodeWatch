@@ -44,7 +44,7 @@ DiodeWatch is built for that constraint from the ground up:
   with an explicit banner, never a silent fake zero.
 - **SOC-grade evidence by default.** Every alert carries observed-vs-threshold
   proof, top-feature attribution, MITRE ATT&CK tags, and one-click
-  **STIX 2.1** / HTML incident-report export.
+  **STIX 2.1**, **OCSF 1.10 Detection Finding** and HTML incident-report export.
 - **Honest evaluation.** Out-of-sample metrics, pre-committed acceptance
   gates, a per-corpus drift report (PSI), and an automated claim guardrail
   that fails CI if judge-facing docs ever over-claim. Validated across
@@ -80,7 +80,7 @@ flowchart LR
     subgraph ENCLAVE["ANALYTICS ENCLAVE, no return path"]
         INGEST["1 · INGEST & DIODE GUARD<br/>PCAP replay / mirrored port<br/>TLS/QUIC metadata · egress sentinel"] --> FEAT["2 · FEATURE ENGINE<br/>pandas · windowed stats · entropy<br/>periodicity · frozen schema"]
         FEAT --> DET["3 · DETECTION ENGINES<br/>deterministic rules · LightGBM multi-class<br/>TLS JA3 watchlist + JA4 context"]
-        DET --> ALERT["4 · ALERTS & EVIDENCE<br/>SQLite · Parquet lake<br/>ATT&CK tags · STIX 2.1 · HTML report"]
+        DET --> ALERT["4 · ALERTS & EVIDENCE<br/>SQLite · Parquet lake<br/>ATT&CK tags · STIX 2.1 · OCSF 1.10 · HTML report"]
         ALERT --> UI["5 · ANALYST DASHBOARD<br/>live feed · evidence drill-down<br/>metrics · Diode Proof panel"]
     end
 ```
@@ -90,7 +90,7 @@ flowchart LR
 | **1 · Ingest & Diode Guard** | PCAP replay or mirrored port, CIC tables, Argus/nfdump/goflow2 exports → canonical flows; kernel egress-deny + egress monitor prove one-way operation |
 | **2 · Feature Engine** | Frozen 73-feature registry, pandas-vectorised, rates, entropy, periodicity, byte asymmetry, port-cardinality context, per-packet timing and size |
 | **3 · Detection Engines** | Instant auditable rules (DDoS, slow-DoS, scan, exfil) + gated LightGBM channels; any channel failing its quality gate is disabled, never junk-scored |
-| **4 · Alerts & Evidence** | ATT&CK-tagged envelope with observed-vs-threshold evidence, SQLite store, STIX 2.1 bundles, one-click HTML report |
+| **4 · Alerts & Evidence** | ATT&CK-tagged envelope with observed-vs-threshold evidence, SQLite store, STIX 2.1 bundles, OCSF 1.10 Detection Findings, one-click HTML report |
 | **5 · Analyst Dashboard** | Two UIs (Streamlit (`apps/dashboard/`) and an offline web mission-control (`apps/mission_control/`)) live feed, evidence drill-down, metrics, Diode Proof panel, plus a `/status` board listing every service's live state |
 
 ---
@@ -197,7 +197,8 @@ external calls. Full runbook: `docs/diode.md`, `docs/dashboard.md`.
 | [`docs/ml.md`](docs/ml.md) | What trains on what, out-of-sample protocols, gates, design decisions |
 | [`docs/models/`](docs/models/README.md) | Model cards for the two shipped artifacts: what each reads, what it decides, its provenance, its limits, and the digest of the exact bytes in the tree |
 | [`docs/rules.md`](docs/rules.md) | Rule detectors and their thresholds |
-| [`docs/alerts.md`](docs/alerts.md) | Alert schema, evidence model, STIX/report export |
+| [`docs/alerts.md`](docs/alerts.md) | Alert schema, evidence model, STIX/OCSF/report export |
+| [`docs/ocsf.md`](docs/ocsf.md) | OCSF 1.10 Detection Finding mapping, version pin, validation scope and limits |
 | [`docs/threat-model.md`](docs/threat-model.md) | Trust boundaries in STRIDE, what is implemented at each, what is deliberately out of scope, and the test that re-checks every claim |
 | [`docs/laya.md`](docs/laya.md) | Laya System-1 triage channel, offline ONNX decision model (advisory) |
 | [`docs/features.md`](docs/features.md) | Frozen 73-feature registry + parity validation |
@@ -270,6 +271,7 @@ against them, so they belong in the same list.
 | Spec | Published by | Link | Where |
 |---|---|---|---|
 | STIX 2.1 (Structured Threat Information eXpression) | OASIS Cyber Threat Intelligence Technical Committee | [stix-v2.1-os](https://docs.oasis-open.org/cti/stix/v2.1/os/stix-v2.1-os.html) | hand-built bundle in [`src/alerts/export_stix.py`](src/alerts/export_stix.py) |
+| OCSF 1.10.0 (Open Cybersecurity Schema Framework) | OCSF project, schema release v1.10.0 | [ocsf.io](https://ocsf.io/) | Detection Finding mapping in [`src/alerts/export_ocsf.py`](src/alerts/export_ocsf.py) |
 | QUIC v1 and v2 (RFC 9000, RFC 9369), header fields only | IETF QUIC Working Group | [RFC 9000](https://www.rfc-editor.org/rfc/rfc9000) · [RFC 9369](https://www.rfc-editor.org/rfc/rfc9369) | [`src/ingest/tls_metadata.py`](src/ingest/tls_metadata.py) |
 | MITRE ATT&CK technique/tactic model | Strom, Applebaum, Miller, Nickels, Pennington & Thomas, *MITRE ATT&CK: Design and Philosophy*, The MITRE Corporation, revised March 2020 | [PDF](https://attack.mitre.org/docs/ATTACK_Design_and_Philosophy_March_2020.pdf) · [matrix](https://attack.mitre.org/) | ATT&CK tags on every alert, [`src/alerts/schema.py`](src/alerts/schema.py) |
 | ModSecurity v3 rule language | OWASP / Trustwave | [modsecurity.org](https://www.modsecurity.org/) | [`waf/modsecurity.conf`](waf/modsecurity.conf) |

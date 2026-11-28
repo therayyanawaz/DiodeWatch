@@ -33,6 +33,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from apps.dashboard.diode_view import render_diode_proof
+from src.alerts.export_ocsf import write_ocsf
 from src.alerts.export_stix import write_stix
 from src.alerts.live_store import db_path
 from src.alerts.pack import MlChannelReplay, PackSource, available_sources
@@ -448,7 +449,7 @@ with tab_ev:
         st.dataframe(pd.DataFrame(ev_rows), use_container_width=True,
                      height=min(80 + 28 * max(len(ev_rows) - 1, 0), 340))
 
-        d1, d2, _ = st.columns([1, 1, 2])
+        d1, d2, d3, _ = st.columns([1, 1, 1, 1])
         with d1:
             if st.button("🛰 Build STIX 2.1 bundle"):
                 out = REPO_ROOT / "data" / "alerts" / "ui_stix_bundle.json"
@@ -458,6 +459,15 @@ with tab_ev:
                 else:
                     st.session_state.stix_bytes = out.read_bytes()
         with d2:
+            if st.button("🧭 Build OCSF 1.10 finding"):
+                out = REPO_ROOT / "data" / "alerts" / "ui_ocsf_finding.json"
+                _, problems = write_ocsf([sel], out)
+                if problems:
+                    st.error(f"OCSF validation: {problems}")
+                else:
+                    st.session_state.ocsf_bytes = out.read_bytes()
+                    st.session_state.ocsf_alert_id = sel.alert_id
+        with d3:
             if st.button("📄 Build incident report"):
                 out = REPO_ROOT / "data" / "alerts" / "ui_incident.html"
                 write_report([sel], out,
@@ -469,6 +479,12 @@ with tab_ev:
             st.download_button("⬇ Download stix_bundle.json",
                                data=st.session_state.stix_bytes,
                                file_name=f"stix_{sel.threat_class}.json",
+                               mime="application/json")
+        if (st.session_state.get("ocsf_bytes")
+                and st.session_state.get("ocsf_alert_id") == sel.alert_id):
+            st.download_button("⬇ Download ocsf_detection_finding.json",
+                               data=st.session_state.ocsf_bytes,
+                               file_name=f"ocsf_detection_{sel.threat_class}.json",
                                mime="application/json")
         if st.session_state.get("report_bytes"):
             st.download_button("⬇ Download incident_report.html",

@@ -53,8 +53,10 @@ Click the exfil row in the feed (or the newest alert), switch to 🔎 Evidence.
 > where the policy allows 5. The ATT&CK tag, T1048, exfiltration over
 > web service, plugs straight into a SOC workflow."
 
-Press **Export STIX** (bundle downloads; 2.1, validates clean) and mention
+Press **Build STIX 2.1 bundle** (bundle downloads; validates clean) and mention
 the HTML incident report (`python -m src.alerts.cli report ...`, docs/alerts.md).
+If a judge asks for a SIEM format, **Build OCSF 1.10 finding** downloads one
+Detection Finding through the same validated exporter (`docs/ocsf.md`).
 
 ## 3. Metrics, held-out numbers (45 s)
 

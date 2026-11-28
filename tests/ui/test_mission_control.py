@@ -82,6 +82,36 @@ def test_read_routes_answer(tmp_path, monkeypatch):
     assert "tls" in ml and "novelty_available" in ml["tls"]
 
 
+def test_ocsf_route_returns_one_valid_detection_finding(tmp_path, monkeypatch):
+    """The SOC export has to leave the wall as ingestible OCSF, not a shape
+    that merely looks like JSON. The route writes one Detection Finding and
+    returns exactly that line, with the alert id as the stable finding id."""
+    import apps.mission_control.server as srv
+    from src.alerts.export_ocsf import validate_event
+    from src.alerts.live_store import LiveEvidenceStore
+    from tests.alerts.test_alerts import make_alert
+
+    monkeypatch.delenv("DIODE_STATUS_FILE", raising=False)
+    monkeypatch.setattr(srv, "REPO_ROOT", tmp_path)
+    alert = make_alert(0, "ddos", src_ip="10.1.0.3", dst_ip="203.0.113.9",
+                       src_port=40000, dst_port=80)
+    store = LiveEvidenceStore(path=tmp_path / "ocsf.db")
+    store.absorb_alerts([alert])
+    monkeypatch.setattr(srv.SESSION, "store", store)
+
+    client = _client(tmp_path, monkeypatch, None)
+    resp = client.get(f"/api/export/ocsf/{alert.alert_id}")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("application/json")
+    event = json.loads(resp.content)
+    assert validate_event(event) == []
+    assert event["finding_info"]["uid"] == alert.alert_id
+    assert event["class_uid"] == 2004
+    out = tmp_path / "data" / "alerts" / "ocsf_detection_ddos.json"
+    assert out.read_text(encoding="utf-8").strip() == resp.text.strip()
+    store.close()
+
+
 def test_the_words_the_wall_prints_come_from_the_server(tmp_path, monkeypatch):
     """The wall carried its own label literal and its own CALM/GUARDED ladder,
     which is how one alert was "Recon Scan" on this surface and "scan" in the
@@ -220,12 +250,13 @@ def test_the_wall_reads_only_diode_fields_the_server_sends(tmp_path, monkeypatch
 
 
 def test_unknown_alert_id_is_refused_on_every_alert_route(tmp_path, monkeypatch):
-    """Four routes look an alert up by id. Each used to carry its own copy of
-    the refusal, so a fifth could quietly forget it and serve a stack trace or
+    """Five routes look an alert up by id. Each used to carry its own copy of
+    the refusal, so a sixth could quietly forget it and serve a stack trace or
     an empty report instead of saying the alert is not in this session."""
     client = _client(tmp_path, monkeypatch, None)
     for path in ("/api/evidence/nope", "/api/export/stix/nope",
-                 "/api/export/report/nope", "/report/nope"):
+                 "/api/export/ocsf/nope", "/api/export/report/nope",
+                 "/report/nope"):
         assert client.get(path).status_code == 404, path
 
 

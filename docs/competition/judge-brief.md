@@ -21,7 +21,7 @@ PROTECTED NETWORK → DATA DIODE → [ INGEST → FEATURES → DETECTORS → ALE
 - **Ingest (read-only)**: pcap replay or mirrored port → canonical bidirectional flows; no probes, no decryption. A separate metadata pass reads only plaintext TLS handshake records and QUIC headers; QUIC Initial payloads stay encrypted.
 - **Features**: frozen 73-feature active registry, vectorised (flow rates, entropy, byte asymmetry, port-cardinality context, per-packet timing and size statistics). DNS and TLS/JA3 registry fields are populated only by the optional Zeek sidecar; active/idle families are declared-future. The TLS detector can also consume JA4/JA4S context from raw handshakes, outside that registry.
 - **Detectors**: instant auditable **rules** (DDoS, slow-DoS, scan, exfiltration) + gated **LightGBM ML** (C2 beaconing on CTU-13 leave-one-scenario-out, DGA/tunnel, TLS/JA3 watchlist with JA4 context, flow+window context). Any channel that fails its quality gate is excluded, **never junk-scored**
-- **Alerts**: ATT&CK-tagged envelope, observed-vs-threshold evidence + top-feature attribution (top-N model features with observed values), STIX 2.1 bundle + one-click HTML incident report
+- **Alerts**: ATT&CK-tagged envelope, observed-vs-threshold evidence + top-feature attribution (top-N model features with observed values), STIX 2.1 bundle, OCSF 1.10 Detection Finding + one-click HTML incident report
 - **Proof**: kernel-level egress denial where privileges allow; live **Diode Proof panel** with outbound bytes, violations and kernel drop counters, mode-aware (enforced / monitor-only), **never a faked zero**
 
 ## Five measured results
@@ -36,7 +36,7 @@ PROTECTED NETWORK → DATA DIODE → [ INGEST → FEATURES → DETECTORS → ALE
 
 | Against a generic Suricata / Zeek / Grafana stack | Against the known public DiodeWatch baseline |
 |---|---|
-| Generic stacks audit threats, not themselves; none verifies its own unidirectionality, publishes per-class F1 on real corpora with in-sample cells labelled, or exports ATT&CK-tagged, evidence-rich STIX envelopes. | The public baseline replays synthetic JSONL events at ~60 events/s with simulated egress control. Ours ingests real PCAP/flow corpora, sustains ~10,000 flows/s, and proves egress denial at the kernel layer on Linux, with monitor-only degradation where that path does not exist. |
+| Generic stacks audit threats, not themselves; none verifies its own unidirectionality, publishes per-class F1 on real corpora with in-sample cells labelled, or exports ATT&CK-tagged, evidence-rich STIX and OCSF findings. | The public baseline replays synthetic JSONL events at ~60 events/s with simulated egress control. Ours ingests real PCAP/flow corpora, sustains ~10,000 flows/s, and proves egress denial at the kernel layer on Linux, with monitor-only degradation where that path does not exist. |
 
 ## Limits we state before questions
 
@@ -60,7 +60,7 @@ narrow gate margins and the small-incident misses stay in the published record.*
 |---|---|
 | 0:00-0:30 | The diode constraint, enforcement-mode badge, live outbound counter, and why one-way networks exist; zero is shown only when enforcement is active |
 | 0:30-2:00 | Live replay of six scenarios (volumetric DDoS → C2 beacon → DNS tunnel/DGA → bulk exfil + scan → slow-rate DoS → ratio exfil); alerts fire in real time |
-| 2:00-3:00 | Evidence drill-down, which feature crossed which threshold, ATT&CK tag, one-click STIX export / incident report |
+| 2:00-3:00 | Evidence drill-down, which feature crossed which threshold, ATT&CK tag, one-click STIX / OCSF 1.10 export / incident report |
 | 3:00-4:00 | Metrics tab (throughput, F1, FPR, alert precision, incident recall, latency) + Diode Proof panel; enforced hosts show zero egress, monitor-only hosts say so |
 
 ---

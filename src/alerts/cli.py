@@ -9,6 +9,8 @@
                                     --out incident.html [--title T]
     python -m src.alerts.cli stix    --alerts alerts.ndjson --out bundle.json
                                     [--limit N]
+    python -m src.alerts.cli ocsf    --alerts alerts.ndjson --out findings.jsonl
+                                    [--limit N]
     python -m src.alerts.cli stats   --db alerts.db
     python -m src.alerts.cli verify-chain --db alerts.db
 """
@@ -19,6 +21,7 @@ import json
 import sys
 from pathlib import Path
 
+from .export_ocsf import write_ocsf
 from .export_stix import write_stix
 from .report import write_report
 from .schema import alert_from_dict
@@ -96,6 +99,17 @@ def cmd_stix(args) -> int:
     return 0 if not problems else 2
 
 
+def cmd_ocsf(args) -> int:
+    alerts = _load_alerts(args.alerts, limit=args.limit)
+    events, problems = write_ocsf(alerts, args.out)
+    if problems:
+        print(f"[ocsf] WARNING validation problems: {problems}", file=sys.stderr)
+    print(f"[ocsf] {len(alerts)} alerts -> {args.out} "
+          f"({len(events)} Detection Finding events, validation "
+          f"{'clean' if not problems else 'WARNINGS'})", file=sys.stderr)
+    return 0 if not problems else 2
+
+
 def cmd_stats(args) -> int:
     with AlertStore(args.db) as store:
         print(json.dumps(store.stats(), indent=2))
@@ -122,7 +136,8 @@ def cmd_verify_chain(args) -> int:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="python -m src.alerts.cli",
-        description="Alert evidence store, STIX 2.1 export, incident reports.",
+        description=("Alert evidence store, STIX 2.1 and OCSF 1.10 exports, "
+                     "incident reports."),
     )
     sub = ap.add_subparsers(dest="cmd", required=True)
 
@@ -155,6 +170,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", required=True, type=Path)
     p.add_argument("--limit", type=int, default=None)
     p.set_defaults(fn=cmd_stix)
+
+    p = sub.add_parser("ocsf", help="export OCSF 1.10 Detection Finding JSONL")
+    p.add_argument("--alerts", required=True, type=Path)
+    p.add_argument("--out", required=True, type=Path)
+    p.add_argument("--limit", type=int, default=None)
+    p.set_defaults(fn=cmd_ocsf)
 
     p = sub.add_parser("stats", help="store statistics")
     p.add_argument("--db", required=True)

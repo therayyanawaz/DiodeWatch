@@ -226,6 +226,20 @@ def test_session_alert_exports_to_stix_and_report(tmp_path, demo_flows):
     assert all(e.condition in html for e in alert.evidence)
 
 
+def test_session_alert_exports_to_ocsf(tmp_path, demo_flows):
+    from src.alerts.export_ocsf import validate_event, write_ocsf
+
+    store = _replay(demo_flows)
+    alert = store.alerts[0]
+    out = tmp_path / "finding.json"
+    events, problems = write_ocsf([alert], out)
+    assert problems == []
+    assert len(events) == 1
+    assert validate_event(events[0]) == []
+    assert events[0]["finding_info"]["uid"] == alert.alert_id
+    assert json.loads(out.read_text(encoding="utf-8")) == events[0]
+
+
 # --------------------------------------------------------------------------- #
 # alert-feed filter chips (severity + detector)
 # --------------------------------------------------------------------------- #

@@ -3,6 +3,7 @@
     schema, Alert / EvidenceItem envelope, ATT&CK map, severity ladder
     store, SQLite evidence store + JSONL sink
     export_stix, offline STIX 2.1 bundle builder
+    export_ocsf, offline OCSF 1.10 Detection Finding stream builder
     report, self-contained HTML incident report
     cli, `python -m src.alerts.cli` entry points
 """

@@ -163,6 +163,8 @@ export default function EvidenceDrawer({ alertId, classLabel, onClose }: Props) 
                      target="_blank" rel="noopener">INCIDENT REPORT</a>
                   <a className="btn-outline" href={`/api/export/stix/${body.alert_id}`}
                      target="_blank" rel="noopener">STIX 2.1 BUNDLE</a>
+                  <a className="btn-outline" href={`/api/export/ocsf/${body.alert_id}`}
+                     target="_blank" rel="noopener">OCSF 1.10 FINDING</a>
                 </div>
               </div>
             </>

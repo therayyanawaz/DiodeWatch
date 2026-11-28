@@ -5,6 +5,20 @@ All notable changes to DiodeWatch are documented here.
 ## [Unreleased]
 
 ### Added
+- OCSF 1.10.0 Detection Finding export: `src/alerts/export_ocsf.py` maps one
+  alert to one `class_uid=2004` Create event (`type_uid=200401`) and writes a
+  deterministic JSONL stream, one compact object per line. `time` is the
+  detection instant (the alert timestamp, normally its window end), not the
+  export clock; the alert window is in `start_time`/`end_time` and
+  `finding_info.first_seen_time`/`last_seen_time`. `evidences[0].data` keeps the
+  full observed-vs-threshold list, endpoints are emitted only when the alert
+  carries them, DNS `query.hostname` only for the DGA and DNS-tunnel classes,
+  and observables must resolve to values present in the event. The stdlib
+  validator checks the required attributes, enum siblings, ATT&CK ids,
+  endpoints and observable paths before writing, and refuses an invalid stream.
+  Wired through the alerts CLI (`ocsf`), the `:8530` route
+  `/api/export/ocsf/{alert_id}`, the Streamlit dashboard and the wall evidence
+  drawer. Mapping, version pin and limits: `docs/ocsf.md`.
 - Per-channel drift abstention: `src/alerts/drift.py` pins quantile PSI
   references for the flow-context, beacon and DGA channels and latches a channel
   whose live frame exceeds its threshold. `LiveEvidenceStore` evaluates samples

@@ -15,8 +15,8 @@ the same building blocks as the Streamlit dashboard (`src.alerts.watch`,
 * one shared replay session (a "mission-control wall"): POST /api/session
   starts it on a chosen source; every connected browser receives each closed
   window's alerts + running performance counters live;
-* REST: sources list, alert evidence envelopes, STIX 2.1 / incident-report
-  export, held-out ML quality metrics, diode egress status.
+* REST: sources list, alert evidence envelopes, STIX 2.1 / OCSF 1.10 /
+  incident-report export, held-out ML quality metrics, diode egress status.
 
 The replay advances one tumbling window per tick (default 1 s) in a worker
 thread so pandas work never blocks the event loop.
@@ -62,6 +62,7 @@ def _app_version() -> str:
             _APP_VERSION = "unknown"
     return _APP_VERSION
 
+from src.alerts.export_ocsf import write_ocsf
 from src.alerts.export_stix import write_stix
 from src.alerts.live_store import LiveEvidenceStore
 from src.alerts.pack import MlChannelReplay, ensure_pack
@@ -551,6 +552,23 @@ async def api_export_stix(alert_id: str) -> FileResponse:
     _, problems = write_stix([alert], out)
     if problems:
         raise HTTPException(500, f"STIX validation: {problems}")
+    return FileResponse(out, media_type="application/json", filename=out.name)
+
+
+@app.get("/api/export/ocsf/{alert_id}")
+async def api_export_ocsf(alert_id: str) -> FileResponse:
+    """One OCSF 1.10.0 Detection Finding, as a single JSON document.
+
+    The CLI writes a JSONL stream for a batch; one alert is one line, which is
+    also one complete JSON document, so the browser download needs no envelope.
+    """
+    alert = _live_alert(alert_id)
+    out = (REPO_ROOT / "data" / "alerts"
+           / f"ocsf_detection_{alert.threat_class}.json")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    _, problems = write_ocsf([alert], out)
+    if problems:
+        raise HTTPException(500, f"OCSF validation: {problems}")
     return FileResponse(out, media_type="application/json", filename=out.name)
 
 

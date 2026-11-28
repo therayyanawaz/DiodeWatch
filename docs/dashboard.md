@@ -29,7 +29,7 @@ and sit beside it.
 | `/api/session` | GET = the same snapshot; POST starts a replay (`source`, `window_s`, `tick_ms`); `/api/session/pause`, `/resume`, `/reset` |
 | `/api/sources` | the demo capture, every pack scenario whose pcap exists, plus loose files in `data/pcaps/` |
 | `/api/evidence/{id}` | one alert's envelope and observed-vs-threshold evidence, plus the advisory Laya verdict and the evidence row derived from it. The payload also carries `triage_line`, the sentence `src.alerts.report.triage_line` prints in the incident report, and the drawer renders it verbatim instead of wording a verdict itself |
-| `/api/export/stix/{id}`, `/api/export/report/{id}`, `/report/{id}` | STIX 2.1 download, HTML report download, report rendered in-site. All three alert-reading routes (`/api/evidence` included) first join the advisory verdict recorded for that `alert_id` beside the chain (`src.alerts.triage_store.join_verdicts`) and render a copy, so one `alert_id` gets one answer wherever a judge asks, and a download cannot change what the wall broadcasts |
+| `/api/export/stix/{id}`, `/api/export/ocsf/{id}`, `/api/export/report/{id}`, `/report/{id}` | STIX 2.1 download, one OCSF 1.10.0 Detection Finding download, HTML report download, report rendered in-site. `/api/evidence`, the report download and the report page first join the advisory verdict recorded for that `alert_id` beside the chain (`src.alerts.triage_store.join_verdicts`) and render a copy, so one `alert_id` gets one answer wherever a judge asks; STIX and OCSF serialize the alert itself, and no download can change what the wall broadcasts |
 | `/api/ml_metrics` | the pinned `results/ml/*.json` figures, published numbers, not live inference |
 | `/api/diode` | the status file **plus the server's verdict**: heartbeat freshness, counter monotonicity, whether byte accounting actually ran |
 | `/api/chain` | `LiveEvidenceStore.chain()`: the live session's link count and head hash, and whether an append-only ledger beside the db anchors it |
@@ -75,10 +75,11 @@ pause / resume / reset), the threat-level headline, the three throughput
 tiles, the class tiles with their radar canvas, the detectors grid, the
 benchmark capacity card, the alert timeline canvas, the Detection Quality
 table, the alert feed with its severity and class filters, the custody pill,
-the Diode Proof panel, the evidence drawer with its STIX and report exports,
+the Diode Proof panel, the evidence drawer with its STIX, OCSF and report
+exports,
 the custom source picker, the seventeen help tooltips and the status board.
 The board is the build's second page rather than a hash route inside the SPA,
-so the existing `StaticFiles` mount and two `FileResponse` routes are the only
+so the existing `StaticFiles` mount and the `FileResponse` routes are the only
 things serving either.
 
 The wall takes its words from the server, `class_names` and `threat_levels`
@@ -213,6 +214,9 @@ analyst would audit). Export buttons build, validate, and download:
 
 * a **STIX 2.1 bundle** for the alert (`src.alerts.export_stix`,
   structurally validated before download);
+* an **OCSF 1.10.0 Detection Finding** (`src.alerts.export_ocsf`), one compact
+  JSON object with the finding id, creation time, ATT&CK mapping, full evidence
+  and observable pointers, structurally validated before download;
 * an **HTML incident report** (`src.alerts.report`, self-contained,
   print-to-PDF ready). The verdict this surface's worker attached travels with
   it: each drained verdict is written to the side table beside the chain, so a
@@ -261,7 +265,8 @@ counters so "zero egress" is measured, not asserted.
 * `apps/dashboard/app.py` is thin: replay/state lives in `src/alerts/watch.py`
   (`replay_flows`, `WindowResult`, `ReplayStats`, `SessionStore`), headless
   and unit-tested (`tests/ui/test_dashboard.py`); exports reuse
-  `src.alerts.export_stix` / `src.alerts.report`; the diode card polls
+  `src.alerts.export_stix` / `src.alerts.export_ocsf` / `src.alerts.report`;
+  the diode card polls
   `src.diode.monitor.read_status`. Auto-refresh uses `st.fragment` and only
   advances the replay, scrolling/selection elsewhere is untouched.
 * `apps/mission_control/server.py` reuses the same `SessionStore` and replay
@@ -288,8 +293,8 @@ Regenerate: `python scripts/generators/make_demo_pcap.py [--out PATH]`.
 
 Headless verification of everything the UI does: demo capture present →
 replay fires **all four signatures on the right windows with zero benign
-false alarms** → counters populate → session alert exports (STIX validates,
-report renders) → diode status path honest → `apps/dashboard/app.py` parses and
+false alarms** → counters populate → session alert exports (STIX and OCSF
+validate, report renders) → diode status path honest → `apps/dashboard/app.py` parses and
 declares the four tabs. The interactive checks (start offline, replay,
 click-through, Diode Proof at zero) are the same calls with a UI on top.
 
