@@ -99,13 +99,14 @@ async def _warm_pack_once() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# scheduled maintenance lands with src/alerts/maintenance.py (next commit);
+# Scheduled maintenance is not implemented in this build. These values feed
+# /api/health and a future scheduler; src/alerts/maintenance.py is a one-shot
+# CLI that an external timer owns.
 # --------------------------------------------------------------------------- #
-# Interval 0 (DIODE_MAINTENANCE_INTERVAL_S=0) disables the loop entirely; the
-# CLI still does a one-shot run. Runs only land between replays: a VACUUM or a
-# backup taken mid-window is safe (SQLite serialises it) but can hold the
-# store's lock long enough to stall a live tick, so the scheduler waits for
-# idle/finished/error and retries on the next tick of the interval.
+# Interval 0 (DIODE_MAINTENANCE_INTERVAL_S=0) makes the absent loop explicit;
+# the CLI still does a one-shot run. A future scheduler should run only between
+# replays: a VACUUM or backup taken mid-window is safe (SQLite serialises it)
+# but can hold the store's lock long enough to stall a live tick.
 MAINT_INTERVAL_S = max(0, int(os.environ.get("DIODE_MAINTENANCE_INTERVAL_S")
                               or 21_600))
 MAINT_KEEP = max(1, int(os.environ.get("DIODE_BACKUP_KEEP") or 8))
