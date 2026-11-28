@@ -1,6 +1,6 @@
 # Evaluation evidence, committed snapshot
 
-Snapshot committed 2026-10-24; the model pin was re-established 2026-11-27.
+Snapshot committed 2026-10-24; the model pin was re-established 2026-11-27 and the paced stream run was added 2026-11-28.
 Metric values were copied from generated outputs; machine-specific path
 metadata was normalized; **no metric was hand-edited.**
 
@@ -16,6 +16,7 @@ metadata was normalized; **no metric was hand-edited.**
 | `models/flowctx_lgbm.joblib` | the CIC-IDS2017 flow-context ensemble, pinned so the full-corpus ML cells can be re-scored |
 | `models/tls_novelty.joblib` | the watchlist plus novelty artifact, pinned so the TLS channel is deterministic |
 | `runs/max_scale.md` / `.json` | `results/transfer/max/summary.md` / `max_results.json` from `scripts/benchmarks/bench_corpora.py --out results/transfer/max`, regenerated and committed 2026-11-27 |
+| `runs/stream_backpressure.md` / `.json` | `scripts/benchmarks/bench_stream.py --rates 5000,10000,50000 --windows 6 --out docs/evaluation/runs/stream_backpressure.json`, run and committed 2026-11-28 |
 
 Corpora naming: `ddos2019` = CIC-DDoS2019 Syn day · `hoic` / `bot` /
 `bruteforce` / `infil` = the four CSE-CIC-IDS2018 attack days.

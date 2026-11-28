@@ -730,7 +730,16 @@ wall-clock cost. That cost is where the latency numbers come from, with their
 definitions stated in code: `replay_fps` is the rate of the traffic being fed,
 `sustained_fps` is `n_flows / eval_seconds` (the rate the machine could hold if fed
 continuously), and the p50/p95 window and per-flow figures are measured, not
-claimed.
+claimed. The batch path's `eval_ms` covers rule evaluation only; it excludes
+DataFrame construction, queue wait and window fill.
+
+[src/alerts/stream.py](../src/alerts/stream.py) closes that gap for a paced
+intake: a producer stamps when each canonical flow is offered to a bounded
+blocking queue, the worker consumes through the same `replay_flows`, and
+`WindowResult` reports fill, queue, last-flow-to-alert and first-flow-to-alert.
+A full queue blocks the producer instead of dropping; the counters expose the
+wait. This is a flow-ingest-to-alert clock. It still excludes packet capture and
+the exporter's capture-to-flow assembly, so it is not NIC-to-alert.
 
 **Streamlit dashboard** ([apps/dashboard/app.py](../apps/dashboard/app.py),
 port 8501) is four tabs following one storyline: **Live** (pick a capture, replay it
@@ -1017,11 +1026,12 @@ from one Windows development workstation and are not a deployment target.
 
 | What | Measured | Meaning |
 |---|---:|---|
-| Sustained rule throughput | **10,000 flows/s** at 4.2x headroom (100,000 rows per 10 s window, median eval 2,397 ms) | Twice the problem statement's 5,000 flows/s target; a rate counts as sustainable only if evaluation finishes inside the 10 s the window must fill |
+| Sustained rule throughput | **10,000 flows/s** at 4.2x evaluation headroom (100,000 rows per 10 s window, median eval 2,397 ms) | Twice the problem statement's 5,000 flows/s target; a rate counts as sustainable only if evaluation finishes inside the 10 s the window must fill. This is evaluation headroom, not the end-to-end clock |
 | Batch ML scoring | **32,301 flows/s** median over 200k rows | Scoring is cheaper than window building |
-| End-to-end replay | p95 window eval **175 ms** | The full loop the dashboard runs, not a micro-benchmark |
+| Batch replay | p95 **rule eval 175 ms** on 40k flows | The dashboard's batch path; frame build, queue wait and window fill are outside this figure |
+| Paced stream | p95 **flow-ingest-to-alert 11.81 s at 5k**, **12.68 s at 10k**, **39.92 s at the 50k target** | Six 10 s windows per rate, bounded 2 s queue included. At 50k the queue saturates, accepts 23,880 flows/s and blocks the producer; that is overload, not a sustained result |
 | Alert store ingest | **11,230 alerts/s**, `recent(20)` query 24 ms | Persistence is not the bottleneck |
-| Detection latency | DDoS caught in its **first 10-second window** | Bounded by the window, not by the detectors. The compute inside it is 0.03-0.07 ms of window evaluation per flow |
+| Detection latency | DDoS caught in its **first 10-second window** | A 10 s tumbling window is the floor. Measured p95 first-flow-to-alert is 11.81 s at 5k and 12.68 s at 10k; rule evaluation alone is 0.03-0.07 ms per flow |
 | Outbound bytes under enforcement | **0** across a 30-minute replay plus idle run | The guarantee the Diode Proof panel attests to |
 
 Out-of-sample detection quality, checked against the artifacts by contract 2:

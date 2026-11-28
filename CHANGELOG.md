@@ -5,6 +5,18 @@ All notable changes to DiodeWatch are documented here.
 ## [Unreleased]
 
 ### Added
+- Paced flow-intake clock and bounded backpressure: `src/alerts/stream.py`
+  wraps the existing `replay_flows` worker with a producer that paces canonical
+  records in wall-clock time and a blocking `queue.Queue` sized to two seconds
+  of offered traffic. `WindowResult` reports first-ingress, last-ingress,
+  evaluation start/finish, fill, queue wait, last-flow-to-alert, window work and
+  first-flow-to-alert; the batch path keeps its old behavior and has no clock.
+  The benchmark measures six 10 s windows per rate: p95 flow-ingest-to-alert is
+  11.81 s at 5,000 flows/s and 12.68 s at 10,000, with brief queue saturation at
+  10k; the 50,000 target fills the queue, blocks the producer for 53.59 s, and
+  accepts 23,880 flows/s at a 39.92 s p95. The clock excludes packet capture and
+  capture-to-flow export. Artifact and caveats:
+  `docs/evaluation/runs/stream_backpressure.md`.
 - TLS and QUIC metadata: `src/ingest/tls_metadata.py` reassembles a TLS
   handshake from a pcap and computes JA3, JA3S, JA4 and JA4S from the real
   ClientHello/ServerHello bytes, including optional `ja4`/`ja4s` columns in the

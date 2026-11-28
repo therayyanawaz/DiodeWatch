@@ -12,8 +12,9 @@ guarantees a pickle from the version that wrote it, and `tests/test_ml_provenanc
 fails if the pin and the artifacts disagree). A workstation that still runs a
 newer scikit-learn prints an `InconsistentVersionWarning` when it loads them.
 
-    python scripts/benchmarks/bench_throughput.py                 # throughput + latency
+    python scripts/benchmarks/bench_throughput.py                 # throughput + window-eval latency
     python scripts/benchmarks/bench_accuracy.py --rules           # accuracy + gates
+    python scripts/benchmarks/bench_stream.py                     # paced ingest-to-alert + backpressure
 
 ## Throughput (rule engine, 10 s windows)
 
@@ -49,11 +50,50 @@ overstated the cost by 50-100x depending on the rung. The error made the system
 look slower than it is, but it was still a number a judge could recompute from
 the same table and catch.
 
+That 10,000 flows/s rating is **evaluation headroom**, not an end-to-end clock.
+It excludes the queue between intake and evaluation and excludes DataFrame
+construction inside the window. The next section measures both.
+
+## Ingest-to-alert clock and bounded queue
+
+`scripts/benchmarks/bench_stream.py` paces canonical flow records at the
+offered rate into a blocking, bounded queue, then consumes them through the
+existing `replay_flows` path. The clock starts when the first flow of a window
+is offered and stops when that window's alert is emitted: window fill, queue
+wait, frame construction and rules. Capacity is two seconds of offered traffic.
+This queue drops nothing; a full queue blocks the producer.
+
+| target | accepted | p50 ingest-to-alert | p95 ingest-to-alert | p95 last-flow-to-alert | p95 window work | blocked puts / time | verdict |
+|---:|---:|---:|---:|---:|---:|---:|---|
+| 5,000 f/s | 300,000 | 11,449 ms | **11,810 ms** | 1,855 ms | 1,805 ms | 0 / 0.0 s | sustained |
+| 10,000 f/s | 600,000 | 11,934 ms | **12,678 ms** | 2,720 ms | 2,670 ms | 5 / 2.36 s | sustained, brief saturation |
+| 50,000 f/s | 3,000,000 | 32,011 ms | **39,919 ms** | 15,593 ms | 15,589 ms | 5 / 53.59 s | overload |
+
+Six consecutive 10 s windows per rate, all alert-bearing. With six samples the
+nearest-rank p95 is also the worst window; the p50 is the typical one. At 5,000
+the queue peaked at 9,999 of 10,000 without blocking. At 10,000 it filled and
+blocked five puts for 2.36 s, then drained; window work stayed below the 10 s
+fill. At the 50,000 target it did not sustain the offer: achieved ingress fell to
+23,880 flows/s, the producer was blocked for 53.59 s, and the p95 window work
+was 15.59 s. Rule-evaluation p95 was 1.95 s, so DataFrame construction dominated
+under a 500,000-row window. That is overload, reported as such.
+
+The 175 ms figure below is `run_rules` p95 from the earlier 40,000-flow batch
+replay. It is a useful detector-cost figure and is not this clock. The
+machine-readable run, including every window's fill, queue, alert and evaluation
+breakdown, is
+[`evaluation/runs/stream_backpressure.json`](evaluation/runs/stream_backpressure.json);
+its notes are in
+[`evaluation/runs/stream_backpressure.md`](evaluation/runs/stream_backpressure.md).
+The clock excludes packet capture and the exporter's capture-to-flow assembly,
+so it is flow-ingest-to-alert, not NIC-to-alert.
+
 ## Other stages
 
 | stage                                   | result                          |
 |-----------------------------------------|---------------------------------|
-| End-to-end replay (40k flows, watch.py) | p95 window eval **175 ms**      |
+| Batch replay (40k flows, dashboard path) | p95 **rule eval 175 ms**; frame build, queue and window fill excluded |
+| Paced stream (5k/10k/50k target)        | p95 flow-ingest-to-alert **11.81 s / 12.68 s / 39.92 s**; 50k target overloaded |
 | Batch ML scoring (ml.flowctx LightGBM)  | **32,301 flows/s** median over 200k corpus rows (min 31,088) |
 | Alert store ingest (SQLite)             | **11,230 alerts/s**; recent(20) query 24 ms, from the earlier run: the 2026-11-03 pass skipped it (`ml_alerts__Wednesday.jsonl` is not in this clone) |
 

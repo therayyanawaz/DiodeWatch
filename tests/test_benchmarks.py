@@ -12,7 +12,8 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 
-_SCRIPT_SUBDIR = {"bench_throughput": "benchmarks", "bench_accuracy": "benchmarks"}
+_SCRIPT_SUBDIR = {"bench_throughput": "benchmarks", "bench_accuracy": "benchmarks",
+                   "bench_stream": "benchmarks"}
 
 
 def _load_script(name: str):
@@ -24,6 +25,15 @@ def _load_script(name: str):
 
 
 # ---------------------------------------------------------------- demo pack
+def test_stream_bench_retimes_at_the_offered_rate():
+    bench = _load_script("bench_stream")
+    rows = list(bench.dense_stream([{"flow_id": "x", "ts_epoch": 0.0}],
+                                   rate=1000, windows=1))
+    assert len(rows) == 10_000
+    assert rows[0]["ts_epoch"] == 1_500_000_000.0
+    assert abs((rows[-1]["ts_epoch"] - rows[0]["ts_epoch"]) - 9.999) < 1e-6
+
+
 def test_pack_manifest_contract():
     """The generated manifest describes every pack item and its detector."""
     man = json.loads((REPO / "data" / "pcaps" / "pack" /

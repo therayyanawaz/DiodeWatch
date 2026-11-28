@@ -37,7 +37,13 @@ DEFAULT_WINDOW_S = 10.0
 
 @dataclass
 class WindowResult:
-    """Everything the Live tab needs about one closed window."""
+    """Everything the Live tab needs about one closed window.
+
+    The optional monotonic clocks are filled when the caller stamps each
+    record with `_ingress_monotonic` (the streaming intake does). They are
+    None in the plain `replay_flows` path, where there is no producer queue
+    and therefore no ingest-to-alert clock to report.
+    """
     win_idx: int
     window_start: float          # epoch seconds of window start
     n_flows: int
@@ -45,11 +51,46 @@ class WindowResult:
     flows_per_sec: float         # replayed traffic rate in this window
     eval_ms: float               # detector evaluation wall time for the window
     capture_end: float | None = None  # max capture ts_epoch in the window
+    ingress_first: float | None = None   # earliest producer timestamp
+    ingress_last: float | None = None    # latest producer timestamp
+    eval_started: float | None = None    # worker began building the frame
+    eval_finished: float | None = None   # alerts were ready
 
     @property
     def sustained_fps(self) -> float:
         """Flows/sec this window's evaluation could sustain continuously."""
         return self.n_flows / max(self.eval_ms / 1000.0, 1e-9)
+
+    @staticmethod
+    def _elapsed_ms(start: float | None, end: float | None) -> float | None:
+        if start is None or end is None:
+            return None
+        return (end - start) * 1000.0
+
+    @property
+    def fill_ms(self) -> float | None:
+        """Capture-time span from the window's first to last ingested flow."""
+        return self._elapsed_ms(self.ingress_first, self.ingress_last)
+
+    @property
+    def queue_ms(self) -> float | None:
+        """Delay after the last ingest until the worker starts evaluating."""
+        return self._elapsed_ms(self.ingress_last, self.eval_started)
+
+    @property
+    def window_ms(self) -> float | None:
+        """Frame build plus rule evaluation, the work a window really costs."""
+        return self._elapsed_ms(self.eval_started, self.eval_finished)
+
+    @property
+    def alert_ms(self) -> float | None:
+        """Last-ingest to alert: queue wait plus frame build plus evaluation."""
+        return self._elapsed_ms(self.ingress_last, self.eval_finished)
+
+    @property
+    def ingest_to_alert_ms(self) -> float | None:
+        """First-ingest to alert, including the tumbling-window fill."""
+        return self._elapsed_ms(self.ingress_first, self.eval_finished)
 
 
 @dataclass
@@ -147,14 +188,23 @@ def replay_flows(flows: Iterable[dict], *, window_s: float = DEFAULT_WINDOW_S,
 
 def _evaluate(win_idx: int, recs: list[dict], window_s: float,
               rules) -> WindowResult:
+    started = time.perf_counter()
     df = pd.DataFrame(recs)
     t0 = time.perf_counter()
     alerts = run_rules(df, rules=rules, window_s=int(window_s))
-    eval_ms = (time.perf_counter() - t0) * 1000.0
+    finished = time.perf_counter()
+    eval_ms = (finished - t0) * 1000.0
     # fast max-ts without pd.notna per record (hot for large windows)
     import math
     cmax = None
+    ingress = []
     for r in recs:
+        stamp = r.get("_ingress_monotonic")
+        if stamp is not None:
+            try:
+                ingress.append(float(stamp))
+            except (TypeError, ValueError):
+                pass
         v = r.get("ts_epoch")
         if v is None:
             continue
@@ -174,6 +224,10 @@ def _evaluate(win_idx: int, recs: list[dict], window_s: float,
         flows_per_sec=len(recs) / window_s,
         eval_ms=eval_ms,
         capture_end=cmax,
+        ingress_first=min(ingress) if ingress else None,
+        ingress_last=max(ingress) if ingress else None,
+        eval_started=started,
+        eval_finished=finished,
     )
 
 

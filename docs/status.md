@@ -41,6 +41,17 @@ each claim:
   0.9321 the known-corpus figures are precision 0.9708 and recall 0.5955, while
   Umbrella FPR falls from 0.1076 to 0.01864; the recall cost is explicit and the
   `check_ml` gate fails above 0.02.
+* **Paced intake clock and backpressure.** `src/alerts/stream.py` feeds
+  canonical flows through a blocking bounded queue into the existing
+  `replay_flows` path and stamps first ingress, last ingress, evaluation start
+  and evaluation finish. `WindowResult` now reports fill, queue wait,
+  last-flow-to-alert, window work and first-flow-to-alert separately, so the old
+  175 ms rule-eval figure can no longer be read as end-to-end. At six 10 s
+  windows per rate the p95 flow-ingest-to-alert clock is 11.81 s at 5,000
+  flows/s and 12.68 s at 10,000; the 50,000 target saturates the two-second
+  queue, blocks the producer for 53.59 s and accepts only 23,880 flows/s at a
+  39.92 s p95. The clock excludes capture and exporter assembly. Run and
+  caveats: [`evaluation/runs/stream_backpressure.md`](evaluation/runs/stream_backpressure.md).
 * **TLS and QUIC metadata.** `src/ingest/tls_metadata.py` reads a pcap, reassembles
   a TLS handshake across TCP segments, and computes JA3, JA3S, JA4 and JA4S from
   the real ClientHello/ServerHello bytes. It also aggregates QUIC on UDP/443:
@@ -120,7 +131,7 @@ each claim:
   eight-day CIC-IDS2017 corpus, raising PortScan recall from 11/27 to 15/27.
   The remaining 12 PortScan units are 1-29 flow fragments, too small to
   separate safely from client traffic.
-* **The suite** collects 540 tests. Three of them need corpora this repository
+* **The suite** collects 544 tests. Three of them need corpora this repository
   deliberately never commits, so they skip locally and run in
   `.github/workflows/integration.yml`, which fails if they skip there.
 
@@ -132,7 +143,7 @@ have, not a decision we have not made.
 | Item | Why it matters | State |
 |---|---|---|
 | Scan and slow-DoS recall on CIC-IDS2017 | slow-DoS is 33/46 after the 300 B, strong-window and held-dominant fixes; scan is 15/222 canonically, but 195 units are Patator/web attacks folded into scan and the port-sweep rule covers 15/27 PortScan units. The 13 slow misses are 5 windows below 30 flows, 6 larger windows below 15 held or 1.6 ratio, one isolated 88-flow window, and one 338.9 B window above the 300 B cap; the 12 PortScan misses are 1-29 flow fragments | **done** |
-| Packet-to-alert clock, bounded queue, backpressure at 5k/10k/50k flows/s | the 175 ms figure is window-evaluation p95, not end-to-end latency | planned |
+| Packet-to-alert clock, bounded queue, backpressure at 5k/10k/50k flows/s | the 175 ms figure is window-evaluation p95, not end-to-end latency | **done** for the canonical-flow boundary: a 2 s blocking queue drops nothing, and p95 flow-ingest-to-alert is 11.81 s at 5k and 12.68 s at 10k over six 10 s windows. At the 50k target the queue saturates, the producer blocks for 53.59 s, accepted ingress falls to 23,880 flows/s, and p95 is 39.92 s. The clock starts at the canonical flow record; NIC capture and capture-to-flow export are **not** included. [`evaluation/runs/stream_backpressure.md`](evaluation/runs/stream_backpressure.md) |
 | Calibration and conformal abstention per channel | confidence is not calibrated and no alert can abstain | planned |
 | Drift alarm that makes a channel abstain, not just a chart | PSI is published as an explanation, not acted on | planned |
 | OCSF Detection Finding export beside STIX | SOC interoperability a judge can name | planned |
