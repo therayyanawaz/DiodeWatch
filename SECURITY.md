@@ -34,7 +34,10 @@ When deploying:
   authentication**. The template adds TLS and a single-worker unit, not
   authentication: keep its listener on a trusted management network until
   that gap is closed. The optional bearer token protects API and WebSocket
-  clients, but the shipped browser does not send it.
+  clients, but the shipped browser does not send it. The application also
+  enforces a Host allowlist, a 1 MiB body cap and process-global API rate
+  limits; these are transport controls, not identity, and a token holder can
+  still spend the shared bucket.
 - Run the dashboard as an unprivileged user; grant nftables/iptables
   rights only to the enforcement profile that needs them (`docs/diode.md`).
 - On classified/air-gapped hosts, disable Streamlit usage telemetry

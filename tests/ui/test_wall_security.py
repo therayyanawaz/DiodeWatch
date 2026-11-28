@@ -25,7 +25,7 @@ def _client(tmp_path, monkeypatch):
 
     import apps.mission_control.server as srv
     monkeypatch.setenv("DIODE_LIVE_DB", str(tmp_path / "wall_token.db"))
-    return TestClient(srv.app)
+    return TestClient(srv.app, base_url="http://127.0.0.1:8530")
 
 
 def test_every_response_carries_the_hardening_headers(tmp_path, monkeypatch):
@@ -80,10 +80,11 @@ def test_the_live_socket_is_refused_without_the_token(tmp_path, monkeypatch):
     import apps.mission_control.server as srv
     monkeypatch.setenv("DIODE_WALL_TOKEN", "s3cret-token")
     monkeypatch.setenv("DIODE_LIVE_DB", str(tmp_path / "ws.db"))
-    client = TestClient(srv.app)
+    client = TestClient(srv.app, base_url="http://127.0.0.1:8530")
 
     with (pytest.raises(WebSocketDisconnect) as exc,
-          client.websocket_connect("/ws/live")):
+          client.websocket_connect("/ws/live",
+                                   headers={"host": "127.0.0.1"})):
         pass
     assert exc.value.code == 1008
 
@@ -96,9 +97,11 @@ def test_the_live_socket_accepts_the_token_in_the_query_string(tmp_path, monkeyp
     import apps.mission_control.server as srv
     monkeypatch.setenv("DIODE_WALL_TOKEN", "s3cret-token")
     monkeypatch.setenv("DIODE_LIVE_DB", str(tmp_path / "ws2.db"))
-    client = TestClient(srv.app)
+    client = TestClient(srv.app, base_url="http://127.0.0.1:8530")
 
-    with client.websocket_connect("/ws/live?token=s3cret-token") as ws:
+    with client.websocket_connect(
+            "/ws/live?token=s3cret-token",
+            headers={"host": "127.0.0.1"}) as ws:
         hello = ws.receive_json()
         assert hello["type"] == "snapshot"
 

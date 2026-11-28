@@ -43,6 +43,29 @@ def test_unit_requires_the_export_write_path() -> None:
     assert any("ReadWritePaths" in problem for problem in problems)
 
 
+def test_unit_pins_the_wall_limits() -> None:
+    unit = _read("deploy/systemd/diodewatch-wall.service")
+    for line in (
+        "Environment=DIODE_ALLOWED_HOSTS=127.0.0.1,localhost,[::1]",
+        "Environment=DIODE_API_RATE_LIMIT=600",
+        "Environment=DIODE_WRITE_RATE_LIMIT=12",
+        "Environment=DIODE_RATE_WINDOW_S=60",
+        "Environment=DIODE_MAX_BODY_BYTES=1048576",
+    ):
+        assert line in unit
+    problems = deployment.check_unit(unit.replace(
+        "Environment=DIODE_WRITE_RATE_LIMIT=12",
+        "Environment=DIODE_WRITE_RATE_LIMIT=0"))
+    assert any("DIODE_WRITE_RATE_LIMIT" in problem for problem in problems)
+
+
+def test_unit_requires_a_host_allowlist() -> None:
+    unit = _read("deploy/systemd/diodewatch-wall.service")
+    line = "Environment=DIODE_ALLOWED_HOSTS=127.0.0.1,localhost,[::1]" + "\n"
+    problems = deployment.check_unit(unit.replace(line, ""))
+    assert any("DIODE_ALLOWED_HOSTS" in problem for problem in problems)
+
+
 def test_nginx_rejects_an_obsolete_tls_floor() -> None:
     conf = _read("deploy/nginx/diodewatch.conf")
     problems = deployment.check_nginx(

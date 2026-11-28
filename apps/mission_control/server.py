@@ -39,7 +39,7 @@ from fastapi import FastAPI, HTTPException, Response, WebSocket, WebSocketDiscon
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import logging_setup, security
+from . import limits, logging_setup, security
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
@@ -125,8 +125,9 @@ app = FastAPI(title="DiodeWatch Mission Control", docs_url=None, redoc_url=None,
               lifespan=_lifespan)
 
 
-# Hardened before the first route is registered: a response that skips the
-# header pass would be the one an attacker frames.
+# Limits go in first so the token/header layer is outermost: a 400, 413 or 429
+# from the limits still needs the hardening headers.
+LIMITS = limits.install(app)
 security.install(app)
 
 
@@ -715,6 +716,7 @@ async def api_health(deep: bool = False) -> JSONResponse:
         "state": SESSION.state,
         "ws_clients": len(CLIENTS),
         "checks": checks,
+        "limits": LIMITS.as_dict(),
         "maintenance": {"last_ran_at": MAINT_LAST["ran_at"],
                         "last_ok": MAINT_LAST["ok"],
                         "runs_ok": MAINT_COUNTS["ok"],
@@ -850,6 +852,11 @@ def main(argv: list[str] | None = None) -> None:
         "app_log": loginfo.get("app_log"),
         "access_log": loginfo.get("access_log"),
         "maintenance_interval_s": MAINT_INTERVAL_S,
+        "allowed_hosts": list(LIMITS.allowed_hosts),
+        "api_rate_limit": LIMITS.api_limit,
+        "write_rate_limit": LIMITS.write_limit,
+        "rate_window_s": LIMITS.window_s,
+        "max_body_bytes": LIMITS.max_body_bytes,
         "version": _app_version()})
     if token:
         print(f"wall: /api requires {security.TOKEN_HEADER} ({len(token)} chars)")

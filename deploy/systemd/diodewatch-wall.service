@@ -12,6 +12,13 @@ WorkingDirectory=/opt/diodewatch
 Environment=PYTHONUNBUFFERED=1
 Environment=DIODE_LIVE_DB=/var/lib/diodewatch/live_session.db
 Environment=DIODE_LOG_DIR=/var/lib/diodewatch/logs
+# The loopback names keep local curl working. Add the public DNS name in a
+# drop-in before the first request through nginx; docs/deployment.md shows it.
+Environment=DIODE_ALLOWED_HOSTS=127.0.0.1,localhost,[::1]
+Environment=DIODE_API_RATE_LIMIT=600
+Environment=DIODE_WRITE_RATE_LIMIT=12
+Environment=DIODE_RATE_WINDOW_S=60
+Environment=DIODE_MAX_BODY_BYTES=1048576
 # No scheduled maintenance loop ships in this build; backups are external.
 Environment=DIODE_MAINTENANCE_INTERVAL_S=0
 ExecStart=/opt/diodewatch/.venv/bin/python -m apps.mission_control.server --host 127.0.0.1 --port 8530 --workers 1

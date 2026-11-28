@@ -40,7 +40,7 @@ def _client(tmp_path, monkeypatch, status_file: Path | None):
         monkeypatch.delenv("DIODE_STATUS_FILE", raising=False)
     else:
         monkeypatch.setenv("DIODE_STATUS_FILE", str(status_file))
-    return TestClient(srv.app)
+    return TestClient(srv.app, base_url="http://127.0.0.1:8530")
 
 
 def _text(*parts) -> str:
@@ -168,7 +168,7 @@ def test_chain_reverify_proves_what_the_chain_row_only_claims(tmp_path, monkeypa
     store = LiveEvidenceStore(path=db)
     store.absorb_alerts([make_alert(0, "scan"), make_alert(1, "exfil")])
     monkeypatch.setattr(srv.SESSION, "store", store)
-    client = TestClient(srv.app)
+    client = TestClient(srv.app, base_url="http://127.0.0.1:8530")
 
     ok = client.get("/api/chain/verify").json()
     assert (ok["ok"], ok["links"], ok["anchored"], ok["degraded"]) == (
@@ -277,7 +277,8 @@ def test_pinned_models_replay_end_to_end(tmp_path, monkeypatch):
     # suppresses its own alert, correct for the wall, fatal for a test.
     monkeypatch.setenv("DIODE_LIVE_DB", str(tmp_path / "replay.db"))
 
-    with TestClient(srv.app) as client:      # lifespan builds the demo pack
+    with TestClient(srv.app,
+                    base_url="http://127.0.0.1:8530") as client:  # lifespan builds the demo pack
         assert client.post("/api/session", json={
             "source": "pack:02_c2_beacon", "tick_ms": 50}).status_code == 200
         deadline = time.time() + 120
@@ -570,7 +571,7 @@ def test_a_verdict_recorded_by_another_surface_reaches_every_answer(
     alert = make_alert(0, "scan")
     store.absorb_alerts([alert])
     monkeypatch.setattr(srv.SESSION, "store", store)
-    client = TestClient(srv.app)
+    client = TestClient(srv.app, base_url="http://127.0.0.1:8530")
 
     url = f"/report/{alert.alert_id}"
     evidence_url = f"/api/evidence/{alert.alert_id}"
@@ -619,7 +620,7 @@ def test_both_report_routes_title_with_the_display_name(tmp_path, monkeypatch):
     alert = make_alert(0, "scan")
     store.absorb_alerts([alert])
     monkeypatch.setattr(srv.SESSION, "store", store)
-    client = TestClient(srv.app)
+    client = TestClient(srv.app, base_url="http://127.0.0.1:8530")
 
     for url in (f"/report/{alert.alert_id}",
                 f"/api/export/report/{alert.alert_id}"):

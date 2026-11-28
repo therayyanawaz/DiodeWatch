@@ -52,7 +52,8 @@ because the wall is the only listening socket.
 | **Tampering** with the display | A framed page or an injected script driving the UI | `frame-ancestors 'none'`, `script-src 'self'`, `object-src 'none'`, `form-action 'none'`, plus `nosniff` and a same-origin opener policy on every response including errors | `style-src` allows inline style attributes because React writes them; that is a style injection surface, not a script one |
 | **Information disclosure** over the live socket | `/ws/live` streams the same alerts as `/api`, and a WebSocket handshake is not an HTTP request, so response middleware never sees it | The handshake checks the same token (header or `?token=`, because a browser cannot set a header on a WebSocket) and closes with 1008 before accepting | A token-protected wall therefore has no live UI: the socket is refused, and the pages say the push channel is down rather than showing a stale feed |
 | **Information disclosure** to another origin | Referrer leakage, cross-origin reads | `Referrer-Policy: no-referrer`, no CORS headers granted, no third-party origin in the CSP, and `connect-src 'self'` so the page cannot open a socket to any host that speaks WebSocket | The wall is single-tenant: every viewer sees the same feed. There is no per-analyst authorisation |
-| **Denial of service** by one viewer | Starting and resetting replays in a loop | One shared session, server-side state, a token for control when configured | A token holder can still reset the wall for everyone. That is a deliberate simplification for a demo, not an oversight |
+| **Denial of service** by one viewer | Starting and resetting replays in a loop | One shared session, a 600/min API limit with a 12/min unsafe-method budget, and a 1 MiB body cap (`apps/mission_control/limits.py`) | A token holder can still fill the bucket and deny other clients until the window slides, and the counters reset on process restart. This is a cost, not a guarantee |
+| **Spoofing the loopback origin** | A page under an attacker-controlled DNS name resolves to 127.0.0.1 and sends that name in Host | `DIODE_ALLOWED_HOSTS` defaults to `127.0.0.1,localhost,[::1]`; any other Host cannot reach a route. With no token it is 400; with a token, a missing token is 401 first and a token-bearing foreign Host is 400. WebSocket included | An operator who adds a wildcard pattern widens the list; the deployment doc names the exact public host instead |
 | **Elevation of privilege** | A UI bug reaching an admin route | There are no privileged routes: every route either reads or controls the replay | Not applicable beyond the above |
 
 ## Boundary 3, evidence leaving the enclave
@@ -110,6 +111,7 @@ The claims above are executable, which is what keeps them true:
 | A token really stops `/api` without it | `tests/ui/test_wall_security.py` |
 | A token really stops the live socket too | `tests/ui/test_wall_security.py` |
 | A one-way bind refuses to start unauthenticated | `tests/ui/test_wall_security.py` |
+| A foreign Host, an oversized body and a request loop are refused | `tests/ui/test_wall_limits.py` |
 | Tampering with a stored alert is detected | `tests/alerts/test_chain_attest.py` |
 | A digest moves when the store moves | `tests/alerts/test_attest_offbox.py` |
 | Shipped model digests match their cards | `tests/test_model_cards.py` |

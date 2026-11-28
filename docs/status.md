@@ -131,7 +131,7 @@ each claim:
   eight-day CIC-IDS2017 corpus, raising PortScan recall from 11/27 to 15/27.
   The remaining 12 PortScan units are 1-29 flow fragments, too small to
   separate safely from client traffic.
-* **The suite** collects 619 tests (2026-11-28). Three of them need corpora this repository
+* **The suite** collects 636 tests (2026-11-28). Three of them need corpora this repository
   deliberately never commits, so they skip locally and run in
   `.github/workflows/integration.yml`, which fails if they skip there.
 
@@ -150,9 +150,9 @@ have, not a decision we have not made.
 | Rootless diode proof: container `--network=none` self-test and a PowerShell elevated path, with the enforcement mode wired into both UIs | the one-way guarantee is demonstrated on Linux with root today; a reviewer on a laptop cannot reproduce it | **blocked** on Docker or administrator rights |
 | Live-interface rehearsal over a veth pair, with a recorded clip | proves the pipeline under enforcement on a real interface, not only on a replay | **blocked** on Linux root |
 | Reverse proxy, TLS, and a service unit pinning **one worker** | the wall is plain HTTP on loopback; the shared session is per process, so multiple workers would fragment it | **done** for transport and process: nginx 1.28.3 terminates TLS 1.2/1.3 on `:443`, redirects `:80`, proxies one `127.0.0.1:8530` upstream with the WebSocket upgrade, and writes a `$uri`-only access log; the systemd unit runs as `diodewatch`, keeps the db and logs under `/var/lib/diodewatch`, sandboxes the tree, and passes `--workers 1`, which the server also enforces with argparse. Authentication is **not** included: the optional token is for API clients, the browser does not send it, and row 154 covers only Streamlit, so the listener belongs on a trusted network until browser authentication (row 158) is designed. [deployment.md](deployment.md) |
-| Rate limit, request-size cap and `TrustedHost` on the wall | a token holder can drive the replay in a loop | planned |
+| Rate limit, request-size cap and `TrustedHost` on the wall | a token holder can drive the replay in a loop | **done**: `apps/mission_control/limits.py` installs Starlette `TrustedHost` (default `127.0.0.1,localhost,[::1]`, bare `*` refused), a 1 MiB ASGI body cap counted from the stream rather than Content-Length, and sliding-window limits of 600 `/api` requests and 12 unsafe requests per 60 s. A foreign Host is 400 once the token layer admits it (401 first if configured and absent), an oversized body 413 and a spent bucket 429 with `Retry-After`; all keep the hardening headers because the security layer is outermost. The buckets are process-global, not per client, so a token holder can still deny other clients until the window slides; this is a cost, not identity. Behind nginx the browser's Host is forwarded, so `DIODE_ALLOWED_HOSTS` must include the public name. [deployment.md](deployment.md) · `tests/ui/test_wall_limits.py` |
 | An authentication story for the Streamlit dashboard | it is a second, unprotected surface | planned |
-| One config module that validates every environment variable at startup | the variables are read at their call sites, so a typo fails at use time | planned |
+| One config module that validates every environment variable at startup | most variables are read at their call sites, so a typo fails at use time; `limits.py` now validates its five variables when it is imported | planned |
 | Schema versioning and a migration path for the alert store | tables are created if absent, with no version recorded | planned |
 | A daemon entry point for triage | triage ticks only while a dashboard session is open | planned |
 | An authentication story for the wall's browser surface | the wall can require a bearer token, but the shipped browser does not send one; a reachable listener is open to anyone who can reach it | planned |

@@ -38,8 +38,10 @@ the file still sees it.
 * An offline wheelhouse or an index reachable at install time for
   `requirements.txt`. Runtime itself makes no outbound calls.
 * A DNS name or `/etc/hosts` entry for the certificate. `server_name _;`
-  accepts any Host header; replace it with the exact name after the first
-  successful test.
+  accepts any Host header; replace it with the exact name before exposing the
+  listener. The wall also rejects a Host it was not configured for, so the
+  same name goes into `DIODE_ALLOWED_HOSTS` before the first request through
+  the proxy.
 
 ## Install
 
@@ -74,6 +76,30 @@ sudo install -m 0644 deploy/nginx/diodewatch.conf \
   /etc/nginx/conf.d/diodewatch.conf
 sudo install -d /etc/diodewatch/tls
 ```
+
+### Host allowlist
+
+The unit pins `DIODE_ALLOWED_HOSTS` to the loopback names. nginx forwards the
+browser's Host, not the upstream address, so the public DNS name must be added
+before a browser can reach the wall. Do it in a drop-in, keeping the
+loopback names for local checks:
+
+```bash
+sudo install -d /etc/systemd/system/diodewatch-wall.service.d
+printf '[Service]\nEnvironment=DIODE_ALLOWED_HOSTS=diodewatch.example,127.0.0.1,localhost,[::1]\n' | \
+  sudo tee /etc/systemd/system/diodewatch-wall.service.d/allowed-host.conf
+sudo systemctl daemon-reload
+```
+
+If the unit is already running, apply the drop-in with
+`sudo systemctl restart diodewatch-wall`; `daemon-reload` alone does not
+change a running process. Replace `diodewatch.example` with the certificate's
+name. In the shipped
+no-token deployment, a request whose Host is not in the list gets 400
+`Invalid host header` before a route runs; the same check inspects the
+WebSocket handshake. If `DIODE_WALL_TOKEN` is also set, a request without the
+token is 401 first, and the host 400 applies once the token layer has admitted
+it. This is separate from the nginx `server_name` and does not replace it.
 
 ### Certificate
 
@@ -157,6 +183,23 @@ check proves HSTS is present on the HTTPS response. `s_client` should
 negotiate TLS 1.2 or 1.3. A request over port 80 should return a 301 with
 the HTTPS URL.
 
+The application limits can be checked directly on loopback, before the proxy.
+On the shipped no-token unit:
+
+```bash
+# 400: the Host allowlist runs before the route.
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -H 'Host: rebind.example' http://127.0.0.1:8530/api/health
+# 413: more than the 1 MiB application cap.
+head -c 1048577 /dev/zero | curl -s -o /dev/null -w '%{http_code}\n' \
+  --data-binary @- http://127.0.0.1:8530/api/session
+```
+
+The 413 is JSON; the 400 from the host layer is plain text. Both carry the
+same CSP and nosniff headers as a normal page. A 400 here with the public
+name means the drop-in above is missing or has a typo; the journal and the
+access log both record the rejection without the query string.
+
 Open the wall in a browser and confirm the live feed advances. That is the
 WebSocket check: nginx forwards `Upgrade` and `Connection`, and
 `proxy_read_timeout` is 3600 s so an idle socket is not cut every minute.
@@ -225,8 +268,26 @@ commitment is one event loop and one session, not one request at a time.
   the browser WebSocket handshake does not reliably carry cached Basic
   credentials, and a live feed that fails after login is worse than an
   explicit network boundary.
-* No rate limit, request-size policy for the application, `TrustedHost`,
-  RBAC or multi-tenancy. This is one analyst, one host, one wall.
+* **Host allowlist**: `DIODE_ALLOWED_HOSTS` defaults to `127.0.0.1`,
+  `localhost` and `[::1]`; anything else is 400 before a route runs. nginx
+  passes the browser's Host, so add the public name as above. A wildcard
+  pattern can be configured, but `*` is refused at startup because it would
+  disable the check.
+* **Request size**: nginx refuses a body over 1 MiB at the transport, and the
+  application independently caps the ASGI stream at `DIODE_MAX_BODY_BYTES`
+  (1 MiB by default). A chunked body is counted as it arrives rather than
+  trusted from Content-Length; a malformed length gets 400. The application
+  cap covers direct loopback callers as well as proxied ones, and both return
+  the hardening headers.
+* **Rate**: the application admits 600 `/api` requests and 12 unsafe requests
+  per 60 s window, then returns 429 with `Retry-After`. The buckets are
+  process-global, not per client: behind nginx every source is 127.0.0.1,
+  and this wall has one session for one analyst. A script that loops
+  start/reset spends its write budget and waits; a token holder can still
+  fill the bucket and briefly deny other clients. Counters reset on restart.
+* No browser authentication, RBAC or multi-tenancy. The host, size and rate
+  checks are transport controls, not identity. This is one analyst, one host,
+  one wall.
 * No high availability. One systemd unit, one SQLite writer, one process.
   A restart is a short interruption, not a failover.
 * The systemd sandbox is a baseline, not a proof. `ProtectSystem=strict`,
@@ -252,3 +313,10 @@ entry point was started with `--workers 1` and answered
 `/api/health`. `systemd-analyze verify` accepted the unit against staged
 paths. No systemd unit was started, and proxy-to-app, certificate rotation
 and reboot behavior remain host checks.
+
+That transport run predates the application host, size and rate checks. They
+are exercised by `tests/ui/test_wall_limits.py`; on a host, the two loopback
+commands above are the remaining live proof, and a browser load against the
+public name proves the drop-in Host. The 429 path is deterministic once the
+window is full but is intentionally not fired against a live wall here
+because it would deny the analyst's own polling until the window slides.

@@ -1,10 +1,11 @@
 """Structural guard for the shipped wall deployment.
 
 The two daemons cannot run in CI or on the Windows development host, so this
-check owns what can be proved from the tree: the unit binds loopback and asks
-for exactly one worker, and the nginx site terminates TLS on one loopback
-upstream while preserving the WebSocket upgrade. It is a configuration guard,
-not a live handshake; docs/deployment.md names the live commands.
+check owns what can be proved from the tree: the unit binds loopback, asks for
+exactly one worker and pins the host, body and rate limits; the nginx site
+terminates TLS on one loopback upstream while preserving the WebSocket
+upgrade. It is a configuration guard, not a live handshake; docs/deployment.md
+names the live commands.
 
 Run:
     python scripts/checks/check_deployment.py
@@ -143,6 +144,15 @@ def check_unit(text: str) -> list[str]:
         problems.append("DIODE_LIVE_DB is not pinned under /var/lib/diodewatch")
     if "DIODE_LOG_DIR=/var/lib/diodewatch/logs" not in db:
         problems.append("DIODE_LOG_DIR is not pinned under /var/lib/diodewatch")
+    for expected in (
+        "DIODE_ALLOWED_HOSTS=127.0.0.1,localhost,[::1]",
+        "DIODE_API_RATE_LIMIT=600",
+        "DIODE_WRITE_RATE_LIMIT=12",
+        "DIODE_RATE_WINDOW_S=60",
+        "DIODE_MAX_BODY_BYTES=1048576",
+    ):
+        if expected not in db:
+            problems.append(f"unit does not pin {expected}")
     if [value for k, value in install if k == "WantedBy"] != ["multi-user.target"]:
         problems.append("unit is not wanted by multi-user.target")
     docs = _values(values, "Documentation")
@@ -234,7 +244,8 @@ def check_doc(text: str) -> list[str]:
     problems: list[str] = []
     lowered = text.lower()
     for phrase in ("--workers 1", "does **not** add", "one worker",
-                   "nginx -t", "protect", "no scheduled"):
+                   "nginx -t", "protect", "no scheduled",
+                   "DIODE_ALLOWED_HOSTS", "429", "413", "1 MiB"):
         if phrase.lower() not in lowered:
             problems.append(f"deployment doc is missing {phrase!r}")
     return problems

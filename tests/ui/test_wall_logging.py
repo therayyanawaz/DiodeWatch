@@ -23,7 +23,7 @@ def _client(tmp_path, monkeypatch):
 
     import apps.mission_control.server as srv
     monkeypatch.setenv("DIODE_LIVE_DB", str(tmp_path / "wall_ops.db"))
-    return TestClient(srv.app), srv
+    return TestClient(srv.app, base_url="http://127.0.0.1:8530"), srv
 
 
 def _point_logs_at(tmp_path, monkeypatch):

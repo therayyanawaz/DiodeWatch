@@ -5,6 +5,15 @@ All notable changes to DiodeWatch are documented here.
 ## [Unreleased]
 
 ### Added
+- Wall request guards: `apps/mission_control/limits.py` adds a `TrustedHost`
+  allowlist (default `127.0.0.1,localhost,[::1]`, bare `*` refused) and a 1 MiB
+  ASGI body cap that counts the stream rather than trusting Content-Length.
+  Sliding-window limits admit 600 `/api` requests and 12 unsafe requests per
+  60 s, then answer 429 with `Retry-After`. A foreign Host is 400 once the
+  token layer admits it (401 first if configured and absent) and an
+  oversized body 413; the security layer stays outermost so all three keep the
+  hardening headers. The buckets are process-global, which is stated in the
+  deployment and threat model along with the nginx Host drop-in.
 - Deployment bundle for the wall: `deploy/nginx/diodewatch.conf` terminates
   TLS 1.2/1.3, redirects port 80, proxies one `127.0.0.1:8530` upstream with the
   WebSocket upgrade, and writes a query-string-free access log;

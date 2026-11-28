@@ -3,11 +3,15 @@
 The server binds loopback by default, which is the right default for a demo on
 one machine but not a security boundary on its own: any page the browser loads
 can reach 127.0.0.1, so a stray tab can start a replay, stop one, or read the
-evidence store the wall is displaying. Two protections, deliberately separate:
+evidence store the wall is displaying. Three protections, deliberately separate:
 
   * **Headers on every response.** A strict CSP means the wall can only execute
     its own bundle, and `frame-ancestors 'none'` means no page can wrap it.
     These cost nothing and apply whether or not a token is configured.
+
+  * **A host allowlist, a 1 MiB body cap and API rate limits** in the adjacent
+    `limits.py`: a foreign Host is a 400, an oversized body is a 413, and a
+    scripted replay loop spends its 12 write slots per minute and then gets 429.
 
   * **A bearer token for the API and the live socket, when one is configured.**
     `DIODE_WALL_TOKEN` (or `--token`) turns every `/api` route into a 401 without
